@@ -11,18 +11,21 @@ var express = require('express'),
 /**
  * Log all requests
  */
-app.use(require('morgan')({ "stream": logger.stream }));
+app.use(require('morgan')('tiny', { 'stream': logger.stream }));
+
+app.disable('x-powered-by');
 
 /**
  * Routes for the application
  */
 app.get('/', controllers.getAllBuckets);
-app.get('/:bucket', controllers.getBucket);
-app.delete('/:bucket', controllers.deleteBucket);
+app.get('/:bucket', controllers.bucketExists, controllers.getBucket);
+app.delete('/:bucket', controllers.bucketExists, controllers.deleteBucket);
 app.put('/:bucket', controllers.putBucket);
-app.put('/:bucket/:key(*)', multipartMiddleware, controllers.putKeyForBucket);
-app.get('/:bucket/:key(*)', controllers.getKeyForBucket);
-app.head('/:bucket/:key(*)', controllers.getKeyForBucket);
+app.put('/:bucket/:key(*)', controllers.bucketExists, multipartMiddleware, controllers.putObject);
+app.get('/:bucket/:key(*)', controllers.bucketExists, controllers.getObject);
+app.head('/:bucket/:key(*)', controllers.getObject);
+app.delete('/:bucket/:key(*)', controllers.bucketExists, controllers.deleteObject);
 
 /**
  * Start the server
