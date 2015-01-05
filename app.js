@@ -8,7 +8,6 @@ var express = require('express'),
     morgan = require('morgan'),
     multipart = require('connect-multiparty'),
     multipartMiddleware = multipart();
-
 app.use(morgan('combined'));
 
 app.get('/', function (req, res) {
@@ -36,8 +35,8 @@ app.get('/:bucket', function (req, res) {
         return buildXmlResponse(res, 404, template);
       }
       var options = {
-        marker: req.query.marker || '',
-        prefix: req.query.prefix || '',
+        marker: req.query.marker || null,
+        prefix: req.query.prefix || null,
         maxKeys: req.query['max-keys'] || 1000,
         delimiter: req.query.delimiter || null
       };
