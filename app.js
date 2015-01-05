@@ -3,7 +3,7 @@
 var express = require('express'),
     app = express(),
     FileStore = require('./lib/file-store'),
-    fileStore = new FileStore('/tmp/fakes3_root'),
+    fileStore = new FileStore('/tmp/dummys3_root'),
     templateBuilder = require('./lib/xml-template-builder'),
     morgan = require('morgan'),
     multipart = require('connect-multiparty'),
