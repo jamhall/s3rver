@@ -19,6 +19,7 @@
     "lodash": "^2.4.1",
     "morgan": "^1.5.1",
     "multer": "^0.1.6",
+    "winston": "^0.8.3",
     "xmlbuilder": "^2.4.5"
   }
 }

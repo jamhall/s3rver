@@ -4,14 +4,14 @@ var express = require('express'),
     app = express(),
     Controllers = require('./lib/controllers'),
     controllers = new Controllers('/tmp/dummys3_root'),
-    morgan = require('morgan'),
     multipart = require('connect-multiparty'),
-    multipartMiddleware = multipart();
+    multipartMiddleware = multipart(),
+    logger = require('./lib/logger');
 
 /**
  * Log all requests
  */
-app.use(morgan('combined'));
+app.use(require('morgan')({ "stream": logger.stream }));
 
 /**
  * Routes for the application
