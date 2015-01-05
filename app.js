@@ -18,7 +18,7 @@ app.disable('x-powered-by');
 /**
  * Routes for the application
  */
-app.get('/', controllers.getAllBuckets);
+app.get('/', controllers.getBuckets);
 app.get('/:bucket', controllers.bucketExists, controllers.getBucket);
 app.delete('/:bucket', controllers.bucketExists, controllers.deleteBucket);
 app.put('/:bucket', controllers.putBucket);
