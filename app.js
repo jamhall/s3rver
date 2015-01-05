@@ -105,7 +105,7 @@ app.get('/:bucket/:key(*)', function (req, res) {
       var template = templateBuilder.buildBucketNotFound(bucketName);
       return buildXmlResponse(res, 404, template);
     }
-    fileStore.getKey(bucket, keyName, function (err, key, data) {
+    fileStore.getKeyForBucket(bucket, keyName, function (err, key, data) {
       if (err) {
         var template = templateBuilder.buildKeyNotFound(keyName);
         return buildXmlResponse(res, 404, template);
