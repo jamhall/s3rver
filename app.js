@@ -1,22 +1,24 @@
-var express = require('express');
-var app = express();
-var FileStore = require('./lib/file-store');
-var fileStore = new FileStore('/tmp/fakes3_root');
-var xmlTemplateBuilder = require('./lib/xml-template-builder');
-var morgan = require('morgan');
-var multipart = require('connect-multiparty');
-var multipartMiddleware = multipart();
+'use strict';
+
+var express = require('express'),
+    app = express(),
+    FileStore = require('./lib/file-store'),
+    fileStore = new FileStore('/tmp/fakes3_root'),
+    templateBuilder = require('./lib/xml-template-builder'),
+    morgan = require('morgan'),
+    multipart = require('connect-multiparty'),
+    multipartMiddleware = multipart();
 
 app.use(morgan('combined'));
 
 app.get('/', function (req, res) {
   var buckets = fileStore.getAllBuckets();
-  var xml = xmlTemplateBuilder.buildBucketsXml(buckets);
+  var xml = templateBuilder.buildBuckets(buckets);
   res.header('Content-Type', 'application/xml');
   return res.send(xml);
 });
 
-var buildXmlResponse = function(res, status, template) {
+var buildXmlResponse = function (res, status, template) {
   res.header('Content-Type', 'application/xml');
   res.status(404);
   return res.send(template);
@@ -30,7 +32,7 @@ app.get('/:bucket', function (req, res) {
   } else {
     fileStore.getBucket(bucketName, function (err, bucket) {
       if (err) {
-        var template = xmlTemplateBuilder.buildBucketNotFoundXml(bucketName);
+        var template = templateBuilder.buildBucketNotFound(bucketName);
         return buildXmlResponse(res, 404, template);
       }
       var options = {
@@ -40,7 +42,7 @@ app.get('/:bucket', function (req, res) {
         delimiter: req.query.delimiter || null
       };
       fileStore.getAllKeysForBucket(bucket, options, function (err, keys) {
-        var template = xmlTemplateBuilder.buildBucketQueryXml(options, keys);
+        var template = templateBuilder.buildBucketQuery(options, keys);
         return buildXmlResponse(res, 200, template);
       });
     });
@@ -52,12 +54,12 @@ app.delete('/:bucket', function (req, res) {
   fileStore.getBucket(bucketName, function (err, bucket) {
     res.header('Content-Type', 'application/xml');
     if (err) {
-      var template = xmlTemplateBuilder.buildBucketNotFoundXml(bucketName);
+      var template = templateBuilder.buildBucketNotFound(bucketName);
       return buildXmlResponse(res, 404, template);
     }
     fileStore.deleteBucket(bucket, function (err) {
       if (err) {
-        var template = xmlTemplateBuilder.buildBucketNotEmptyXml(bucketName);
+        var template = templateBuilder.buildBucketNotEmpty(bucketName);
         return buildXmlResponse(res, 409, template);
       }
       return res.status(204).end();
@@ -67,10 +69,9 @@ app.delete('/:bucket', function (req, res) {
 
 app.put('/:bucket', function (req, res) {
   var bucketName = req.params.bucket;
-  res.header('Content-Type', 'application/xml');
   fileStore.getBucket(bucketName, function (err, bucket) {
     if (bucket) {
-      var template = xmlTemplateBuilder.buildBucketNotFoundXml(bucketName);
+      var template = templateBuilder.buildBucketNotFound(bucketName);
       return buildXmlResponse(res, 404, template);
     }
     fileStore.createBucket(bucketName, function (err, bucket) {
@@ -102,12 +103,12 @@ app.get('/:bucket/:key(*)', function (req, res) {
   var keyName = req.params.key;
   fileStore.getBucket(bucketName, function (err, bucket) {
     if (err) {
-      var template = xmlTemplateBuilder.buildBucketNotFoundXml(bucketName);
+      var template = templateBuilder.buildBucketNotFound(bucketName);
       return buildXmlResponse(res, 404, template);
     }
     fileStore.getKey(bucket, keyName, function (err, key, data) {
       if (err) {
-        var template = xmlTemplateBuilder.buildKeyNotFoundXml(keyName);
+        var template = templateBuilder.buildKeyNotFound(keyName);
         return buildXmlResponse(res, 404, template);
       }
       res.header('Etag', key.md5);
