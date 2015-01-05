@@ -15,6 +15,7 @@
     "connect-multiparty": "^1.2.5",
     "debug": "^2.1.1",
     "express": "^4.10.6",
+    "jstoxml": "^0.2.2",
     "lodash": "^2.4.1",
     "morgan": "^1.5.1",
     "multer": "^0.1.6",
