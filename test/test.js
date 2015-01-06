@@ -7,8 +7,9 @@ var _ = require('lodash');
 var moment = require('moment');
 var Chance = require('chance');
 var chance = new Chance();
+var path = require('path');
 
-describe('S3Server Tests', function () {
+describe('S3rver Tests', function () {
   var s3Client;
   var buckets = ['bucket1', 'bucket2', 'bucket3', 'bucket4', 'bucket5'];
   before(function (done) {
@@ -107,14 +108,64 @@ describe('S3Server Tests', function () {
     });
   });
 
-  it('should store an object in a bucket', function (done) {
-    done();
-  });
-  after(function (done) {
-    fs.remove('/tmp/dummys3_root', function (err) {
-      if (err) return console.error(err)
+  it('should store a text object in a bucket', function (done) {
+    var params = {Bucket: buckets[0], Key: 'text', Body: 'Hello!'};
+    s3Client.putObject(params, function (err, data) {
+      /[a-fA-F0-9]{32}/.test(data.ETag).should.equal(true);
+      if (err) {
+        return done(err);
+      }
       done();
     });
+  });
+
+  it('should store an image in a bucket', function (done) {
+    var file = path.join(__dirname, 'resources/image.jpg');
+    console.log(file);
+    fs.readFile(file, function (err, data) {
+      console.log('Data', data.length);
+      if (err) {
+        return done(err);
+      }
+      var params = {Bucket: buckets[0], Key: 'image', Body: new Buffer(data), ContentType: 'image/jpeg', ContentLength: data.length };
+      s3Client.putObject(params, function (err, data) {
+        /[a-fA-F0-9]{32}/.test(data.ETag).should.equal(true);
+        if (err) {
+          return done(err);
+        }
+        done();
+      });
+    });
+  });
+
+  it('should store a large buffer in a bucket', function (done) {
+    // 20M
+    var b = new Buffer(20000000);
+    var params = {Bucket: buckets[0], Key: 'large', Body: b };
+    s3Client.putObject(params, function (err, data) {
+      if (err) {
+        return done(err);
+      }
+      /[a-fA-F0-9]{32}/.test(data.ETag).should.equal(true);
+      done();
+    });
+  });
+
+  it('should get an image from a bucket', function (done) {
+    s3Client.getObject({ Bucket: buckets[0], Key: 'image'}, function (err, data) {
+      if (err) {
+        return done(err);
+      }
+      data.ContentType.should.equal('image/jpeg');
+      done();
+    });
+  });
+
+  after(function (done) {
+//    fs.remove('/tmp/dummys3_root', function (err) {
+//      if (err) return console.error(err)
+//      done();
+//    });
     done();
   });
 

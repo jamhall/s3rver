@@ -11,14 +11,12 @@
   "dependencies": {
     "MD5": "^1.2.1",
     "async": "^0.9.0",
-    "body-parser": "^1.10.1",
-    "connect-multiparty": "^1.2.5",
-    "debug": "^2.1.1",
+    "concat-stream": "^1.4.7",
     "express": "^4.10.6",
     "jstoxml": "^0.2.2",
     "lodash": "^2.4.1",
+    "mkdirp": "^0.5.0",
     "morgan": "^1.5.1",
-    "multer": "^0.1.6",
     "winston": "^0.8.3",
     "xmlbuilder": "^2.4.5"
   },
