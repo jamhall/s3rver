@@ -8,6 +8,7 @@ var moment = require('moment');
 var Chance = require('chance');
 var chance = new Chance();
 var path = require('path');
+var md5 = require('MD5');
 
 describe('S3rver Tests', function () {
   var s3Client;
@@ -32,10 +33,6 @@ describe('S3rver Tests', function () {
         done();
       });
     });
-  });
-  it('should successfully connect to the server', function (done) {
-
-    done();
   });
 
   it('should create five buckets', function (done) {
@@ -121,7 +118,6 @@ describe('S3rver Tests', function () {
 
   it('should store an image in a bucket', function (done) {
     var file = path.join(__dirname, 'resources/image.jpg');
-    console.log(file);
     fs.readFile(file, function (err, data) {
       console.log('Data', data.length);
       if (err) {
@@ -152,11 +148,64 @@ describe('S3rver Tests', function () {
   });
 
   it('should get an image from a bucket', function (done) {
-    s3Client.getObject({ Bucket: buckets[0], Key: 'image'}, function (err, data) {
+    var file = path.join(__dirname, 'resources/image.jpg');
+    fs.readFile(file, function (err, data) {
+      s3Client.getObject({ Bucket: buckets[0], Key: 'image'}, function (err, object) {
+        if (err) {
+          return done(err);
+        }
+        object.ETag.should.equal(md5(data));
+        object.ContentLength.should.equal(data.length.toString());
+        object.ContentType.should.equal('image/jpeg');
+        done();
+      });
+    });
+  });
+
+  it('should delete an image from a bucket', function (done) {
+    s3Client.deleteObject({ Bucket: buckets[0], Key: 'image'}, function (err) {
       if (err) {
         return done(err);
       }
-      data.ContentType.should.equal('image/jpeg');
+      done();
+    });
+  });
+
+  it('should not find an image from a bucket', function (done) {
+    s3Client.getObject({ Bucket: buckets[0], Key: 'image'}, function (err) {
+      err.code.should.equal('NoSuchKey');
+      err.statusCode.should.equal(404);
+      done();
+    });
+  });
+
+  it('should fail to delete a bucket because it is not empty', function (done) {
+    s3Client.deleteBucket({ Bucket: buckets[0] }, function (err, data) {
+      err.code.should.equal('BucketNotEmpty');
+      err.statusCode.should.equal(409);
+      done();
+    });
+  });
+
+  it('should upload a text file to a multi directory path', function (done) {
+    var params = {Bucket: buckets[0], Key: 'multi/directory/path/text', Body: 'Hello!'};
+    s3Client.putObject(params, function (err, data) {
+      /[a-fA-F0-9]{32}/.test(data.ETag).should.equal(true);
+      if (err) {
+        return done(err);
+      }
+      done();
+    });
+  });
+
+  it('should find a text file in a multi directory path', function (done) {
+    s3Client.getObject({ Bucket: buckets[0], Key: 'multi/directory/path/text'}, function (err, object) {
+      if (err) {
+        return done(err);
+      }
+      object.ETag.should.equal(md5('Hello!'));
+      object.ContentLength.should.equal('6');
+      object.ContentType.should.equal('application/octet-stream');
       done();
     });
   });
