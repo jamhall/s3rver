@@ -7,7 +7,7 @@ S3rver is a lightweight server that responds to the same calls Amazon S3 respond
 
 The goal of Fake S3 is to minimise runtime dependencies and be more of a development tool to test S3 calls in your code rather than a production server looking to duplicate S3 functionality.
 
-It is currently under active development. Tests are also currently being written.
+> It is currently under active development.
 
 Currently working
 
@@ -18,9 +18,8 @@ Currently working
 - [x] Store object for bucket (mutipart)
 - [x] Delete object for bucket
 - [x] Get object (including HEAD, If-Modified-Since, If-None-Match)
+- [x] Get acls for an object (dummy data)
 
 Not working
 
 - [ ] Copy object
-- [ ] Rate limiting
-- [ ] Put object stream
