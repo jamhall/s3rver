@@ -20,12 +20,12 @@ describe('S3rver Tests', function () {
      */
     var s3rver = new S3rver();
     s3rver.setHostname('localhost')
-      .setPort(4568)
-      .setDirectory('/tmp/s3rver_directory')
+      .setPort(4569)
+      .setDirectory('/tmp/s3rver_test_directory')
       .setSilent(true)
       .run(function (err, hostname, port, directory) {
         if (err) {
-          return done('Error starting server');
+          return done('Error starting server', err);
         }
         var config = {
           accessKeyId: '123',
@@ -41,8 +41,11 @@ describe('S3rver Tests', function () {
          * Remove if exists and recreate the temporary directory
          */
         fs.remove(directory, function (err) {
+          if (err) {
+            return done(err);
+          }
           fs.mkdirs(directory, function (err) {
-            if (err) return console.error(err)
+            if (err) return done(err);
             done();
           });
         });
@@ -133,7 +136,6 @@ describe('S3rver Tests', function () {
   it('should store an image in a bucket', function (done) {
     var file = path.join(__dirname, 'resources/image.jpg');
     fs.readFile(file, function (err, data) {
-      console.log('Data', data.length);
       if (err) {
         return done(err);
       }
@@ -165,7 +167,6 @@ describe('S3rver Tests', function () {
     var file = path.join(__dirname, 'resources/image.jpg');
     fs.readFile(file, function (err, data) {
       s3Client.getObject({ Bucket: buckets[0], Key: 'image'}, function (err, object) {
-        console.log(object);
         if (err) {
           return done(err);
         }

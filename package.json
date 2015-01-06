@@ -4,9 +4,13 @@
   "description": "Fake S3 server for node",
   "main": "index.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "test": "mocha --timeout 20000 --reporter spec --ui bdd"
   },
-  "author": "Jamie Hall <hall@ill.eu>",
+  "author": {
+    "name": "Jamie Hall",
+    "email": "hall@ill.eu",
+    "url": "http://github.com/jamhall/s3rver"
+  },
   "license": "MIT",
   "dependencies": {
     "MD5": "^1.2.1",
