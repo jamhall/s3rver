@@ -1,7 +1,7 @@
 {
-  "name": "dummy-s3",
+  "name": "s3rver",
   "version": "0.0.0",
-  "description": "Dummy S3 server for node",
+  "description": "Fake S3 server for node",
   "main": "index.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1"
