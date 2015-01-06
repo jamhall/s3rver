@@ -1,6 +1,8 @@
 S3rver
 ==================
 
+[![Build Status][travis-image]][travis-url]
+
 S3rver is a NodeJs port of the excellent [Fake S3](https://github.com/jubos/fake-s3) server.
 
 S3rver is a lightweight server that responds to the **some** of the same calls [Amazon S3](http://docs.aws.amazon.com/AWSJavaScriptSDK/latest/AWS/S3.html) responds to. It is extremely useful for testing S3 in a sandbox environment without actually making calls to Amazon.
