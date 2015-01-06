@@ -162,6 +162,21 @@ describe('S3rver Tests', function () {
     });
   });
 
+  it('should get image metadata from a bucket using HEAD method', function (done) {
+    var file = path.join(__dirname, 'resources/image.jpg');
+    fs.readFile(file, function (err, data) {
+      s3Client.headObject({ Bucket: buckets[0], Key: 'image'}, function (err, object) {
+        if (err) {
+          return done(err);
+        }
+        object.ETag.should.equal(md5(data));
+        object.ContentLength.should.equal(data.length.toString());
+        object.ContentType.should.equal('image/jpeg');
+        done();
+      });
+    });
+  });
+
   it('should delete an image from a bucket', function (done) {
     s3Client.deleteObject({ Bucket: buckets[0], Key: 'image'}, function (err) {
       if (err) {
