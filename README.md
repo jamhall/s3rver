@@ -1,5 +1,4 @@
 S3rver
-
 ==================
 
 S3rver is a NodeJs port of the excellent [FakeS3](https://github.com/jubos/fake-s3) server.
