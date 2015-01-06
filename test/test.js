@@ -11,6 +11,7 @@ var path = require('path');
 var md5 = require('MD5');
 var S3rver = require('../lib');
 var util = require('util');
+
 describe('S3rver Tests', function () {
   var s3Client;
   var buckets = ['bucket1', 'bucket2', 'bucket3', 'bucket4', 'bucket5'];
