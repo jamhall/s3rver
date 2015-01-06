@@ -1,10 +1,9 @@
-var S3rver = require('../lib');
-
-var s3rver = new S3rver();
+#!/usr/bin/env node
 var pkg = require('../package.json'),
     version = pkg.version,
     program = require('commander'),
-    fs = require('fs');
+    fs = require('fs'),
+    S3rver = require('../lib');
 
 program.version(version, '--version');
 program.option('-h, --hostname [value]', 'Set the host name or ip for the server', 'localhost')
@@ -29,6 +28,7 @@ catch (e) {
   return;
 }
 
+var s3rver = new S3rver();
 s3rver.setHostname(program.hostname)
   .setPort(program.port)
   .setDirectory(program.directory)

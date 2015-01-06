@@ -11,7 +11,18 @@
     "email": "hall@ill.eu",
     "url": "http://github.com/jamhall/s3rver"
   },
+  "bin": {
+    "s3rver": "bin/s3rver.js"
+  },
   "license": "MIT",
+  "keywords" : [
+    "fake",
+    "s3",
+    "server",
+    "mock",
+    "false",
+    "amazon"
+  ],
   "dependencies": {
     "MD5": "^1.2.1",
     "async": "^0.9.0",
