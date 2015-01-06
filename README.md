@@ -24,7 +24,23 @@ Not working
 
 - [ ] Copy object
 - [ ] Updated modified date when an object is updated
+- [ ] Implementing tests for listing objects by prefix
+- 
 
+## Quick Start
+
+Install s3rver:
+  
+```bash
+npm install s3rver -g
+```
+You will now have a command on your path called *s3rver*
+
+Executing this command for the various options:
+
+```bash
+s3rver --help
+```
 
 ## Tests
 
