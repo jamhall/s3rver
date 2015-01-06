@@ -1,10 +1,38 @@
 var S3rver = require('../lib');
 
 var s3rver = new S3rver();
-s3rver.setHostname('localhost')
-  .setPort(4568)
-  .setDirectory('/tmp/jamie')
-  .setSilent(false)
+var pkg = require('../package.json'),
+    version = pkg.version,
+    program = require('commander'),
+    fs = require('fs');
+
+program.version(version, '--version');
+program.option('-h, --hostname [value]', 'Set the host name or ip for the server', 'localhost')
+  .option('-p, --port <n>', 'Set the port of the http server', 4568)
+  .option('-s, --silent', 'Suppress log messages', false)
+  .option('-d, --directory [path]', 'Data directory')
+  .parse(process.argv);
+
+if (program.directory === undefined) {
+  console.error('Data directory is required');
+  return;
+}
+
+try {
+  var stats = fs.lstatSync(program.directory);
+  if (stats.isDirectory() === false) {
+    throw Error();
+  }
+}
+catch (e) {
+  console.error('Directory does not exist. Please create it and then run the command again');
+  return;
+}
+
+s3rver.setHostname(program.hostname)
+  .setPort(program.port)
+  .setDirectory(program.directory)
+  .setSilent(program.silent)
   .run(function (err, host, port) {
     console.log('now listening on host %s and port %d', host, port);
   });
