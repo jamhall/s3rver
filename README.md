@@ -7,18 +7,21 @@ S3rver is a lightweight server that responds to the **some** of the same calls [
 
 The goal of S3rver is to minimise runtime dependencies and be more of a development tool to test S3 calls in your code rather than a production server looking to duplicate S3 functionality.
 
-> It is currently under active development.
+## Supported methods
 
-### Currently working
+### Buckets
 
-- [x] List buckets
-- [x] Create bucket
-- [x] Delete bucket
-- [x] List objects for bucket (including prefix but not yet delimiter or max keys)
-- [x] Store object for bucket (mutipart)
-- [x] Delete object for bucket
-- [x] Get object (including HEAD, If-Modified-Since, If-None-Match)
-- [x] Get acls for an object (dummy data)
+- Create bucket
+- Delete bucket
+- List buckets
+- List content of buckets (prefix is only working for the moment, delimiter and maxkeys will follow soon)
+
+### Objects
+
+- Put object
+- Delete object
+- Get object (including using the HEAD method)
+- Get dummy ACLs for an object
 
 ### Working on
 
@@ -41,11 +44,11 @@ Executing this command for the various options:
 ```bash
 s3rver --help
 ```
-### Caveats
+## Caveats
 
 Currently multipart uploads is not supported. It's fairly complex and cumbersome to implement, however, if there is strong support from the community for it, then it will be implemented, or if you would like to implement it yourself, please go ahead and send a pull request : ) 
 
-### Supported clients
+## Supported clients
 
 Please see [Fake S3s wiki page](https://github.com/jubos/fake-s3/wiki/Supported-Clients) for a list of supported clients.
 
