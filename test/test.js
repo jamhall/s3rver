@@ -9,30 +9,44 @@ var Chance = require('chance');
 var chance = new Chance();
 var path = require('path');
 var md5 = require('MD5');
-
+var S3rver = require('../lib');
+var util = require('util');
 describe('S3rver Tests', function () {
   var s3Client;
   var buckets = ['bucket1', 'bucket2', 'bucket3', 'bucket4', 'bucket5'];
   before(function (done) {
-    var config = {
-      accessKeyId: "123",
-      secretAccessKey: "abc",
-      endpoint: "localhost:3000",
-      sslEnabled: false,
-      s3ForcePathStyle: true
-    };
-    AWS.config.update(config);
-    s3Client = new AWS.S3();
-    s3Client.endpoint = new AWS.Endpoint(config.endpoint);
     /**
-     * Make the temporary directory
+     * Start the server
      */
-    fs.remove('/tmp/dummys3_root', function (err) {
-      fs.mkdirs('/tmp/dummys3_root', function (err) {
-        if (err) return console.error(err)
-        done();
+    var s3rver = new S3rver();
+    s3rver.setHostname('localhost')
+      .setPort(4568)
+      .setDirectory('/tmp/s3rver_directory')
+      .setSilent(true)
+      .run(function (err, hostname, port, directory) {
+        if (err) {
+          return done('Error starting server');
+        }
+        var config = {
+          accessKeyId: '123',
+          secretAccessKey: 'abc',
+          endpoint: util.format('%s:%d', hostname, port),
+          sslEnabled: false,
+          s3ForcePathStyle: true
+        };
+        AWS.config.update(config);
+        s3Client = new AWS.S3();
+        s3Client.endpoint = new AWS.Endpoint(config.endpoint);
+        /**
+         * Remove if exists and recreate the temporary directory
+         */
+        fs.remove(directory, function (err) {
+          fs.mkdirs(directory, function (err) {
+            if (err) return console.error(err)
+            done();
+          });
+        });
       });
-    });
   });
 
   it('should create five buckets', function (done) {
@@ -226,13 +240,4 @@ describe('S3rver Tests', function () {
       done();
     });
   });
-
-  after(function (done) {
-//    fs.remove('/tmp/dummys3_root', function (err) {
-//      if (err) return console.error(err)
-//      done();
-//    });
-    done();
-  });
-
 });
