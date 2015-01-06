@@ -151,12 +151,14 @@ describe('S3rver Tests', function () {
     var file = path.join(__dirname, 'resources/image.jpg');
     fs.readFile(file, function (err, data) {
       s3Client.getObject({ Bucket: buckets[0], Key: 'image'}, function (err, object) {
+        console.log(object);
         if (err) {
           return done(err);
         }
         object.ETag.should.equal(md5(data));
         object.ContentLength.should.equal(data.length.toString());
         object.ContentType.should.equal('image/jpeg');
+        object.Body.toString().should.equal(data.toString());
         done();
       });
     });
