@@ -11,16 +11,16 @@ It is currently under active development. Tests are also currently being written
 
 Currently working
 
-[x] List buckets
-[x] Create bucket
-[x] Delete bucket
-[x] List objects for bucket (including prefix but not yet delimiter or max keys)
-[x] Store object for bucket (mutipart)
-[x] Delete object for bucket
-[x] Get object (including HEAD, If-Modified-Since, If-None-Match)
+- [x] List buckets
+- [x] Create bucket
+- [x] Delete bucket
+- [x] List objects for bucket (including prefix but not yet delimiter or max keys)
+- [x] Store object for bucket (mutipart)
+- [x] Delete object for bucket
+- [x] Get object (including HEAD, If-Modified-Since, If-None-Match)
 
 Not working
 
-[ ] Copy object
-[ ] Rate limiting
-[ ] Put object stream
+- [ ] Copy object
+- [ ] Rate limiting
+- [ ] Put object stream
