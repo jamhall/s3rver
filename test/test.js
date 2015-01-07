@@ -242,4 +242,46 @@ describe('S3rver Tests', function () {
       done();
     });
   });
+
+  it('should list objects in a bucket', function (done) {
+    // Create some test objects
+    var testObjects = ['key1', 'key2', 'key3', 'key/key1', 'akey1', 'akey2', 'akey3'];
+    async.eachSeries(testObjects, function (testObject, callback) {
+      var params = {Bucket: buckets[1], Key: testObject, Body: 'Hello!'};
+      s3Client.putObject(params, function (err, object) {
+        /[a-fA-F0-9]{32}/.test(object.ETag).should.equal(true);
+        if (err) {
+          return callback(err);
+        }
+        callback();
+      });
+    }, function (err) {
+      if (err) {
+        return done(err);
+      }
+      s3Client.listObjects({ 'Bucket': buckets[1] }, function (err, objects) {
+        if (err) {
+          return done(err);
+        }
+        should(objects.Contents.length).equal(testObjects.length);
+        done();
+      });
+    });
+  });
+
+  it('should list objects in a bucket filtered by a prefix', function (done) {
+    // Create some test objects
+    s3Client.listObjects({ 'Bucket': buckets[1], Prefix: 'key' }, function (err, objects) {
+      if (err) {
+        return done(err);
+      }
+      should(objects.Contents.length).equal(4);
+      should(_.find(objects.Contents, { 'Key': 'key1' })).be.ok;
+      should(_.find(objects.Contents, { 'Key': 'key2' })).be.ok;
+      should(_.find(objects.Contents, { 'Key': 'key3' })).be.ok;
+      should(_.find(objects.Contents, { 'Key': 'key/key1' })).be.ok;
+      done();
+    });
+  });
+
 });
