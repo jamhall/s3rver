@@ -379,7 +379,7 @@ describe('S3rver Tests', function () {
     });
   });
 
-  it('should delete 1500 small objects', function (done) {
+  it('should delete 500 small objects', function (done) {
     var testObjects = [];
     for (var i = 1; i <= 500; i++) {
       testObjects.push({Bucket: buckets[2], Key: 'key' + i });

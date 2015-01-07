@@ -1,6 +1,8 @@
 S3rver
 ==================
 
+[![NPM](https://nodei.co/npm/s3rver.png)](https://nodei.co/npm/s3rver/)
+
 [![Build Status](https://api.travis-ci.org/jamhall/s3rver.png)](https://travis-ci.org/jamhall/s3rver)
  
 S3rver is a NodeJs port of the excellent [Fake S3](https://github.com/jubos/fake-s3) server.
