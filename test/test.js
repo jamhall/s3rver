@@ -123,6 +123,16 @@ describe('S3rver Tests', function () {
     });
   });
 
+  it('should list no objects for a bucket', function (done) {
+    s3Client.listObjects({ Bucket: buckets[3] }, function (err, objects) {
+      if (err) {
+        return done(err);
+      }
+      objects.Contents.length.should.equal(0);
+      done();
+    });
+  });
+
   it('should store a text object in a bucket', function (done) {
     var params = {Bucket: buckets[0], Key: 'text', Body: 'Hello!'};
     s3Client.putObject(params, function (err, data) {
@@ -174,7 +184,6 @@ describe('S3rver Tests', function () {
         object.ETag.should.equal(md5(data));
         object.ContentLength.should.equal(data.length.toString());
         object.ContentType.should.equal('image/jpeg');
-        object.Body.toString().should.equal(data.toString());
         done();
       });
     });
@@ -245,7 +254,7 @@ describe('S3rver Tests', function () {
 
   it('should list objects in a bucket', function (done) {
     // Create some test objects
-    var testObjects = ['key1', 'key2', 'key3', 'key/key1', 'akey1', 'akey2', 'akey3'];
+    var testObjects = ['akey1', 'akey2', 'akey3', 'key/key1', 'key1', 'key2', 'key3'];
     async.eachSeries(testObjects, function (testObject, callback) {
       var params = {Bucket: buckets[1], Key: testObject, Body: 'Hello!'};
       s3Client.putObject(params, function (err, object) {
@@ -284,4 +293,109 @@ describe('S3rver Tests', function () {
     });
   });
 
+  it('should list objects in a bucket filtered by a marker', function (done) {
+
+    // Create some test objects
+    s3Client.listObjects({ 'Bucket': buckets[1], Marker: 'akey3' }, function (err, objects) {
+      if (err) {
+        return done(err);
+      }
+      should(objects.Contents.length).equal(5);
+      done();
+    });
+  });
+
+  it('should list objects in a bucket filtered by a marker and prefix', function (done) {
+    // Create some test objects
+    s3Client.listObjects({ 'Bucket': buckets[1], Prefix: 'akey', Marker: 'akey2' }, function (err, objects) {
+      if (err) {
+        return done(err);
+      }
+      should(objects.Contents.length).equal(2);
+      done();
+    });
+  });
+
+  it('should list no objects because of invalid prefix', function (done) {
+    // Create some test objects
+    s3Client.listObjects({ 'Bucket': buckets[1], Prefix: 'myinvalidprefix' }, function (err, objects) {
+      if (err) {
+        return done(err);
+      }
+      should(objects.Contents.length).equal(0);
+      done();
+    });
+  });
+
+  it('should list no objects because of invalid marker', function (done) {
+    // Create some test objects
+    s3Client.listObjects({ 'Bucket': buckets[1], Marker: 'myinvalidmarker' }, function (err, objects) {
+      if (err) {
+        return done(err);
+      }
+      should(objects.Contents.length).equal(0);
+      done();
+    });
+  });
+
+  it('should generate a few thousand small objects', function (done) {
+    var testObjects = [];
+    for (var i = 1; i <= 2000; i++) {
+      testObjects.push({Bucket: buckets[2], Key: 'key' + i, Body: 'Hello!'});
+    }
+    async.eachSeries(testObjects, function (testObject, callback) {
+      s3Client.putObject(testObject, function (err, object) {
+        /[a-fA-F0-9]{32}/.test(object.ETag).should.equal(true);
+        if (err) {
+          return callback(err);
+        }
+        callback();
+      });
+    }, function (err) {
+      if (err) {
+        return done(err);
+      }
+      done();
+    });
+  });
+
+  it('should return one thousand small objects', function (done) {
+    s3Client.listObjects({ 'Bucket': buckets[2] }, function (err, objects) {
+      if (err) {
+        return done(err);
+      }
+      should(objects.Contents.length).equal(1000);
+      done();
+    });
+  });
+
+  it('should return 500 small objects', function (done) {
+    s3Client.listObjects({ 'Bucket': buckets[2], MaxKeys: 500}, function (err, objects) {
+      if (err) {
+        return done(err);
+      }
+      should(objects.Contents.length).equal(500);
+      done();
+    });
+  });
+
+  it('should delete 1500 small objects', function (done) {
+    var testObjects = [];
+    for (var i = 1; i <= 500; i++) {
+      testObjects.push({Bucket: buckets[2], Key: 'key' + i });
+    }
+    async.eachSeries(testObjects, function (testObject, callback) {
+      s3Client.deleteObject(testObject, function (err) {
+        if (err) {
+          return callback(err);
+        }
+        callback();
+      });
+    }, function (err) {
+      if (err) {
+        return done(err);
+      }
+      done();
+    });
+  });
 });
