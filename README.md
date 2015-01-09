@@ -30,7 +30,7 @@ The goal of S3rver is to minimise runtime dependencies and be more of a developm
 ### Working on
 
 - [ ] Copy object
-- [ ] Update modified date when an object is updated
+- [X] Update modified date when an object is updated
 - [X]  Implementing tests for listing objects by prefix
 
 
