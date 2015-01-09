@@ -161,6 +161,7 @@ describe('S3rver Tests', function () {
     });
   });
 
+
   it('should store a large buffer in a bucket', function (done) {
     // 20M
     var b = new Buffer(20000000);
@@ -201,6 +202,73 @@ describe('S3rver Tests', function () {
         object.ContentType.should.equal('image/jpeg');
         done();
       });
+    });
+  });
+
+  it('should store a different image and update the previous image', function (done) {
+    setTimeout(function () {
+      async.waterfall([
+          /**
+           * Get object from store
+           */
+            function (callback) {
+            s3Client.getObject({ Bucket: buckets[0], Key: 'image'}, function (err, object) {
+              if (err) {
+                return callback(err);
+              }
+              callback(null, object);
+            });
+          },
+          /**
+           * Store different object
+           */
+            function (object, callback) {
+            var file = path.join(__dirname, 'resources/image1.jpg');
+            fs.readFile(file, function (err, data) {
+              if (err) {
+                return callback(err);
+              }
+              var params = {Bucket: buckets[0], Key: 'image', Body: new Buffer(data), ContentType: 'image/jpeg', ContentLength: data.length };
+              s3Client.putObject(params, function (err, storedObject) {
+                storedObject.ETag.should.not.equal(object.ETag);
+
+                if (err) {
+                  return callback(err);
+                }
+                callback(null, object);
+              });
+            });
+          },
+          /**
+           * Get object again and do some comparisons
+           */
+            function (object, callback) {
+            s3Client.getObject({ Bucket: buckets[0], Key: 'image'}, function (err, newObject) {
+              if (err) {
+                return callback(err);
+              }
+              newObject.LastModified.should.not.equal(object.LastModified);
+              newObject.ContentLength.should.not.equal(object.ContentLength);
+              callback(null);
+            });
+          }
+        ],
+        function (err) {
+          if (err) {
+            return done(err);
+          }
+          return done();
+        });
+    }, 1000)
+  });
+
+  it('should get an objects acl from a bucket', function (done) {
+    s3Client.getObjectAcl({ Bucket: buckets[0], Key: 'image'}, function (err, object) {
+      if (err) {
+        return done(err);
+      }
+      object.Owner.DisplayName.should.equal('S3rver');
+      done();
     });
   });
 
