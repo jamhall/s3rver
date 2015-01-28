@@ -68,3 +68,27 @@ To run the test suite, first install the dependencies, then run `npm test`:
 $ npm install
 $ npm test
 ```
+
+## Programmatically running s3rver
+
+You can also run s3rver programmatically. 
+
+> This is particularly useful if you want to integrate s3rver into another projects tests that depends on access to an s3 environment
+
+Example in mocha:
+```
+before(function (done) {
+    var S3rver = require('s3rver');
+    var s3rver = new S3rver();
+    s3rver.setHostname('localhost')
+      .setPort(4568)
+      .setDirectory('/tmp/s3rver')
+      .setSilent(false)
+      .run(function (err, host, port) {
+         if(err) {
+           return done(err);
+         }
+         done();
+      });
+});
+```
