@@ -150,6 +150,31 @@ describe('S3rver Tests', function () {
     });
   });
 
+  it('should store a text object with some custom metadata', function (done) {
+    var params = {
+      Bucket: buckets[0], Key: 'textmetadata', Body: 'Hello!', Metadata: {
+        someKey: 'value'
+      }
+    };
+    s3Client.putObject(params, function (err, data) {
+      /[a-fA-F0-9]{32}/.test(data.ETag).should.equal(true);
+      if (err) {
+        return done(err);
+      }
+      done();
+    });
+  });
+
+  it('should return a text object with some custom metadata', function (done) {
+    s3Client.getObject({Bucket: buckets[0], Key: 'textmetadata'}, function (err, object) {
+      if (err) {
+        return done(err);
+      }
+      object.Metadata.somekey.should.equal('value');
+      done();
+    });
+  });
+
   it('should store an image in a bucket', function (done) {
     var file = path.join(__dirname, 'resources/image.jpg');
     fs.readFile(file, function (err, data) {
