@@ -23,7 +23,7 @@ describe('S3rver Tests', function () {
     s3rver.setHostname('localhost')
       .setPort(4569)
       .setDirectory('/tmp/s3rver_test_directory')
-      .setSilent(false)
+      .setSilent(true)
       .run(function (err, hostname, port, directory) {
         if (err) {
           return done('Error starting server', err);
