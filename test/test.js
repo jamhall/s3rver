@@ -23,7 +23,7 @@ describe('S3rver Tests', function () {
     s3rver.setHostname('localhost')
       .setPort(4569)
       .setDirectory('/tmp/s3rver_test_directory')
-      .setSilent(true)
+      .setSilent(false)
       .run(function (err, hostname, port, directory) {
         if (err) {
           return done('Error starting server', err);
@@ -199,28 +199,45 @@ describe('S3rver Tests', function () {
   });
 
   it('should copy an image object into another bucket', function (done) {
-    var file = path.join(__dirname, 'resources/image.jpg');
-    fs.readFile(file, function (err, data) {
+    var params = {
+      Bucket: buckets[3],
+      Key: 'image/jamie',
+      CopySource: '/' + buckets[0] + '/image'
+    };
+    s3Client.copyObject(params, function (err, data) {
+      /[a-fA-F0-9]{32}/.test(data.ETag).should.equal(true);
       if (err) {
         return done(err);
       }
-      var params = {
-        Bucket: buckets[3],
-        Key: 'image/jamie',
-        CopySource: '/' + buckets[0] + '/image'
-      };
-      s3Client.copyObject(params, function (err, data) {
-        console.log('---------------------------- DATA ------------------------');
-        console.log(data);
-        /[a-fA-F0-9]{32}/.test(data.ETag).should.equal(true);
-        if (err) {
-          return done(err);
-        }
-        done();
-      });
+      done();
     });
   });
 
+  it('should fail to copy an image object because the object does not exist', function (done) {
+    var params = {
+      Bucket: buckets[3],
+      Key: 'image/jamie',
+      CopySource: '/' + buckets[0] + '/doesnotexist'
+    };
+    s3Client.copyObject(params, function (err) {
+      err.code.should.equal('NoSuchKey');
+      err.statusCode.should.equal(404);
+      done();
+    });
+  });
+
+  it('should fail to copy an image object because the source bucket does not exist', function (done) {
+    var params = {
+      Bucket: buckets[3],
+      Key: 'image/jamie',
+      CopySource: '/falsebucket/doesnotexist'
+    };
+    s3Client.copyObject(params, function (err) {
+      err.code.should.equal('NoSuchBucket');
+      err.statusCode.should.equal(404);
+      done();
+    });
+  });
 
   it('should store a large buffer in a bucket', function (done) {
     // 20M
