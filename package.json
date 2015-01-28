@@ -15,6 +15,7 @@
     "s3rver": "bin/s3rver.js"
   },
   "license": "MIT",
+  "main" : "lib/index.js",
   "keywords" : [
     "fake",
     "s3",
@@ -41,7 +42,6 @@
     "aws-sdk": "^2.1.4",
     "chance": "^0.7.1",
     "fs-extra": "^0.14.0",
-    "knox": "^0.9.2",
     "mocha": "^2.1.0",
     "moment": "^2.8.4",
     "should": "^4.4.2",
