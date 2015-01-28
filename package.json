@@ -1,6 +1,6 @@
 {
   "name": "s3rver",
-  "version": "0.0.1",
+  "version": "0.0.2",
   "description": "Fake S3 server for node",
   "main": "lib/index.js",
   "scripts": {
@@ -46,5 +46,13 @@
     "moment": "^2.8.4",
     "should": "^4.4.2",
     "xml2js": "^0.4.4"
-  }
+  },
+  "bugs": {
+    "url": "https://github.com/jamhall/s3rver/issues"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git@github.com:jamhall/s3rver.git"
+  },
+  "homepage": "https://github.com/jamhall/s3rver"
 }
