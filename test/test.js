@@ -198,6 +198,29 @@ describe('S3rver Tests', function () {
     });
   });
 
+  it('should copy an image object into another bucket', function (done) {
+    var file = path.join(__dirname, 'resources/image.jpg');
+    fs.readFile(file, function (err, data) {
+      if (err) {
+        return done(err);
+      }
+      var params = {
+        Bucket: buckets[3],
+        Key: 'image/jamie',
+        CopySource: '/' + buckets[0] + '/image'
+      };
+      s3Client.copyObject(params, function (err, data) {
+        console.log('---------------------------- DATA ------------------------');
+        console.log(data);
+        /[a-fA-F0-9]{32}/.test(data.ETag).should.equal(true);
+        if (err) {
+          return done(err);
+        }
+        done();
+      });
+    });
+  });
+
 
   it('should store a large buffer in a bucket', function (done) {
     // 20M
