@@ -18,7 +18,7 @@ The goal of S3rver is to minimise runtime dependencies and be more of a developm
 - Create bucket
 - Delete bucket
 - List buckets
-- List content of buckets (prefix is only working for the moment, delimiter and maxkeys will follow soon)
+- List content of buckets (prefix, delimiter and max keys all work)
 
 ### Objects
 
@@ -26,12 +26,7 @@ The goal of S3rver is to minimise runtime dependencies and be more of a developm
 - Delete object
 - Get object (including using the HEAD method)
 - Get dummy ACLs for an object
-
-### Working on
-
-- [ ] Copy object
-- [X] Update modified date when an object is updated
-- [X]  Implementing tests for listing objects by prefix
+- Copy object
 
 
 ## Quick Start
