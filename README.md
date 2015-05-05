@@ -55,7 +55,7 @@ Please test, if you encounter any problems please do not hesitate to open an iss
 
 ## Static Website Hosting
 
-If you specify an *indexDocument* then ```get``` requests will serve the *indexDocument* if it found, simulating the static website mode of AWS S3. An *errorDocument* can also be set, to serve a custom 404 page.
+If you specify an *indexDocument* then ```get``` requests will serve the *indexDocument* if it is found, simulating the static website mode of AWS S3. An *errorDocument* can also be set, to serve a custom 404 page.
 
 ### Hostname Resolution
 
