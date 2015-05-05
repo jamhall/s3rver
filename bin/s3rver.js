@@ -10,6 +10,8 @@ program.version(version, '--version');
 program.option('-h, --hostname [value]', 'Set the host name or ip for the server', 'localhost')
   .option('-p, --port <n>', 'Set the port of the http server', 4568)
   .option('-s, --silent', 'Suppress log messages', false)
+  .option('-i, --indexDocumement', 'Index Document for Static Web Hosting', '')
+  .option('-e, --errorDocument', 'Custom Error Document for Static Web Hosting', '')
   .option('-d, --directory [path]', 'Data directory')
   .parse(process.argv);
 
@@ -34,6 +36,8 @@ s3rver.setHostname(program.hostname)
   .setPort(program.port)
   .setDirectory(program.directory)
   .setSilent(program.silent)
+  .setIndexDocument(program.indexDocumement)
+  .setErrorDocument(program.errorDocument)
   .run(function (err, host, port) {
     console.log('now listening on host %s and port %d', host, port);
   });
