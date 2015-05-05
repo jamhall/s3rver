@@ -673,4 +673,25 @@ describe('S3rver Tests with Static Web Hosting', function () {
     });
   });
 
+
+  it('should get a 404 error page', function (done) {
+    request('http://localhost:5694/site/page/not-exists', function (error, response, body) {
+      if (error)
+      {
+        return done(error);
+      }
+
+      if (response.statusCode !== 404) {
+        return done(new Error('Invalid status: ' + response.statusCode));
+      }
+
+      if (response.headers['content-type'] !== 'text/html; charset=utf-8')
+      {
+        return done(new Error('Invalid ContentType: ' + response.headers['content-type']));
+      }
+
+      done();
+    });
+  });
+
 });
