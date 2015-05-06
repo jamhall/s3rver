@@ -53,6 +53,21 @@ Please see [Fake S3s wiki page](https://github.com/jubos/fake-s3/wiki/Supported-
 
 Please test, if you encounter any problems please do not hesitate to open an issue :)
 
+## Static Website Hosting
+
+If you specify an *indexDocument* then ```get``` requests will serve the *indexDocument* if it is found, simulating the static website mode of AWS S3. An *errorDocument* can also be set, to serve a custom 404 page.
+
+### Hostname Resolution
+
+By default a bucket name needs to be given. So for a bucket called ```mysite.local```, with an indexDocument of ```index.html```. Visiting ```http://localhost:4568/mysite.local/``` in your browser will display the ```index.html``` file uploaded to the bucket.
+
+However you can also setup a local hostname in your /etc/hosts file pointing at 127.0.0.1
+```
+localhost 127.0.0.1
+mysite.local 127.0.0.1
+```
+Now you can access the served content at ```http://mysite.local:4568/```
+
 ## Tests
 
 > When running the tests with node v0.10.0 the following [error](https://github.com/mochajs/mocha/issues/777) is encountered. This is resolved by running the tests with v0.11.*. I recommend using [NVM](https://github.com/creationix/nvm) to manage your node versions.
