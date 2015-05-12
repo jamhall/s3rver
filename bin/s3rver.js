@@ -1,10 +1,10 @@
 #!/usr/bin/env node
 'use strict';
-var pkg = require('../package.json'),
+var pkg     = require('../package.json'),
     version = pkg.version,
     program = require('commander'),
-    fs = require('fs'),
-    S3rver = require('../lib');
+    fs      = require('fs'),
+    S3rver  = require('../lib');
 
 program.version(version, '--version');
 program.option('-h, --hostname [value]', 'Set the host name or ip for the server', 'localhost')

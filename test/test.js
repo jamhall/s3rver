@@ -597,7 +597,6 @@ describe('S3rver Tests with Static Web Hosting', function () {
   });
 
 
-
   it('should create a site bucket', function (done) {
     s3Client.createBucket({Bucket: 'site'}, function (err) {
       if (err) {
@@ -634,8 +633,7 @@ describe('S3rver Tests with Static Web Hosting', function () {
 
   it('should get an index page at / path', function (done) {
     request('http://localhost:5694/site/', function (error, response, body) {
-      if (error)
-      {
+      if (error) {
         return done(error);
       }
 
@@ -643,8 +641,7 @@ describe('S3rver Tests with Static Web Hosting', function () {
         return done(new Error('Invalid status: ' + response.statusCode));
       }
 
-      if (body !== '<html><body>Hello</body></html>')
-      {
+      if (body !== '<html><body>Hello</body></html>') {
         return done(new Error('Invalid Content: ' + body));
       }
 
@@ -655,8 +652,7 @@ describe('S3rver Tests with Static Web Hosting', function () {
 
   it('should get an index page at /page/ path', function (done) {
     request('http://localhost:5694/site/page/', function (error, response, body) {
-      if (error)
-      {
+      if (error) {
         return done(error);
       }
 
@@ -664,8 +660,7 @@ describe('S3rver Tests with Static Web Hosting', function () {
         return done(new Error('Invalid status: ' + response.statusCode));
       }
 
-      if (body !== '<html><body>Hello</body></html>')
-      {
+      if (body !== '<html><body>Hello</body></html>') {
         return done(new Error('Invalid Content: ' + body));
       }
 
@@ -675,9 +670,8 @@ describe('S3rver Tests with Static Web Hosting', function () {
 
 
   it('should get a 404 error page', function (done) {
-    request('http://localhost:5694/site/page/not-exists', function (error, response, body) {
-      if (error)
-      {
+    request('http://localhost:5694/site/page/not-exists', function (error, response) {
+      if (error) {
         return done(error);
       }
 
@@ -685,8 +679,7 @@ describe('S3rver Tests with Static Web Hosting', function () {
         return done(new Error('Invalid status: ' + response.statusCode));
       }
 
-      if (response.headers['content-type'] !== 'text/html; charset=utf-8')
-      {
+      if (response.headers['content-type'] !== 'text/html; charset=utf-8') {
         return done(new Error('Invalid ContentType: ' + response.headers['content-type']));
       }
 
