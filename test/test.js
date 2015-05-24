@@ -50,27 +50,31 @@ describe('S3rver Tests', function () {
             if (err) {
               return done(err);
             }
-            done();
+
+            // Create 5 buckets
+            async.eachSeries(buckets, function (bucket, callback) {
+              s3Client.createBucket({Bucket: bucket}, callback);
+            }, done);
           });
         });
       });
   });
 
-  it('should create five buckets', function (done) {
-    async.eachSeries(buckets, function (bucket, callback) {
-      s3Client.createBucket({Bucket: bucket}, function (err) {
-        if (err) {
-          return callback(err);
-        }
-        callback(null);
-      });
-    }, function (err) {
-      if (err) {
-        return done(err);
-      }
-      done();
-    });
-  });
+  // it('should create five buckets', function (done) {
+  //   async.eachSeries(buckets, function (bucket, callback) {
+  //     s3Client.createBucket({Bucket: bucket}, function (err) {
+  //       if (err) {
+  //         return callback(err);
+  //       }
+  //       callback(null);
+  //     });
+  //   }, function (err) {
+  //     if (err) {
+  //       return done(err);
+  //     }
+  //     done();
+  //   });
+  // });
 
   it('should fetch fetch five buckets', function (done) {
     s3Client.listBuckets(function (err, buckets) {
@@ -194,6 +198,41 @@ describe('S3rver Tests', function () {
         if (err) {
           return done(err);
         }
+        done();
+      });
+    });
+  });
+
+  it('should store a gzip encoded file in bucket', function(done) {
+    var file = path.join(__dirname, 'resources/jquery.js.gz');
+    var stats = fs.statSync(file);
+
+    var params = {
+      Bucket: buckets[0],
+      Key: 'jquery',
+      Body: fs.createReadStream(file), // new Buffer(data),
+      ContentType: 'application/javascript',
+      ContentEncoding: 'gzip',
+      ContentLength: stats.size
+    };
+
+    s3Client.putObject(params, function (err, data) {
+      if (err) return done(err);
+      // /[a-fA-F0-9]{32}/.test(data.ETag).should.equal(true);
+      // if (err) {
+      //   return done(err);
+      // }
+      // done();
+
+      s3Client.getObject({Bucket: buckets[0], Key: 'jquery'}, function (err, object) {
+        if (err) {
+          return done(err);
+        }
+        debugger;
+        // object.ETag.should.equal(md5(data));
+        object.ContentLength.should.equal(stats.size.toString());
+        object.ContentEncoding.should.equal('gzip');
+        object.ContentType.should.equal('application/javascript');
         done();
       });
     });
