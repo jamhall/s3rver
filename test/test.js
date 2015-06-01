@@ -60,22 +60,6 @@ describe('S3rver Tests', function () {
       });
   });
 
-  // it('should create five buckets', function (done) {
-  //   async.eachSeries(buckets, function (bucket, callback) {
-  //     s3Client.createBucket({Bucket: bucket}, function (err) {
-  //       if (err) {
-  //         return callback(err);
-  //       }
-  //       callback(null);
-  //     });
-  //   }, function (err) {
-  //     if (err) {
-  //       return done(err);
-  //     }
-  //     done();
-  //   });
-  // });
-
   it('should fetch fetch five buckets', function (done) {
     s3Client.listBuckets(function (err, buckets) {
       if (err) {
@@ -218,18 +202,11 @@ describe('S3rver Tests', function () {
 
     s3Client.putObject(params, function (err, data) {
       if (err) return done(err);
-      // /[a-fA-F0-9]{32}/.test(data.ETag).should.equal(true);
-      // if (err) {
-      //   return done(err);
-      // }
-      // done();
 
       s3Client.getObject({Bucket: buckets[0], Key: 'jquery'}, function (err, object) {
         if (err) {
           return done(err);
         }
-        debugger;
-        // object.ETag.should.equal(md5(data));
         object.ContentLength.should.equal(stats.size.toString());
         object.ContentEncoding.should.equal('gzip');
         object.ContentType.should.equal('application/javascript');
