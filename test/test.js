@@ -16,16 +16,16 @@ var request = require('request');
 describe('S3rver Tests', function () {
   var s3Client;
   var buckets = ['bucket1', 'bucket2', 'bucket3', 'bucket4', 'bucket5'];
+  var s3rver;
   before(function (done) {
-    /**
-     * Start the server
-     */
-    var s3rver = new S3rver();
-    s3rver.setHostname('localhost')
-      .setPort(4569)
-      .setDirectory('/tmp/s3rver_test_directory')
-      .setSilent(true)
-      .run(function (err, hostname, port, directory) {
+    s3rver = new S3rver({
+      port: 4569,
+      hostname: 'localhost',
+      silent: true,
+      indexDocument: '',
+      errorDocument: '',
+      directory: '/tmp/s3rver_test_directory'
+    }).run(function (err, hostname, port, directory) {
         if (err) {
           return done('Error starting server', err);
         }
@@ -58,6 +58,10 @@ describe('S3rver Tests', function () {
           });
         });
       });
+  });
+
+  after(function (done) {
+    s3rver.close(done);
   });
 
   it('should fetch fetch five buckets', function (done) {
@@ -187,7 +191,7 @@ describe('S3rver Tests', function () {
     });
   });
 
-  it('should store a gzip encoded file in bucket', function(done) {
+  it('should store a gzip encoded file in bucket', function (done) {
     var file = path.join(__dirname, 'resources/jquery.js.gz');
     var stats = fs.statSync(file);
 
@@ -568,20 +572,18 @@ describe('S3rver Tests', function () {
   });
 });
 
-
 describe('S3rver Tests with Static Web Hosting', function () {
   var s3Client;
+  var s3rver;
   before(function (done) {
-    /**
-     * Start the server
-     */
-    var s3rver = new S3rver();
-    s3rver.setHostname('localhost')
-      .setPort(5694)
-      .setDirectory('/tmp/s3rver_test_directory')
-      .setSilent(true)
-      .setIndexDocument('index.html')
-      .run(function (err, hostname, port, directory) {
+    s3rver = new S3rver({
+      port: 5694,
+      hostname: 'localhost',
+      silent: true,
+      indexDocument: 'index.html',
+      errorDocument: '',
+      directory: '/tmp/s3rver_test_directory'
+    }).run(function (err, hostname, port, directory) {
         if (err) {
           return done('Error starting server', err);
         }
@@ -612,6 +614,9 @@ describe('S3rver Tests with Static Web Hosting', function () {
       });
   });
 
+  after(function (done) {
+    s3rver.close(done);
+  });
 
   it('should create a site bucket', function (done) {
     s3Client.createBucket({Bucket: 'site'}, function (err) {
@@ -621,7 +626,6 @@ describe('S3rver Tests with Static Web Hosting', function () {
       done();
     });
   });
-
 
   it('should upload a html page to / path', function (done) {
     var params = {Bucket: 'site', Key: 'index.html', Body: '<html><body>Hello</body></html>'};
@@ -634,7 +638,6 @@ describe('S3rver Tests with Static Web Hosting', function () {
     });
   });
 
-
   it('should upload a html page to a directory path', function (done) {
     var params = {Bucket: 'site', Key: 'page/index.html', Body: '<html><body>Hello</body></html>'};
     s3Client.putObject(params, function (err, data) {
@@ -645,7 +648,6 @@ describe('S3rver Tests with Static Web Hosting', function () {
       done();
     });
   });
-
 
   it('should get an index page at / path', function (done) {
     request('http://localhost:5694/site/', function (error, response, body) {
@@ -665,7 +667,6 @@ describe('S3rver Tests with Static Web Hosting', function () {
     });
   });
 
-
   it('should get an index page at /page/ path', function (done) {
     request('http://localhost:5694/site/page/', function (error, response, body) {
       if (error) {
@@ -683,7 +684,6 @@ describe('S3rver Tests with Static Web Hosting', function () {
       done();
     });
   });
-
 
   it('should get a 404 error page', function (done) {
     request('http://localhost:5694/site/page/not-exists', function (error, response) {

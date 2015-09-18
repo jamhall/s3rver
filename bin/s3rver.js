@@ -31,13 +31,6 @@ catch (e) {
   return;
 }
 
-var s3rver = new S3rver();
-s3rver.setHostname(program.hostname)
-  .setPort(program.port)
-  .setDirectory(program.directory)
-  .setSilent(program.silent)
-  .setIndexDocument(program.indexDocumement)
-  .setErrorDocument(program.errorDocument)
-  .run(function (err, host, port) {
-    console.log('now listening on host %s and port %d', host, port);
-  });
+var s3rver = new S3rver(program).run(function (err, host, port) {
+  console.log('now listening on host %s and port %d', host, port);
+});
