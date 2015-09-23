@@ -488,6 +488,30 @@ describe('S3rver Tests', function () {
     });
   });
 
+  it('should list objects in a bucket filtered by a prefix and a delimiter', function (done) {
+    s3Client.listObjects({'Bucket': buckets[1], Prefix: 'key', Delimiter: '/'}, function(err, objects) {
+      if (err) {
+        return done(err);
+      }
+      should(objects.Contents.length).equal(3);
+      should.exist(_.find(objects.Contents, {'Key': 'key1'}));
+      should.exist(_.find(objects.Contents, {'Key': 'key2'}));
+      should.exist(_.find(objects.Contents, {'Key': 'key3'}));
+      done();
+    });
+  });
+
+  it('should list folders in a bucket filtered by a prefix and a delimiter', function (done) {
+    s3Client.listObjects({'Bucket': buckets[1], Prefix: 'key', Delimiter: '/'}, function(err, objects) {
+      if (err) {
+        return done(err);
+      }
+      should(objects.CommonPrefixes.length).equal(1);
+      should.exist(_.find(objects.CommonPrefixes, {'Prefix': 'key'}));
+      done();
+    });
+  });
+
   it('should list no objects because of invalid prefix', function (done) {
     // Create some test objects
     s3Client.listObjects({'Bucket': buckets[1], Prefix: 'myinvalidprefix'}, function (err, objects) {
