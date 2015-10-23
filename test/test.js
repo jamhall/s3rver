@@ -135,7 +135,7 @@ describe('S3rver Tests', function () {
   it('should store a text object in a bucket', function (done) {
     var params = {Bucket: buckets[0], Key: 'text', Body: 'Hello!'};
     s3Client.putObject(params, function (err, data) {
-      /[a-fA-F0-9]{32}/.test(data.ETag).should.equal(true);
+      /"[a-fA-F0-9]{32}"/.test(data.ETag).should.equal(true);
       if (err) {
         return done(err);
       }
@@ -150,7 +150,7 @@ describe('S3rver Tests', function () {
       }
     };
     s3Client.putObject(params, function (err, data) {
-      /[a-fA-F0-9]{32}/.test(data.ETag).should.equal(true);
+      /"[a-fA-F0-9]{32}"/.test(data.ETag).should.equal(true);
       if (err) {
         return done(err);
       }
@@ -182,7 +182,7 @@ describe('S3rver Tests', function () {
         ContentLength: data.length
       };
       s3Client.putObject(params, function (err, data) {
-        /[a-fA-F0-9]{32}/.test(data.ETag).should.equal(true);
+        /"[a-fA-F0-9]{32}"/.test(data.ETag).should.equal(true);
         if (err) {
           return done(err);
         }
@@ -226,7 +226,7 @@ describe('S3rver Tests', function () {
       CopySource: '/' + buckets[0] + '/image'
     };
     s3Client.copyObject(params, function (err, data) {
-      /[a-fA-F0-9]{32}/.test(data.ETag).should.equal(true);
+      /"[a-fA-F0-9]{32}"/.test(data.ETag).should.equal(true);
       if (err) {
         return done(err);
       }
@@ -268,7 +268,7 @@ describe('S3rver Tests', function () {
       if (err) {
         return done(err);
       }
-      /[a-fA-F0-9]{32}/.test(data.ETag).should.equal(true);
+      /"[a-fA-F0-9]{32}"/.test(data.ETag).should.equal(true);
       done();
     });
   });
@@ -280,7 +280,7 @@ describe('S3rver Tests', function () {
         if (err) {
           return done(err);
         }
-        object.ETag.should.equal(md5(data));
+        object.ETag.should.equal('"' + md5(data) + '"');
         object.ContentLength.should.equal(data.length.toString());
         object.ContentType.should.equal('image/jpeg');
         done();
@@ -295,7 +295,7 @@ describe('S3rver Tests', function () {
         if (err) {
           return done(err);
         }
-        object.ETag.should.equal(md5(data));
+        object.ETag.should.equal('"' + md5(data) + '"');
         object.ContentLength.should.equal(data.length.toString());
         object.ContentType.should.equal('image/jpeg');
         done();
@@ -404,7 +404,7 @@ describe('S3rver Tests', function () {
   it('should upload a text file to a multi directory path', function (done) {
     var params = {Bucket: buckets[0], Key: 'multi/directory/path/text', Body: 'Hello!'};
     s3Client.putObject(params, function (err, data) {
-      /[a-fA-F0-9]{32}/.test(data.ETag).should.equal(true);
+      /"[a-fA-F0-9]{32}"/.test(data.ETag).should.equal(true);
       if (err) {
         return done(err);
       }
@@ -417,7 +417,7 @@ describe('S3rver Tests', function () {
       if (err) {
         return done(err);
       }
-      object.ETag.should.equal(md5('Hello!'));
+      object.ETag.should.equal('"' + md5('Hello!') + '"');
       object.ContentLength.should.equal('6');
       object.ContentType.should.equal('application/octet-stream');
       done();
