@@ -594,6 +594,22 @@ describe('S3rver Tests', function () {
       done();
     });
   });
+
+  it('should delete 500 small objects with deleteObjects', function (done) {
+    var deleteObj = {Objects: []};
+    for (var i = 501; i <= 1000; i++) {
+      deleteObj.Objects.push({Key: 'key' + i});
+    }
+    s3Client.deleteObjects({Bucket: buckets[2], Delete: deleteObj}, function (err, resp) {
+      if (err) {
+        return done(err);
+      }
+      should.exist(resp.Deleted);
+      should(resp.Deleted).have.length(500);
+      should(resp.Deleted).containEql({Key: 'key567'});
+      done();
+    });
+  });
 });
 
 describe('S3rver Tests with Static Web Hosting', function () {
