@@ -13,6 +13,7 @@ program.option('-h, --hostname [value]', 'Set the host name or ip for the server
   .option('-i, --indexDocumement', 'Index Document for Static Web Hosting', '')
   .option('-e, --errorDocument', 'Custom Error Document for Static Web Hosting', '')
   .option('-d, --directory [path]', 'Data directory')
+  .option('-c, --cors', 'Enable CORS', false)
   .parse(process.argv);
 
 if (program.directory === undefined) {
