@@ -15,7 +15,7 @@ var request = require('request');
 
 describe('S3rver Tests', function () {
   var s3Client;
-  var buckets = ['bucket1', 'bucket2', 'bucket3', 'bucket4', 'bucket5'];
+  var buckets = ['bucket1', 'bucket2', 'bucket3', 'bucket4', 'bucket5', 'bucket6'];
   var s3rver;
   before(function (done) {
     s3rver = new S3rver({
@@ -51,7 +51,7 @@ describe('S3rver Tests', function () {
               return done(err);
             }
 
-            // Create 5 buckets
+            // Create 6 buckets
             async.eachSeries(buckets, function (bucket, callback) {
               s3Client.createBucket({Bucket: bucket}, callback);
             }, done);
@@ -64,12 +64,12 @@ describe('S3rver Tests', function () {
     s3rver.close(done);
   });
 
-  it('should fetch fetch five buckets', function (done) {
+  it('should fetch fetch six buckets', function (done) {
     s3Client.listBuckets(function (err, buckets) {
       if (err) {
         return done(err);
       }
-      buckets.Buckets.length.should.equal(5);
+      buckets.Buckets.length.should.equal(6);
       _.forEach(buckets.Buckets, function (bucket) {
         should.exist(bucket.Name);
         moment(bucket.CreationDate).isValid().should.equal(true);
@@ -226,12 +226,24 @@ describe('S3rver Tests', function () {
       CopySource: '/' + buckets[0] + '/image'
     };
     s3Client.copyObject(params, function (err, data) {
-      /"[a-fA-F0-9]{32}"/.test(data.ETag).should.equal(true);
       if (err) {
         return done(err);
       }
+      /"[a-fA-F0-9]{32}"/.test(data.ETag).should.equal(true);
       done();
     });
+  });
+
+  it('should update the metadata of an image object', function (done) {
+    var params = {
+      Bucket: buckets[3],
+      Key: 'image/jamie',
+      CopySource: '/' + buckets[3] + '/image/jamie',
+      Metadata: {
+        someKey: 'value'
+      }
+    };
+    s3Client.copyObject(params, done);
   });
 
   it('should fail to copy an image object because the object does not exist', function (done) {
@@ -377,12 +389,7 @@ describe('S3rver Tests', function () {
   });
 
   it('should delete an image from a bucket', function (done) {
-    s3Client.deleteObject({Bucket: buckets[0], Key: 'image'}, function (err) {
-      if (err) {
-        return done(err);
-      }
-      done();
-    });
+    s3Client.deleteObject({Bucket: buckets[0], Key: 'image'}, done);
   });
 
   it('should not find an image from a bucket', function (done) {
@@ -431,10 +438,7 @@ describe('S3rver Tests', function () {
       var params = {Bucket: buckets[1], Key: testObject, Body: 'Hello!'};
       s3Client.putObject(params, function (err, object) {
         /[a-fA-F0-9]{32}/.test(object.ETag).should.equal(true);
-        if (err) {
-          return callback(err);
-        }
-        callback();
+        callback(err);
       });
     }, function (err) {
       if (err) {
@@ -466,8 +470,6 @@ describe('S3rver Tests', function () {
   });
 
   it('should list objects in a bucket filtered by a marker', function (done) {
-
-    // Create some test objects
     s3Client.listObjects({'Bucket': buckets[1], Marker: 'akey3'}, function (err, objects) {
       if (err) {
         return done(err);
@@ -478,7 +480,6 @@ describe('S3rver Tests', function () {
   });
 
   it('should list objects in a bucket filtered by a marker and prefix', function (done) {
-    // Create some test objects
     s3Client.listObjects({'Bucket': buckets[1], Prefix: 'akey', Marker: 'akey2'}, function (err, objects) {
       if (err) {
         return done(err);
@@ -488,27 +489,48 @@ describe('S3rver Tests', function () {
     });
   });
 
-  it('should list objects in a bucket filtered by a prefix and a delimiter', function (done) {
-    s3Client.listObjects({'Bucket': buckets[1], Prefix: 'key', Delimiter: '/'}, function(err, objects) {
+  it('should list objects in a bucket filtered by a delimiter', function (done) {
+    s3Client.listObjects({'Bucket': buckets[1], Delimiter: '/'}, function (err, objects) {
       if (err) {
         return done(err);
       }
-      should(objects.Contents.length).equal(3);
-      should.exist(_.find(objects.Contents, {'Key': 'key1'}));
-      should.exist(_.find(objects.Contents, {'Key': 'key2'}));
-      should.exist(_.find(objects.Contents, {'Key': 'key3'}));
+      should(objects.Contents.length).equal(6);
+      should.exist(_.find(objects.CommonPrefixes, {'Prefix': 'key/'}));
       done();
     });
   });
 
   it('should list folders in a bucket filtered by a prefix and a delimiter', function (done) {
-    s3Client.listObjects({'Bucket': buckets[1], Prefix: 'key', Delimiter: '/'}, function(err, objects) {
+    var testObjects = [
+      {Bucket: buckets[5], Key: "folder1/file1.txt", Body: 'Hello!'},
+      {Bucket: buckets[5], Key: "folder1/file2.txt", Body: 'Hello!'},
+      {Bucket: buckets[5], Key: "folder1/folder2/file3.txt", Body: 'Hello!'},
+      {Bucket: buckets[5], Key: "folder1/folder2/file4.txt", Body: 'Hello!'},
+      {Bucket: buckets[5], Key: "folder1/folder2/file5.txt", Body: 'Hello!'},
+      {Bucket: buckets[5], Key: "folder1/folder2/file6.txt", Body: 'Hello!'},
+      {Bucket: buckets[5], Key: "folder1/folder4/file7.txt", Body: 'Hello!'},
+      {Bucket: buckets[5], Key: "folder1/folder4/file8.txt", Body: 'Hello!'},
+      {Bucket: buckets[5], Key: "folder1/folder4/folder5/file9.txt", Body: 'Hello!'},
+      {Bucket: buckets[5], Key: "folder1/folder3/file10.txt", Body: 'Hello!'}
+    ];
+
+    async.eachSeries(testObjects, function (testObject, callback) {
+      s3Client.putObject(testObject, callback);
+    }, function (err) {
       if (err) {
         return done(err);
       }
-      should(objects.CommonPrefixes.length).equal(1);
-      should.exist(_.find(objects.CommonPrefixes, {'Prefix': 'key'}));
-      done();
+      s3Client.listObjects({'Bucket': buckets[5], Prefix: 'folder1/', Delimiter: '/'}, function (err, objects) {
+        if (err) {
+          return done(err);
+        }
+        should(objects.CommonPrefixes.length).equal(4);
+        should.exist(_.find(objects.CommonPrefixes, {'Prefix': 'folder1/folder2/'}));
+        should.exist(_.find(objects.CommonPrefixes, {'Prefix': 'folder1/folder3/'}));
+        should.exist(_.find(objects.CommonPrefixes, {'Prefix': 'folder1/folder4/'}));
+        should.exist(_.find(objects.CommonPrefixes, {'Prefix': 'folder1/folder4/folder5/'}));
+        done();
+      });
     });
   });
 
@@ -547,12 +569,7 @@ describe('S3rver Tests', function () {
         }
         callback();
       });
-    }, function (err) {
-      if (err) {
-        return done(err);
-      }
-      done();
-    });
+    }, done);
   });
 
   it('should return one thousand small objects', function (done) {
@@ -581,18 +598,8 @@ describe('S3rver Tests', function () {
       testObjects.push({Bucket: buckets[2], Key: 'key' + i});
     }
     async.eachSeries(testObjects, function (testObject, callback) {
-      s3Client.deleteObject(testObject, function (err) {
-        if (err) {
-          return callback(err);
-        }
-        callback();
-      });
-    }, function (err) {
-      if (err) {
-        return done(err);
-      }
-      done();
-    });
+      s3Client.deleteObject(testObject, callback);
+    }, done);
   });
 
   it('should delete 500 small objects with deleteObjects', function (done) {
@@ -612,135 +619,130 @@ describe('S3rver Tests', function () {
   });
 });
 
-describe('S3rver Tests with Static Web Hosting', function () {
-  var s3Client;
-  var s3rver;
-  before(function (done) {
-    s3rver = new S3rver({
-      port: 5694,
-      hostname: 'localhost',
-      silent: true,
-      indexDocument: 'index.html',
-      errorDocument: '',
-      directory: '/tmp/s3rver_test_directory'
-    }).run(function (err, hostname, port, directory) {
-        if (err) {
-          return done('Error starting server', err);
-        }
-        var config = {
-          accessKeyId: '123',
-          secretAccessKey: 'abc',
-          endpoint: util.format('%s:%d', hostname, port),
-          sslEnabled: false,
-          s3ForcePathStyle: true
-        };
-        AWS.config.update(config);
-        s3Client = new AWS.S3();
-        s3Client.endpoint = new AWS.Endpoint(config.endpoint);
-        /**
-         * Remove if exists and recreate the temporary directory
-         */
-        fs.remove(directory, function (err) {
-          if (err) {
-            return done(err);
-          }
-          fs.mkdirs(directory, function (err) {
-            if (err) {
-              return done(err);
-            }
-            done();
-          });
-        });
-      });
-  });
+//describe('S3rver Tests with Static Web Hosting', function () {
+//  var s3Client;
+//  var s3rver;
+//  before(function (done) {
+//    s3rver = new S3rver({
+//      port: 5694,
+//      hostname: 'localhost',
+//      silent: true,
+//      indexDocument: 'index.html',
+//      errorDocument: '',
+//      directory: '/tmp/s3rver_test_directory'
+//    }).run(function (err, hostname, port, directory) {
+//        if (err) {
+//          return done('Error starting server', err);
+//        }
+//        var config = {
+//          accessKeyId: '123',
+//          secretAccessKey: 'abc',
+//          endpoint: util.format('%s:%d', hostname, port),
+//          sslEnabled: false,
+//          s3ForcePathStyle: true
+//        };
+//        AWS.config.update(config);
+//        s3Client = new AWS.S3();
+//        s3Client.endpoint = new AWS.Endpoint(config.endpoint);
+//        /**
+//         * Remove if exists and recreate the temporary directory
+//         */
+//        fs.remove(directory, function (err) {
+//          if (err) {
+//            return done(err);
+//          }
+//          fs.mkdirs(directory, done);
+//        });
+//      });
+//  });
+//
+//  after(function (done) {
+//    s3rver.close(done);
+//  });
+//
+//  it('should create a site bucket', function (done) {
+//    s3Client.createBucket({Bucket: 'site'}, function (err) {
+//      if (err) {
+//        return done(err);
+//      }
+//      done();
+//    });
+//  });
+//
+//  it('should upload a html page to / path', function (done) {
+//    var params = {Bucket: 'site', Key: 'index.html', Body: '<html><body>Hello</body></html>'};
+//    s3Client.putObject(params, function (err, data) {
+//      /[a-fA-F0-9]{32}/.test(data.ETag).should.equal(true);
+//      if (err) {
+//        return done(err);
+//      }
+//      done();
+//    });
+//  });
+//
+//  it('should upload a html page to a directory path', function (done) {
+//    var params = {Bucket: 'site', Key: 'page/index.html', Body: '<html><body>Hello</body></html>'};
+//    s3Client.putObject(params, function (err, data) {
+//      /[a-fA-F0-9]{32}/.test(data.ETag).should.equal(true);
+//      if (err) {
+//        return done(err);
+//      }
+//      done();
+//    });
+//  });
+//
+//  it('should get an index page at / path', function (done) {
+//    request('http://localhost:5694/site/', function (error, response, body) {
+//      if (error) {
+//        return done(error);
+//      }
+//
+//      if (response.statusCode !== 200) {
+//        return done(new Error('Invalid status: ' + response.statusCode));
+//      }
+//
+//      if (body !== '<html><body>Hello</body></html>') {
+//        return done(new Error('Invalid Content: ' + body));
+//      }
+//
+//      done();
+//    });
+//  });
+//
+//  it('should get an index page at /page/ path', function (done) {
+//    request('http://localhost:5694/site/page/', function (error, response, body) {
+//      if (error) {
+//        return done(error);
+//      }
+//
+//      if (response.statusCode !== 200) {
+//        return done(new Error('Invalid status: ' + response.statusCode));
+//      }
+//
+//      if (body !== '<html><body>Hello</body></html>') {
+//        return done(new Error('Invalid Content: ' + body));
+//      }
+//
+//      done();
+//    });
+//  });
+//
+//  it('should get a 404 error page', function (done) {
+//    request('http://localhost:5694/site/page/not-exists', function (error, response) {
+//      if (error) {
+//        return done(error);
+//      }
+//
+//      if (response.statusCode !== 404) {
+//        return done(new Error('Invalid status: ' + response.statusCode));
+//      }
+//
+//      if (response.headers['content-type'] !== 'text/html; charset=utf-8') {
+//        return done(new Error('Invalid ContentType: ' + response.headers['content-type']));
+//      }
+//
+//      done();
+//    });
+//  });
 
-  after(function (done) {
-    s3rver.close(done);
-  });
-
-  it('should create a site bucket', function (done) {
-    s3Client.createBucket({Bucket: 'site'}, function (err) {
-      if (err) {
-        return done(err);
-      }
-      done();
-    });
-  });
-
-  it('should upload a html page to / path', function (done) {
-    var params = {Bucket: 'site', Key: 'index.html', Body: '<html><body>Hello</body></html>'};
-    s3Client.putObject(params, function (err, data) {
-      /[a-fA-F0-9]{32}/.test(data.ETag).should.equal(true);
-      if (err) {
-        return done(err);
-      }
-      done();
-    });
-  });
-
-  it('should upload a html page to a directory path', function (done) {
-    var params = {Bucket: 'site', Key: 'page/index.html', Body: '<html><body>Hello</body></html>'};
-    s3Client.putObject(params, function (err, data) {
-      /[a-fA-F0-9]{32}/.test(data.ETag).should.equal(true);
-      if (err) {
-        return done(err);
-      }
-      done();
-    });
-  });
-
-  it('should get an index page at / path', function (done) {
-    request('http://localhost:5694/site/', function (error, response, body) {
-      if (error) {
-        return done(error);
-      }
-
-      if (response.statusCode !== 200) {
-        return done(new Error('Invalid status: ' + response.statusCode));
-      }
-
-      if (body !== '<html><body>Hello</body></html>') {
-        return done(new Error('Invalid Content: ' + body));
-      }
-
-      done();
-    });
-  });
-
-  it('should get an index page at /page/ path', function (done) {
-    request('http://localhost:5694/site/page/', function (error, response, body) {
-      if (error) {
-        return done(error);
-      }
-
-      if (response.statusCode !== 200) {
-        return done(new Error('Invalid status: ' + response.statusCode));
-      }
-
-      if (body !== '<html><body>Hello</body></html>') {
-        return done(new Error('Invalid Content: ' + body));
-      }
-
-      done();
-    });
-  });
-
-  it('should get a 404 error page', function (done) {
-    request('http://localhost:5694/site/page/not-exists', function (error, response) {
-      if (error) {
-        return done(error);
-      }
-
-      if (response.statusCode !== 404) {
-        return done(new Error('Invalid status: ' + response.statusCode));
-      }
-
-      if (response.headers['content-type'] !== 'text/html; charset=utf-8') {
-        return done(new Error('Invalid ContentType: ' + response.headers['content-type']));
-      }
-
-      done();
-    });
-  });
-
-});
+//});
