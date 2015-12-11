@@ -619,130 +619,130 @@ describe('S3rver Tests', function () {
   });
 });
 
-//describe('S3rver Tests with Static Web Hosting', function () {
-//  var s3Client;
-//  var s3rver;
-//  before(function (done) {
-//    s3rver = new S3rver({
-//      port: 5694,
-//      hostname: 'localhost',
-//      silent: true,
-//      indexDocument: 'index.html',
-//      errorDocument: '',
-//      directory: '/tmp/s3rver_test_directory'
-//    }).run(function (err, hostname, port, directory) {
-//        if (err) {
-//          return done('Error starting server', err);
-//        }
-//        var config = {
-//          accessKeyId: '123',
-//          secretAccessKey: 'abc',
-//          endpoint: util.format('%s:%d', hostname, port),
-//          sslEnabled: false,
-//          s3ForcePathStyle: true
-//        };
-//        AWS.config.update(config);
-//        s3Client = new AWS.S3();
-//        s3Client.endpoint = new AWS.Endpoint(config.endpoint);
-//        /**
-//         * Remove if exists and recreate the temporary directory
-//         */
-//        fs.remove(directory, function (err) {
-//          if (err) {
-//            return done(err);
-//          }
-//          fs.mkdirs(directory, done);
-//        });
-//      });
-//  });
-//
-//  after(function (done) {
-//    s3rver.close(done);
-//  });
-//
-//  it('should create a site bucket', function (done) {
-//    s3Client.createBucket({Bucket: 'site'}, function (err) {
-//      if (err) {
-//        return done(err);
-//      }
-//      done();
-//    });
-//  });
-//
-//  it('should upload a html page to / path', function (done) {
-//    var params = {Bucket: 'site', Key: 'index.html', Body: '<html><body>Hello</body></html>'};
-//    s3Client.putObject(params, function (err, data) {
-//      /[a-fA-F0-9]{32}/.test(data.ETag).should.equal(true);
-//      if (err) {
-//        return done(err);
-//      }
-//      done();
-//    });
-//  });
-//
-//  it('should upload a html page to a directory path', function (done) {
-//    var params = {Bucket: 'site', Key: 'page/index.html', Body: '<html><body>Hello</body></html>'};
-//    s3Client.putObject(params, function (err, data) {
-//      /[a-fA-F0-9]{32}/.test(data.ETag).should.equal(true);
-//      if (err) {
-//        return done(err);
-//      }
-//      done();
-//    });
-//  });
-//
-//  it('should get an index page at / path', function (done) {
-//    request('http://localhost:5694/site/', function (error, response, body) {
-//      if (error) {
-//        return done(error);
-//      }
-//
-//      if (response.statusCode !== 200) {
-//        return done(new Error('Invalid status: ' + response.statusCode));
-//      }
-//
-//      if (body !== '<html><body>Hello</body></html>') {
-//        return done(new Error('Invalid Content: ' + body));
-//      }
-//
-//      done();
-//    });
-//  });
-//
-//  it('should get an index page at /page/ path', function (done) {
-//    request('http://localhost:5694/site/page/', function (error, response, body) {
-//      if (error) {
-//        return done(error);
-//      }
-//
-//      if (response.statusCode !== 200) {
-//        return done(new Error('Invalid status: ' + response.statusCode));
-//      }
-//
-//      if (body !== '<html><body>Hello</body></html>') {
-//        return done(new Error('Invalid Content: ' + body));
-//      }
-//
-//      done();
-//    });
-//  });
-//
-//  it('should get a 404 error page', function (done) {
-//    request('http://localhost:5694/site/page/not-exists', function (error, response) {
-//      if (error) {
-//        return done(error);
-//      }
-//
-//      if (response.statusCode !== 404) {
-//        return done(new Error('Invalid status: ' + response.statusCode));
-//      }
-//
-//      if (response.headers['content-type'] !== 'text/html; charset=utf-8') {
-//        return done(new Error('Invalid ContentType: ' + response.headers['content-type']));
-//      }
-//
-//      done();
-//    });
-//  });
+describe('S3rver Tests with Static Web Hosting', function () {
+  var s3Client;
+  var s3rver;
+  before(function (done) {
+    s3rver = new S3rver({
+      port: 5694,
+      hostname: 'localhost',
+      silent: true,
+      indexDocument: 'index.html',
+      errorDocument: '',
+      directory: '/tmp/s3rver_test_directory'
+    }).run(function (err, hostname, port, directory) {
+        if (err) {
+          return done('Error starting server', err);
+        }
+        var config = {
+          accessKeyId: '123',
+          secretAccessKey: 'abc',
+          endpoint: util.format('%s:%d', hostname, port),
+          sslEnabled: false,
+          s3ForcePathStyle: true
+        };
+        AWS.config.update(config);
+        s3Client = new AWS.S3();
+        s3Client.endpoint = new AWS.Endpoint(config.endpoint);
+        /**
+         * Remove if exists and recreate the temporary directory
+         */
+        fs.remove(directory, function (err) {
+          if (err) {
+            return done(err);
+          }
+          fs.mkdirs(directory, done);
+        });
+      });
+  });
 
-//});
+  after(function (done) {
+    s3rver.close(done);
+  });
+
+  it('should create a site bucket', function (done) {
+    s3Client.createBucket({Bucket: 'site'}, function (err) {
+      if (err) {
+        return done(err);
+      }
+      done();
+    });
+  });
+
+  it('should upload a html page to / path', function (done) {
+    var params = {Bucket: 'site', Key: 'index.html', Body: '<html><body>Hello</body></html>'};
+    s3Client.putObject(params, function (err, data) {
+      /[a-fA-F0-9]{32}/.test(data.ETag).should.equal(true);
+      if (err) {
+        return done(err);
+      }
+      done();
+    });
+  });
+
+  it('should upload a html page to a directory path', function (done) {
+    var params = {Bucket: 'site', Key: 'page/index.html', Body: '<html><body>Hello</body></html>'};
+    s3Client.putObject(params, function (err, data) {
+      /[a-fA-F0-9]{32}/.test(data.ETag).should.equal(true);
+      if (err) {
+        return done(err);
+      }
+      done();
+    });
+  });
+
+  it('should get an index page at / path', function (done) {
+    request('http://localhost:5694/site/', function (error, response, body) {
+      if (error) {
+        return done(error);
+      }
+
+      if (response.statusCode !== 200) {
+        return done(new Error('Invalid status: ' + response.statusCode));
+      }
+
+      if (body !== '<html><body>Hello</body></html>') {
+        return done(new Error('Invalid Content: ' + body));
+      }
+
+      done();
+    });
+  });
+
+  it('should get an index page at /page/ path', function (done) {
+    request('http://localhost:5694/site/page/', function (error, response, body) {
+      if (error) {
+        return done(error);
+      }
+
+      if (response.statusCode !== 200) {
+        return done(new Error('Invalid status: ' + response.statusCode));
+      }
+
+      if (body !== '<html><body>Hello</body></html>') {
+        return done(new Error('Invalid Content: ' + body));
+      }
+
+      done();
+    });
+  });
+
+  it('should get a 404 error page', function (done) {
+    request('http://localhost:5694/site/page/not-exists', function (error, response) {
+      if (error) {
+        return done(error);
+      }
+
+      if (response.statusCode !== 404) {
+        return done(new Error('Invalid status: ' + response.statusCode));
+      }
+
+      if (response.headers['content-type'] !== 'text/html; charset=utf-8') {
+        return done(new Error('Invalid ContentType: ' + response.headers['content-type']));
+      }
+
+      done();
+    });
+  });
+
+});
