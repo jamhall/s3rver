@@ -5,8 +5,6 @@ S3rver
 
 [![Build Status](https://api.travis-ci.org/jamhall/s3rver.png)](https://travis-ci.org/jamhall/s3rver)
  
-S3rver is a NodeJs port of the excellent [Fake S3](https://github.com/jubos/fake-s3) server.
-
 S3rver is a lightweight server that responds to the **some** of the same calls [Amazon S3](http://docs.aws.amazon.com/AWSJavaScriptSDK/latest/AWS/S3.html) responds to. It is extremely useful for testing S3 in a sandbox environment without actually making calls to Amazon.
 
 The goal of S3rver is to minimise runtime dependencies and be more of a development tool to test S3 calls in your code rather than a production server looking to duplicate S3 functionality.
@@ -18,16 +16,15 @@ The goal of S3rver is to minimise runtime dependencies and be more of a developm
 - Create bucket
 - Delete bucket
 - List buckets
-- List content of buckets (prefix, delimiter and max keys all work)
+- List content of buckets (prefix, delimiter, marker and max keys, common prefixes)
 
 ### Objects
 
-- Put object
-- Delete object
+- Put object (support for metadata, including ContentEncoding (gzipped files)
+- Delete object(s)
 - Get object (including using the HEAD method)
 - Get dummy ACLs for an object
-- Copy object
-
+- Copy object (including updating of metadata)
 
 ## Quick Start
 
@@ -43,9 +40,6 @@ Executing this command for the various options:
 ```bash
 s3rver --help
 ```
-## Caveats
-
-Currently multipart uploads is not supported. It's fairly complex and cumbersome to implement, however, if there is strong support from the community for it, then it will be implemented, or if you would like to implement it yourself, please go ahead and send a pull request : ) 
 
 ## Supported clients
 
