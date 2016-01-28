@@ -18,7 +18,7 @@ program.option('-h, --hostname [value]', 'Set the host name or ip for the server
 
 if (program.directory === undefined) {
   console.error('Data directory is required');
-  return;
+  process.exit();
 }
 
 try {
@@ -29,9 +29,13 @@ try {
 }
 catch (e) {
   console.error('Directory does not exist. Please create it and then run the command again');
-  return;
+  process.exit();
 }
 
 var s3rver = new S3rver(program).run(function (err, host, port) {
-  console.log('now listening on host %s and port %d', host, port);
+  if (err) {
+    console.error(err)
+  } else {
+    console.log('now listening on host %s and port %d', host, port);
+  }
 });
