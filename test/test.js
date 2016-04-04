@@ -474,7 +474,7 @@ describe('S3rver Tests', function () {
       if (err) {
         return done(err);
       }
-      should(objects.Contents.length).equal(5);
+      should(objects.Contents.length).equal(4);
       done();
     });
   });
@@ -484,7 +484,7 @@ describe('S3rver Tests', function () {
       if (err) {
         return done(err);
       }
-      should(objects.Contents.length).equal(2);
+      should(objects.Contents.length).equal(1);
       done();
     });
   });
