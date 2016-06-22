@@ -24,7 +24,6 @@
     "amazon"
   ],
   "dependencies": {
-    "md5": "^2.0.0",
     "async": "^1.5.0",
     "commander": "^2.6.0",
     "concat-stream": "^1.4.7",
@@ -41,6 +40,7 @@
   "devDependencies": {
     "aws-sdk": "^2.1.4",
     "chance": "^0.8.0",
+    "md5": "^2.0.0",
     "mocha": "^2.1.0",
     "moment": "^2.8.4",
     "request": "^2.55.0",
