@@ -746,3 +746,24 @@ describe('S3rver Tests with Static Web Hosting', function () {
   });
 
 });
+
+describe('S3rver Class Tests', function() {
+
+  it('should merge default options with provided options', function () {
+    var s3rver = new S3rver({
+      hostname: 'testhost',
+      indexDocument: 'index.html',
+      errorDocument: '',
+      directory: '/tmp/s3rver_test_directory'
+    })
+
+    s3rver.options.should.have.property('hostname', 'testhost')
+    s3rver.options.should.have.property('port', 4578)
+    s3rver.options.should.have.property('silent', false)
+    s3rver.options.should.have.property('indexDocument', 'index.html')
+    s3rver.options.should.have.property('errorDocument', '')
+    s3rver.options.should.have.property('directory', '/tmp/s3rver_test_directory')
+    s3rver.options.should.have.property('fs')
+  })
+
+});
