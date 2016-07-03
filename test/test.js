@@ -78,8 +78,24 @@ describe('S3rver Tests', function () {
     });
   });
 
+  it('should create a bucket with valid domain-style name', function (done) {
+    s3Client.createBucket({Bucket: 'a-test.example.com'}, function (err) {
+      should.not.exist(err);
+      done();
+    });
+  });
+
   it('should fail to create a bucket because of invalid name', function (done) {
     s3Client.createBucket({Bucket: '-$%!nvalid'}, function (err) {
+      err.statusCode.should.equal(400);
+      err.code.should.equal('InvalidBucketName');
+      should.exist(err);
+      done();
+    });
+  });
+
+  it('should fail to create a bucket because of invalid domain-style name', function (done) {
+    s3Client.createBucket({Bucket: '.example.com'}, function (err) {
       err.statusCode.should.equal(400);
       err.code.should.equal('InvalidBucketName');
       should.exist(err);
