@@ -849,7 +849,9 @@ describe('S3rver Class Tests', function() {
       hostname: 'testhost',
       indexDocument: 'index.html',
       errorDocument: '',
-      directory: '/tmp/s3rver_test_directory'
+      directory: '/tmp/s3rver_test_directory',
+      key: new Buffer([1, 2, 3]),
+      cert: new Buffer([1, 2, 3])
     })
 
     s3rver.options.should.have.property('hostname', 'testhost')
@@ -859,6 +861,10 @@ describe('S3rver Class Tests', function() {
     s3rver.options.should.have.property('errorDocument', '')
     s3rver.options.should.have.property('directory', '/tmp/s3rver_test_directory')
     s3rver.options.should.have.property('fs')
+    s3rver.options.should.have.property('key')
+    s3rver.options.should.have.property('cert')
+    s3rver.options.key.should.be.an.instanceOf(Buffer)
+    s3rver.options.cert.should.be.an.instanceOf(Buffer)
   })
 
 });
