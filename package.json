@@ -1,6 +1,6 @@
 {
   "name": "s3rver",
-  "version": "1.0.2",
+  "version": "1.0.3",
   "description": "Fake S3 server for node",
   "main": "lib/index.js",
   "scripts": {
@@ -8,7 +8,7 @@
   },
   "author": {
     "name": "Jamie Hall",
-    "email": "hall@ill.eu",
+    "email": "hello@jamiehall.eu",
     "url": "http://github.com/jamhall/s3rver"
   },
   "bin": {
