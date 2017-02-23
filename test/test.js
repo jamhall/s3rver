@@ -269,6 +269,7 @@ describe('S3rver Tests', function () {
           return done(err);
         }
         object.Metadata.somekey.should.equal('value');
+        object.ContentType.should.equal('image/jpeg');
         done();
       });
     });
@@ -294,6 +295,7 @@ describe('S3rver Tests', function () {
           return done(err);
         }
         object.Metadata.somekey.should.equal('value');
+        object.ContentType.should.equal('image/jpeg');
         done();
       });
     });
