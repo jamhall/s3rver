@@ -104,3 +104,10 @@ after(function (done) {
     client.close(done);
 });
 ```
+## Using [s3fs-fuse](https://github.com/s3fs-fuse/s3fs-fuse) with S3rver
+
+You can connect to s3rver and mount a bucket to your local file system by using the following command:
+
+```
+s3fs bucket1 /tmp/3 -o  url="http://localhost:4568" -o use_path_request_style -d -f -o f2 -o curldbg
+```
