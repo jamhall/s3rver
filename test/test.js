@@ -274,6 +274,31 @@ describe('S3rver Tests', function () {
     });
   });
 
+  it('should copy an image object into another bucket and update its metadata', function (done) {
+    var key = 'image/jamie';
+    var params = {
+      Bucket: buckets[3],
+      Key: key,
+      CopySource: '/' + buckets[0] + '/image',
+      MetadataDirective: 'REPLACE',
+      Metadata: {
+        someKey: 'value'
+      }
+    };
+    s3Client.copyObject(params, function (err, data) {
+      if (err) {
+        return done(err);
+      }
+      s3Client.getObject({Bucket: buckets[3], Key: key}, function (err, object) {
+        if (err) {
+          return done(err);
+        }
+        object.Metadata.somekey.should.equal('value');
+        done();
+      });
+    });
+  });
+
   it('should fail to copy an image object because the object does not exist', function (done) {
     var params = {
       Bucket: buckets[3],
