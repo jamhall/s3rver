@@ -246,6 +246,7 @@ describe('S3rver Tests', function () {
         return done(err);
       }
       /"[a-fA-F0-9]{32}"/.test(data.ETag).should.equal(true);
+      moment(data.LastModified).isValid().should.equal(true);
       done();
     });
   });
