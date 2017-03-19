@@ -7,7 +7,7 @@ const fs      = require('fs-extra');
 const S3rver  = require('../lib');
 
 program.version(version, '--version');
-program.option('-h, --hostname [value]', 'Set the host name or ip for the server', 'localhost')
+program.option('-h, --hostname [value]', 'Set the host name or IP to bind to', 'localhost')
   .option('-p, --port <n>', 'Set the port of the http server', 4568)
   .option('-s, --silent', 'Suppress log messages', false)
   .option('-i, --indexDocument [path]', 'Index Document for Static Web Hosting', '')
