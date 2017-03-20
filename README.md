@@ -96,7 +96,7 @@ Creates a S3rver instance
 | cert | `string | Buffer` |  | Certificate for running with TLS |
 | silent | `boolean` | `false` | Suppress log messages | 
 | directory | `string` |  | Data directory |
-| cors | `boolean` | `false` | Enable CORS |
+| cors | `string | Buffer` | [S3 Sample policy](test/resources/cors_sample_policy.xml) | Raw XML string or Buffer of CORS policy |
 | indexDocument | `string` |  | Index document for static web hosting |
 | errorDocument | `string` |  | Error document for static web hosting |
 | removeBucketsOnClose | `boolean` | `false` | Remove all bucket data on server close |
