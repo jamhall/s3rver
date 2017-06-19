@@ -278,7 +278,7 @@ describe('S3rver Tests', function () {
         if (err) {
           return done(err);
         }
-        object.ContentLength.should.equal(stats.size.toString());
+        object.ContentLength.should.equal(stats.size);
         object.ContentEncoding.should.equal('gzip');
         object.ContentType.should.equal('application/javascript');
         done();
@@ -400,7 +400,7 @@ describe('S3rver Tests', function () {
           return done(err);
         }
         object.ETag.should.equal('"' + md5(data) + '"');
-        object.ContentLength.should.equal(data.length.toString());
+        object.ContentLength.should.equal(data.length);
         object.ContentType.should.equal('image/jpeg');
         done();
       });
@@ -415,7 +415,7 @@ describe('S3rver Tests', function () {
           return done(err);
         }
         object.ETag.should.equal('"' + md5(data) + '"');
-        object.ContentLength.should.equal(data.length.toString());
+        object.ContentLength.should.equal(data.length);
         object.ContentType.should.equal('image/jpeg');
         done();
       });
@@ -532,7 +532,7 @@ describe('S3rver Tests', function () {
         return done(err);
       }
       object.ETag.should.equal('"' + md5('Hello!') + '"');
-      object.ContentLength.should.equal('6');
+      object.ContentLength.should.equal(6);
       object.ContentType.should.equal('application/octet-stream');
       done();
     });
