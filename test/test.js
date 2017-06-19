@@ -159,6 +159,57 @@ describe('S3rver Tests', function () {
     });
   });
 
+  it('should trigger a Put event', function (done) {
+    var params = { Bucket: buckets[0], Key: 'testPut', Body: 'Hello!' };
+    var subscription1 = s3rver.s3Event.subscribe((event) => {
+      event.Records[0].eventName.should.equal('ObjectCreated:Put');
+      event.Records[0].s3.bucket.name.should.equal(buckets[0]);
+      event.Records[0].s3.object.key.should.equal('testPut');
+      subscription1.unsubscribe();
+      done();
+    });
+    s3Client.putObject(params, function (err, data) {
+      if (err) {
+        return done(err);
+      }
+    });
+  });
+
+  it('should trigger a Copy event', function (done) {
+    var subscription2 = s3rver.s3Event.subscribe((event) => {
+      event.Records[0].eventName.should.equal('ObjectCreated:Copy');
+      event.Records[0].s3.bucket.name.should.equal(buckets[3]);
+      event.Records[0].s3.object.key.should.equal('testCopy');
+      subscription2.unsubscribe();
+      done();
+    });
+    var params = {
+      Bucket: buckets[3],
+      Key: 'testCopy',
+      CopySource: '/' + buckets[0] + '/testPut'
+    };
+    s3Client.copyObject(params, function (err, data) {
+      if (err) {
+        return done(err);
+      }
+    });
+   });
+
+  it('should trigger a Delete event', function (done) {
+    var subscription3 = s3rver.s3Event.subscribe((event) => {
+      event.Records[0].eventName.should.equal('ObjectRemoved:Delete');
+      event.Records[0].s3.bucket.name.should.equal(buckets[3]);
+      event.Records[0].s3.object.key.should.equal('testCopy');
+      subscription3.unsubscribe();
+      done();
+    });
+    s3Client.deleteObject({ Bucket: buckets[3], Key: 'testCopy' }, function (err, data) {
+      if (err) {
+        return done(err);
+      }
+    });
+  });
+
   it('should store a text object with some custom metadata', function (done) {
     var params = {
       Bucket: buckets[0], Key: 'textmetadata', Body: 'Hello!', Metadata: {
