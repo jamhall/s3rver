@@ -39,3 +39,15 @@ var s3rver = new S3rver(program).run(function (err, host, port) {
     console.log('now listening on host %s and port %d', host, port);
   }
 });
+
+s3rver.s3Event.subscribe({
+  next: function (event) {
+    console.log(event);
+  }
+});
+
+s3rver.s3Event.filter(function (event) { return event.Records[0].eventName == 'ObjectCreated:Copy' }).subscribe({
+  next: function (event) {
+    console.log(event);
+  }
+});
