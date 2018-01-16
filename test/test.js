@@ -475,6 +475,28 @@ describe('S3rver Tests', function () {
     });
   });
 
+  it('should upload a managed upload <=5MB', function (done) {
+    var params = { Bucket: buckets[0], Key: 'multi/directory/path/multipart', Body: Buffer.alloc(5e+6) }; // 5MB
+    s3Client.upload(params, function (err, data) {
+      (/"[a-fA-F0-9]{32}"/).test(data.ETag).should.equal(true);
+      if (err) {
+        return done(err);
+      }
+      done();
+    });
+  });
+
+  it('should upload a managed upload >5MB (multipart upload)', function (done) {
+    var params = { Bucket: buckets[0], Key: 'multi/directory/path/multipart', Body: Buffer.alloc(2e+7) }; // 20MB
+    s3Client.upload(params, function (err, data) {
+      (/"[a-fA-F0-9]{32}"/).test(data.ETag).should.equal(true);
+      if (err) {
+        return done(err);
+      }
+      done();
+    });
+  });
+
   it('should find a text file in a multi directory path', function (done) {
     s3Client.getObject({Bucket: buckets[0], Key: 'multi/directory/path/text'}, function (err, object) {
       if (err) {
