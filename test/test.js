@@ -551,6 +551,22 @@ describe('S3rver Tests', function () {
     });
   });
 
+
+  it('should list objects in a bucket filtered by a prefix 2', function (done) {
+    s3Client.listObjectsV2({ 'Bucket': buckets[1], Prefix: 'key' }, function (err, objects) {
+      if (err) {
+        return done(err)
+      }
+      should(objects.Contents.length).equal(4);
+      should.exist(_.find(objects.Contents, {'Key': 'key1'}));
+      should.exist(_.find(objects.Contents, {'Key': 'key2'}));
+      should.exist(_.find(objects.Contents, {'Key': 'key3'}));
+      should.exist(_.find(objects.Contents, {'Key': 'key/key1'}));
+      done();
+    })
+  })
+
+
   it('should list objects in a bucket filtered by a marker', function (done) {
     s3Client.listObjects({'Bucket': buckets[1], Marker: 'akey3'}, function (err, objects) {
       if (err) {
