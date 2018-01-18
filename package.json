@@ -29,7 +29,7 @@
     "concat-stream": "^1.4.7",
     "express": "^4.10.6",
     "fs-extra": "^0.30.0",
-    "jstoxml": "^0.2.2",
+    "jstoxml": "^1.0.0",
     "lodash": "^4.0.0",
     "morgan": "^1.5.1",
     "winston": "^2.1.0",
