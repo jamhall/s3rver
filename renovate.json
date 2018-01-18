@@ -1,0 +1,25 @@
+{
+  "extends": [
+    "config:base"
+  ],
+  "depTypes": [
+    {
+      "depType": "dependencies",
+      "pinVersions": false
+    }
+  ],
+  "rebaseStalePrs": true,
+  "automerge": "minor",
+  "labels": [
+    "tooling",
+    "dependencies"
+  ],
+  "assignees": [
+    "@leontastic",
+    "@n1ru4l"
+  ],
+  "reviewers": [
+    "@leontastic",
+    "@n1ru4l"
+  ]
+}
