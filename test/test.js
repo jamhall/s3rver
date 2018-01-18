@@ -456,6 +456,10 @@ describe('S3rver Tests', function () {
     });
   });
 
+  it('should not fail to delete a nonexistent object from a bucket', function (done) {
+    s3Client.deleteObject({Bucket: buckets[0], Key: 'doesnotexist'}, done);
+  });
+
   it('should fail to delete a bucket because it is not empty', function (done) {
     s3Client.deleteBucket({Bucket: buckets[0]}, function (err) {
       err.code.should.equal('BucketNotEmpty');
@@ -670,6 +674,19 @@ describe('S3rver Tests', function () {
       should.exist(resp.Deleted);
       should(resp.Deleted).have.length(500);
       should(resp.Deleted).containEql({Key: 'key567'});
+      done();
+    });
+  });
+
+  it('should return nonexistent objects as deleted with deleteObjects', function (done) {
+    var deleteObj = {Objects: [{Key: 'doesnotexist'}]};
+    s3Client.deleteObjects({Bucket: buckets[2], Delete: deleteObj}, function (err, resp) {
+      if (err) {
+        return done(err);
+      }
+      should.exist(resp.Deleted);
+      should(resp.Deleted).have.length(1);
+      should(resp.Deleted).containEql({Key: 'doesnotexist'});
       done();
     });
   });
