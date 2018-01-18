@@ -38,7 +38,7 @@
   },
   "devDependencies": {
     "aws-sdk": "2.184.0",
-    "chance": "0.8.0",
+    "chance": "1.0.13",
     "md5": "2.2.1",
     "mocha": "2.5.3",
     "moment": "2.20.1",
