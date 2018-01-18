@@ -793,7 +793,7 @@ describe('S3rver Tests with Static Web Hosting', function () {
         return done(new Error('Invalid status: ' + response.statusCode));
       }
 
-      if (response.headers['content-type'] !== 'text/html; charset=utf-8') {
+      if (response.headers['content-type'] !== 'text/html') {
         return done(new Error('Invalid ContentType: ' + response.headers['content-type']));
       }
 
