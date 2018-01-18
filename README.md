@@ -23,6 +23,7 @@ The goal of S3rver is to minimise runtime dependencies and be more of a developm
 ### Objects
 
 - Put object (support for metadata, including ContentEncoding (gzipped files)
+- Post object (multipart)
 - Delete object(s)
 - Get object (including using the HEAD method)
 - Get dummy ACLs for an object
