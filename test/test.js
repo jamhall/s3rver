@@ -712,6 +712,24 @@ describe('S3rver Tests', function () {
       done();
     });
   });
+
+  it('should reach the server with a bucket vhost', function (done) {
+    request({ url: 'http://localhost:4569/', headers: { host: buckets[0] + '.s3.amazonaws.com' } }, function (err, response, body) {
+      if (err) {
+        return done(err);
+      }
+
+      if (response.statusCode !== 200) {
+        return done(new Error('Invalid status: ' + response.statusCode));
+      }
+
+      if (body.indexOf('ListBucketResult') === -1) {
+        return done(new Error('Unexpected response: ' + body));
+      }
+
+      done();
+    });
+  });
 });
 
 describe('S3rver Tests with Static Web Hosting', function () {
