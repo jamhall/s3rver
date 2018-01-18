@@ -28,7 +28,7 @@
     "commander": "^2.6.0",
     "concat-stream": "^1.4.7",
     "express": "^4.10.6",
-    "fs-extra": "^0.26.2",
+    "fs-extra": "^0.30.0",
     "jstoxml": "^0.2.2",
     "lodash": "^3.10.1",
     "morgan": "^1.5.1",
