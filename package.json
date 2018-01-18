@@ -37,13 +37,13 @@
     "xmlbuilder": "^4.0.0"
   },
   "devDependencies": {
-    "aws-sdk": "^2.1.4",
-    "chance": "^0.8.0",
-    "md5": "^2.0.0",
-    "mocha": "^2.1.0",
-    "moment": "^2.8.4",
-    "request": "^2.55.0",
-    "should": "^7.1.1"
+    "aws-sdk": "2.184.0",
+    "chance": "0.8.0",
+    "md5": "2.2.1",
+    "mocha": "2.5.3",
+    "moment": "2.20.1",
+    "request": "2.83.0",
+    "should": "7.1.1"
   },
   "bugs": {
     "url": "https://github.com/jamhall/s3rver/issues"
