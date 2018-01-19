@@ -543,10 +543,9 @@ describe('S3rver Tests', function () {
         return done(err);
       }
       should(objects.Contents.length).equal(4);
-      should.exist(_.find(objects.Contents, {'Key': 'key1'}));
-      should.exist(_.find(objects.Contents, {'Key': 'key2'}));
-      should.exist(_.find(objects.Contents, {'Key': 'key3'}));
-      should.exist(_.find(objects.Contents, {'Key': 'key/key1'}));
+      should.not.exist(_.find(objects.Contents, {'Key': 'akey1'}));
+      should.not.exist(_.find(objects.Contents, {'Key': 'akey2'}));
+      should.not.exist(_.find(objects.Contents, {'Key': 'akey3'}));
       done();
     });
   });
@@ -558,10 +557,9 @@ describe('S3rver Tests', function () {
         return done(err)
       }
       should(objects.Contents.length).equal(4);
-      should.exist(_.find(objects.Contents, {'Key': 'key1'}));
-      should.exist(_.find(objects.Contents, {'Key': 'key2'}));
-      should.exist(_.find(objects.Contents, {'Key': 'key3'}));
-      should.exist(_.find(objects.Contents, {'Key': 'key/key1'}));
+      should.not.exist(_.find(objects.Contents, {'Key': 'akey1'}));
+      should.not.exist(_.find(objects.Contents, {'Key': 'akey2'}));
+      should.not.exist(_.find(objects.Contents, {'Key': 'akey3'}));
       done();
     })
   })
