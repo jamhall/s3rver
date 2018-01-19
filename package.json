@@ -37,7 +37,7 @@
     "xmlbuilder": "^9.0.0"
   },
   "devDependencies": {
-    "aws-sdk": "2.184.0",
+    "aws-sdk": "2.185.0",
     "chance": "1.0.13",
     "md5": "2.2.1",
     "mocha": "5.0.0",
