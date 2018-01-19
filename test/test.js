@@ -17,6 +17,20 @@ describe('S3rver Tests', function () {
   var s3Client;
   var buckets = ['bucket1', 'bucket2', 'bucket3', 'bucket4', 'bucket5', 'bucket6'];
   var s3rver;
+
+  function generateTestObjects(bucket, amount, callback) {
+    var testObjects = _.times(amount, function (i) {
+      return {
+        Bucket: bucket,
+        Key: 'key' + i,
+        Body: 'Hello!'
+      }
+    });
+    async.eachSeries(testObjects, function (testObject, callback) {
+      s3Client.putObject(testObject, callback);
+    }, callback)
+  }
+
   beforeEach(function (done) {
     s3rver = new S3rver({
       port: 4569,
@@ -287,52 +301,83 @@ describe('S3rver Tests', function () {
   });
 
   it('should update the metadata of an image object', function (done) {
-    var key = 'image/jamie';
-    var params = {
-      Bucket: buckets[3],
-      Key: key,
-      CopySource: '/' + buckets[3] + '/' +  key,
-      Metadata: {
-        someKey: 'value'
-      }
-    };
-    s3Client.copyObject(params, function (err, data) {
+    var file = path.join(__dirname, 'resources/image.jpg');
+    fs.readFile(file, function (err, data) {
       if (err) {
         return done(err);
       }
-      s3Client.getObject({Bucket: buckets[3], Key: key}, function (err, object) {
+      var params = {
+        Bucket: buckets[0],
+        Key: 'image/jamie',
+        Body: new Buffer(data),
+        ContentType: 'image/jpeg',
+        ContentLength: data.length
+      };
+      s3Client.putObject(params, function (err, data) {
+        /"[a-fA-F0-9]{32}"/.test(data.ETag).should.equal(true);
         if (err) {
           return done(err);
         }
-        object.Metadata.somekey.should.equal('value');
-        object.ContentType.should.equal('image/jpeg');
-        done();
-      });
-    });
+        var key = 'image/jamie';
+        var params = {
+          Bucket: buckets[3],
+          Key: key,
+          CopySource: '/' + buckets[0] + '/' +  key,
+          Metadata: {
+            someKey: 'value'
+          }
+        };
+        s3Client.copyObject(params, function (err, data) {
+          if (err) {
+            return done(err);
+          }
+          s3Client.getObject({Bucket: buckets[3], Key: key}, function (err, object) {
+            if (err) {
+              return done(err);
+            }
+            object.Metadata.somekey.should.equal('value');
+            object.ContentType.should.equal('image/jpeg');
+            done();
+          });
+        });
+      })
+    })
   });
 
   it('should copy an image object into another bucket and update its metadata', function (done) {
-    var key = 'image/jamie';
-    var params = {
-      Bucket: buckets[3],
-      Key: key,
-      CopySource: '/' + buckets[0] + '/image',
-      MetadataDirective: 'REPLACE',
-      Metadata: {
-        someKey: 'value'
-      }
-    };
-    s3Client.copyObject(params, function (err, data) {
+    var file = path.join(__dirname, 'resources/image.jpg');
+    fs.readFile(file, function (err, data) {
       if (err) {
         return done(err);
       }
-      s3Client.getObject({Bucket: buckets[3], Key: key}, function (err, object) {
-        if (err) {
-          return done(err);
-        }
-        object.Metadata.somekey.should.equal('value');
-        object.ContentType.should.equal('image/jpeg');
-        done();
+      var params = {
+        Bucket: buckets[0],
+        Key: 'image',
+        Body: new Buffer(data),
+        ContentType: 'image/jpeg',
+        ContentLength: data.length
+      };
+      s3Client.putObject(params, function () {
+        var key = 'image/jamie';
+        var params = {
+          Bucket: buckets[3],
+          Key: key,
+          CopySource: '/' + buckets[0] + '/image',
+          MetadataDirective: 'REPLACE',
+          Metadata: {
+            someKey: 'value'
+          }
+        };
+        s3Client.copyObject(params, function () {
+          s3Client.getObject({Bucket: buckets[3], Key: key}, function (err, object) {
+            if (err) {
+              return done(err);
+            }
+            object.Metadata.somekey.should.equal('value');
+            object.ContentType.should.equal('image/jpeg');
+            done();
+          });
+        });
       });
     });
   });
@@ -379,14 +424,23 @@ describe('S3rver Tests', function () {
   it('should get an image from a bucket', function (done) {
     var file = path.join(__dirname, 'resources/image.jpg');
     fs.readFile(file, function (err, data) {
-      s3Client.getObject({Bucket: buckets[0], Key: 'image'}, function (err, object) {
-        if (err) {
-          return done(err);
-        }
-        object.ETag.should.equal('"' + md5(data) + '"');
-        object.ContentLength.should.equal(data.length);
-        object.ContentType.should.equal('image/jpeg');
-        done();
+      var params = {
+        Bucket: buckets[0],
+        Key: 'image',
+        Body: data,
+        ContentType: 'image/jpeg',
+        ContentLength: data.length,
+      };
+      s3Client.putObject(params, function (err) {
+        s3Client.getObject({Bucket: buckets[0], Key: 'image'}, function (err, object) {
+          if (err) {
+            return done(err);
+          }
+          object.ETag.should.equal('"' + md5(data) + '"');
+          object.ContentLength.should.equal(data.length);
+          object.ContentType.should.equal('image/jpeg');
+          done();
+        });
       });
     });
   });
@@ -394,14 +448,23 @@ describe('S3rver Tests', function () {
   it('should get image metadata from a bucket using HEAD method', function (done) {
     var file = path.join(__dirname, 'resources/image.jpg');
     fs.readFile(file, function (err, data) {
-      s3Client.headObject({Bucket: buckets[0], Key: 'image'}, function (err, object) {
-        if (err) {
-          return done(err);
-        }
-        object.ETag.should.equal('"' + md5(data) + '"');
-        object.ContentLength.should.equal(data.length);
-        object.ContentType.should.equal('image/jpeg');
-        done();
+      var params = {
+        Bucket: buckets[0],
+        Key: 'image',
+        Body: data,
+        ContentType: 'image/jpeg',
+        ContentLength: data.length,
+      };
+      s3Client.putObject(params, function (err) {
+        s3Client.headObject({Bucket: buckets[0], Key: 'image'}, function (err, object) {
+          if (err) {
+            return done(err);
+          }
+          object.ETag.should.equal('"' + md5(data) + '"');
+          object.ContentLength.should.equal(data.length);
+          object.ContentType.should.equal('image/jpeg');
+          done();
+        });
       });
     });
   });
@@ -413,12 +476,24 @@ describe('S3rver Tests', function () {
            * Get object from store
            */
             function (callback) {
-            s3Client.getObject({Bucket: buckets[0], Key: 'image'}, function (err, object) {
-              if (err) {
-                return callback(err);
-              }
-              callback(null, object);
-            });
+              var file = path.join(__dirname, 'resources/image.jpg');
+              fs.readFile(file, function (err, data) {
+                var params = {
+                  Bucket: buckets[0],
+                  Key: 'image',
+                  Body: data,
+                  ContentType: 'image/jpeg',
+                  ContentLength: data.length,
+                };
+                s3Client.putObject(params, function () {
+                  s3Client.getObject({Bucket: buckets[0], Key: 'image'}, function (err, object) {
+                    if (err) {
+                      return callback(err);
+                    }
+                    callback(null, object);
+                  });
+                });
+              });
           },
           /**
            * Store different object
@@ -480,7 +555,11 @@ describe('S3rver Tests', function () {
   });
 
   it('should delete an image from a bucket', function (done) {
-    s3Client.deleteObject({Bucket: buckets[0], Key: 'image'}, done);
+    var b = new Buffer(10);
+    var params = {Bucket: buckets[0], Key: 'large', Body: b};
+    s3Client.putObject(params, function (err, data) {
+      s3Client.deleteObject({Bucket: buckets[0], Key: 'image'}, done);
+    })
   });
 
   it('should not find an image from a bucket', function (done) {
@@ -496,10 +575,12 @@ describe('S3rver Tests', function () {
   });
 
   it('should fail to delete a bucket because it is not empty', function (done) {
-    s3Client.deleteBucket({Bucket: buckets[0]}, function (err) {
-      err.code.should.equal('BucketNotEmpty');
-      err.statusCode.should.equal(409);
-      done();
+    generateTestObjects(buckets[0], 20, function () {
+      s3Client.deleteBucket({Bucket: buckets[0]}, function (err) {
+        err.code.should.equal('BucketNotEmpty');
+        err.statusCode.should.equal(409);
+        done();
+      });
     });
   });
 
@@ -537,14 +618,17 @@ describe('S3rver Tests', function () {
   });
 
   it('should find a text file in a multi directory path', function (done) {
-    s3Client.getObject({Bucket: buckets[0], Key: 'multi/directory/path/text'}, function (err, object) {
-      if (err) {
-        return done(err);
-      }
-      object.ETag.should.equal('"' + md5('Hello!') + '"');
-      object.ContentLength.should.equal(6);
-      object.ContentType.should.equal('application/octet-stream');
-      done();
+    var params = {Bucket: buckets[0], Key: 'multi/directory/path/text', Body: 'Hello!'};
+    s3Client.putObject(params, function () {
+      s3Client.getObject({Bucket: buckets[0], Key: 'multi/directory/path/text'}, function (err, object) {
+        if (err) {
+          return done(err);
+        }
+        object.ETag.should.equal('"' + md5('Hello!') + '"');
+        object.ContentLength.should.equal(6);
+        object.ContentType.should.equal('application/octet-stream');
+        done();
+      });
     });
   });
 
@@ -572,48 +656,72 @@ describe('S3rver Tests', function () {
   });
 
   it('should list objects in a bucket filtered by a prefix', function (done) {
-    // Create some test objects
-    s3Client.listObjects({'Bucket': buckets[1], Prefix: 'key'}, function (err, objects) {
-      if (err) {
-        return done(err);
-      }
-      should(objects.Contents.length).equal(4);
-      should.exist(_.find(objects.Contents, {'Key': 'key1'}));
-      should.exist(_.find(objects.Contents, {'Key': 'key2'}));
-      should.exist(_.find(objects.Contents, {'Key': 'key3'}));
-      should.exist(_.find(objects.Contents, {'Key': 'key/key1'}));
-      done();
+    var testObjects = ['akey1', 'akey2', 'akey3', 'key/key1', 'key1', 'key2', 'key3'];
+    async.eachSeries(testObjects, function (testObject, callback) {
+      var params = {Bucket: buckets[1], Key: testObject, Body: 'Hello!'};
+      s3Client.putObject(params, callback);
+    }, function () {
+      // Create some test objects
+      s3Client.listObjects({'Bucket': buckets[1], Prefix: 'key'}, function (err, objects) {
+        if (err) {
+          return done(err);
+        }
+        should(objects.Contents.length).equal(4);
+        should.exist(_.find(objects.Contents, {'Key': 'key1'}));
+        should.exist(_.find(objects.Contents, {'Key': 'key2'}));
+        should.exist(_.find(objects.Contents, {'Key': 'key3'}));
+        should.exist(_.find(objects.Contents, {'Key': 'key/key1'}));
+        done();
+      });
     });
   });
 
   it('should list objects in a bucket filtered by a marker', function (done) {
-    s3Client.listObjects({'Bucket': buckets[1], Marker: 'akey3'}, function (err, objects) {
-      if (err) {
-        return done(err);
-      }
-      should(objects.Contents.length).equal(4);
-      done();
+    var testObjects = ['akey1', 'akey2', 'akey3', 'key/key1', 'key1', 'key2', 'key3'];
+    async.eachSeries(testObjects, function (testObject, callback) {
+      var params = {Bucket: buckets[1], Key: testObject, Body: 'Hello!'};
+      s3Client.putObject(params, callback);
+    }, function () {
+      s3Client.listObjects({'Bucket': buckets[1], Marker: 'akey3'}, function (err, objects) {
+        if (err) {
+          return done(err);
+        }
+        should(objects.Contents.length).equal(4);
+        done();
+      });
     });
   });
 
   it('should list objects in a bucket filtered by a marker and prefix', function (done) {
-    s3Client.listObjects({'Bucket': buckets[1], Prefix: 'akey', Marker: 'akey2'}, function (err, objects) {
-      if (err) {
-        return done(err);
-      }
-      should(objects.Contents.length).equal(1);
-      done();
+    var testObjects = ['akey1', 'akey2', 'akey3', 'key/key1', 'key1', 'key2', 'key3'];
+    async.eachSeries(testObjects, function (testObject, callback) {
+      var params = {Bucket: buckets[1], Key: testObject, Body: 'Hello!'};
+      s3Client.putObject(params, callback);
+    }, function () {
+      s3Client.listObjects({'Bucket': buckets[1], Prefix: 'akey', Marker: 'akey2'}, function (err, objects) {
+        if (err) {
+          return done(err);
+        }
+        should(objects.Contents.length).equal(1);
+        done();
+      });
     });
   });
 
   it('should list objects in a bucket filtered by a delimiter', function (done) {
-    s3Client.listObjects({'Bucket': buckets[1], Delimiter: '/'}, function (err, objects) {
-      if (err) {
-        return done(err);
-      }
-      should(objects.Contents.length).equal(6);
-      should.exist(_.find(objects.CommonPrefixes, {'Prefix': 'key/'}));
-      done();
+    var testObjects = ['akey1', 'akey2', 'akey3', 'key/key1', 'key1', 'key2', 'key3'];
+    async.eachSeries(testObjects, function (testObject, callback) {
+      var params = {Bucket: buckets[1], Key: testObject, Body: 'Hello!'};
+      s3Client.putObject(params, callback);
+    }, function () {
+      s3Client.listObjects({'Bucket': buckets[1], Delimiter: '/'}, function (err, objects) {
+        if (err) {
+          return done(err);
+        }
+        should(objects.Contents.length).equal(6);
+        should.exist(_.find(objects.CommonPrefixes, {'Prefix': 'key/'}));
+        done();
+      });
     });
   });
 
@@ -674,6 +782,7 @@ describe('S3rver Tests', function () {
   });
 
   it('should generate a few thousand small objects', function (done) {
+    this.timeout(15000)
     var testObjects = [];
     for (var i = 1; i <= 2000; i++) {
       testObjects.push({Bucket: buckets[2], Key: 'key' + i, Body: 'Hello!'});
@@ -690,48 +799,60 @@ describe('S3rver Tests', function () {
   });
 
   it('should return one thousand small objects', function (done) {
-    s3Client.listObjects({'Bucket': buckets[2]}, function (err, objects) {
-      if (err) {
-        return done(err);
-      }
-      should(objects.Contents.length).equal(1000);
-      done();
+    this.timeout(15000)    
+    generateTestObjects(buckets[2], 2000, function () {
+      s3Client.listObjects({'Bucket': buckets[2]}, function (err, objects) {
+        if (err) {
+          return done(err);
+        }
+        should(objects.Contents.length).equal(1000);
+        done();
+      });
     });
   });
 
   it('should return 500 small objects', function (done) {
-    s3Client.listObjects({'Bucket': buckets[2], MaxKeys: 500}, function (err, objects) {
-      if (err) {
-        return done(err);
-      }
-      should(objects.Contents.length).equal(500);
-      done();
+    this.timeout(15000)
+    generateTestObjects(buckets[2], 1000, function () {
+      s3Client.listObjects({'Bucket': buckets[2], MaxKeys: 500}, function (err, objects) {
+        if (err) {
+          return done(err);
+        }
+        should(objects.Contents.length).equal(500);
+        done();
+      });
     });
   });
 
   it('should delete 500 small objects', function (done) {
-    var testObjects = [];
-    for (var i = 1; i <= 500; i++) {
-      testObjects.push({Bucket: buckets[2], Key: 'key' + i});
-    }
-    async.eachSeries(testObjects, function (testObject, callback) {
-      s3Client.deleteObject(testObject, callback);
-    }, done);
+    this.timeout(15000)
+    generateTestObjects(buckets[2], 500, function () {
+      var testObjects = [];
+      for (var i = 1; i <= 500; i++) {
+        testObjects.push({Bucket: buckets[2], Key: 'key' + i});
+      }
+      async.eachSeries(testObjects, function (testObject, callback) {
+        s3Client.deleteObject(testObject, callback);
+      }, done);
+    });
   });
 
   it('should delete 500 small objects with deleteObjects', function (done) {
-    var deleteObj = {Objects: []};
-    for (var i = 501; i <= 1000; i++) {
-      deleteObj.Objects.push({Key: 'key' + i});
-    }
-    s3Client.deleteObjects({Bucket: buckets[2], Delete: deleteObj}, function (err, resp) {
-      if (err) {
-        return done(err);
+    this.timeout(15000)
+    generateTestObjects(buckets[2], 500, function () {
+      var deleteObj = {Objects: []};
+      for (var i = 501; i <= 1000; i++) {
+        deleteObj.Objects.push({Key: 'key' + i});
       }
-      should.exist(resp.Deleted);
-      should(resp.Deleted).have.length(500);
-      should(resp.Deleted).containEql({Key: 'key567'});
-      done();
+      s3Client.deleteObjects({Bucket: buckets[2], Delete: deleteObj}, function (err, resp) {
+        if (err) {
+          return done(err);
+        }
+        should.exist(resp.Deleted);
+        should(resp.Deleted).have.length(500);
+        should(resp.Deleted).containEql({Key: 'key567'});
+        done();
+      });
     });
   });
 
@@ -818,81 +939,97 @@ describe('S3rver Tests with Static Web Hosting', function () {
   });
 
   it('should upload a html page to / path', function (done) {
-    var params = {Bucket: 'site', Key: 'index.html', Body: '<html><body>Hello</body></html>'};
-    s3Client.putObject(params, function (err, data) {
-      /[a-fA-F0-9]{32}/.test(data.ETag).should.equal(true);
-      if (err) {
-        return done(err);
-      }
-      done();
+    s3Client.createBucket({Bucket: 'site'}, function () {
+      var params = {Bucket: 'site', Key: 'index.html', Body: '<html><body>Hello</body></html>'};
+      s3Client.putObject(params, function (err, data) {
+        if (err) return done(err);
+        /[a-fA-F0-9]{32}/.test(data.ETag).should.equal(true);
+        if (err) {
+          return done(err);
+        }
+        done();
+      });
     });
   });
 
   it('should upload a html page to a directory path', function (done) {
-    var params = {Bucket: 'site', Key: 'page/index.html', Body: '<html><body>Hello</body></html>'};
-    s3Client.putObject(params, function (err, data) {
-      /[a-fA-F0-9]{32}/.test(data.ETag).should.equal(true);
-      if (err) {
-        return done(err);
-      }
-      done();
+    s3Client.createBucket({Bucket: 'site'}, function () {
+      var params = {Bucket: 'site', Key: 'page/index.html', Body: '<html><body>Hello</body></html>'};
+      s3Client.putObject(params, function (err, data) {
+        /[a-fA-F0-9]{32}/.test(data.ETag).should.equal(true);
+        if (err) {
+          return done(err);
+        }
+        done();
+      });
     });
   });
 
   it('should get an index page at / path', function (done) {
-    request('http://localhost:5694/site/', function (error, response, body) {
-      if (error) {
-        return done(error);
-      }
-
-      if (response.statusCode !== 200) {
-        return done(new Error('Invalid status: ' + response.statusCode));
-      }
-
-      if (body !== '<html><body>Hello</body></html>') {
-        return done(new Error('Invalid Content: ' + body));
-      }
-
-      done();
+    s3Client.createBucket({Bucket: 'site'}, function () {
+      var params = {Bucket: 'site', Key: 'index.html', Body: '<html><body>Hello</body></html>'};
+      s3Client.putObject(params, function (err, data) {
+        request('http://localhost:5694/site/', function (error, response, body) {
+          if (error) {
+            return done(error);
+          }
+    
+          if (response.statusCode !== 200) {
+            return done(new Error('Invalid status: ' + response.statusCode));
+          }
+    
+          if (body !== '<html><body>Hello</body></html>') {
+            return done(new Error('Invalid Content: ' + body));
+          }
+    
+          done();
+        });
+      });
     });
   });
 
   it('should get an index page at /page/ path', function (done) {
-    request('http://localhost:5694/site/page/', function (error, response, body) {
-      if (error) {
-        return done(error);
-      }
+    s3Client.createBucket({Bucket: 'site'}, function () {
+      var params = {Bucket: 'site', Key: 'page/index.html', Body: '<html><body>Hello</body></html>'};
+      s3Client.putObject(params, function () {
+        request('http://localhost:5694/site/page/', function (error, response, body) {
+          if (error) {
+            return done(error);
+          }
 
-      if (response.statusCode !== 200) {
-        return done(new Error('Invalid status: ' + response.statusCode));
-      }
+          if (response.statusCode !== 200) {
+            return done(new Error('Invalid status: ' + response.statusCode));
+          }
 
-      if (body !== '<html><body>Hello</body></html>') {
-        return done(new Error('Invalid Content: ' + body));
-      }
+          if (body !== '<html><body>Hello</body></html>') {
+            return done(new Error('Invalid Content: ' + body));
+          }
 
-      done();
+          done();
+        });
+      });
     });
   });
 
   it('should get a 404 error page', function (done) {
-    request('http://localhost:5694/site/page/not-exists', function (error, response) {
-      if (error) {
-        return done(error);
-      }
+    s3Client.createBucket({Bucket: 'site'}, function () {
+      request('http://localhost:5694/site/page/not-exists', function (error, response) {
+        if (error) {
+          return done(error);
+        }
 
-      if (response.statusCode !== 404) {
-        return done(new Error('Invalid status: ' + response.statusCode));
-      }
+        if (response.statusCode !== 404) {
+          return done(new Error('Invalid status: ' + response.statusCode));
+        }
 
-      if (response.headers['content-type'] !== 'text/html') {
-        return done(new Error('Invalid ContentType: ' + response.headers['content-type']));
-      }
+        if (response.headers['content-type'] !== 'text/html') {
+          return done(new Error('Invalid ContentType: ' + response.headers['content-type']));
+        }
 
-      done();
+        done();
+      });
     });
   });
-
 });
 
 describe('S3rver Class Tests', function() {
