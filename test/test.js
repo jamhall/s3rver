@@ -17,7 +17,7 @@ describe('S3rver Tests', function () {
   var s3Client;
   var buckets = ['bucket1', 'bucket2', 'bucket3', 'bucket4', 'bucket5', 'bucket6'];
   var s3rver;
-  before(function (done) {
+  beforeEach(function (done) {
     s3rver = new S3rver({
       port: 4569,
       hostname: 'localhost',
@@ -60,7 +60,7 @@ describe('S3rver Tests', function () {
       });
   });
 
-  after(function (done) {
+  afterEach(function (done) {
     s3rver.close(done);
   });
 
@@ -131,11 +131,16 @@ describe('S3rver Tests', function () {
   });
 
   it('should not fetch the deleted bucket', function (done) {
-    s3Client.listObjects({Bucket: buckets[4]}, function (err) {
-      err.code.should.equal('NoSuchBucket');
-      err.statusCode.should.equal(404);
-      done();
-    });
+    s3Client.deleteBucket({Bucket: buckets[4]}, function (err) {
+      if (err) {
+        return done(err);
+      }
+      s3Client.listObjects({Bucket: buckets[4]}, function (err) {
+        err.code.should.equal('NoSuchBucket');
+        err.statusCode.should.equal(404);
+        done();        
+      })
+    })
   });
 
   it('should list no objects for a bucket', function (done) {
@@ -175,12 +180,23 @@ describe('S3rver Tests', function () {
   });
 
   it('should return a text object with some custom metadata', function (done) {
-    s3Client.getObject({Bucket: buckets[0], Key: 'textmetadata'}, function (err, object) {
+    var params = {
+      Bucket: buckets[0], Key: 'textmetadata', Body: 'Hello!', Metadata: {
+        someKey: 'value'
+      }
+    };
+    s3Client.putObject(params, function (err, data) {
+      /"[a-fA-F0-9]{32}"/.test(data.ETag).should.equal(true);
       if (err) {
         return done(err);
       }
-      object.Metadata.somekey.should.equal('value');
-      done();
+      s3Client.getObject({Bucket: buckets[0], Key: 'textmetadata'}, function (err, object) {
+        if (err) {
+          return done(err);
+        }
+        object.Metadata.somekey.should.equal('value');
+        done();
+      });
     });
   });
 
@@ -236,18 +252,37 @@ describe('S3rver Tests', function () {
   });
 
   it('should copy an image object into another bucket', function (done) {
-    var params = {
-      Bucket: buckets[3],
-      Key: 'image/jamie',
-      CopySource: '/' + buckets[0] + '/image'
-    };
-    s3Client.copyObject(params, function (err, data) {
+    var file = path.join(__dirname, 'resources/image.jpg');
+    fs.readFile(file, function (err, data) {
       if (err) {
         return done(err);
       }
-      /"[a-fA-F0-9]{32}"/.test(data.ETag).should.equal(true);
-      moment(data.LastModified).isValid().should.equal(true);
-      done();
+      var params = {
+        Bucket: buckets[0],
+        Key: 'image',
+        Body: new Buffer(data),
+        ContentType: 'image/jpeg',
+        ContentLength: data.length
+      };
+      s3Client.putObject(params, function (err, data) {
+        /"[a-fA-F0-9]{32}"/.test(data.ETag).should.equal(true);
+        if (err) {
+          return done(err);
+        }
+        var params = {
+          Bucket: buckets[3],
+          Key: 'image/jamie',
+          CopySource: '/' + buckets[0] + '/image'
+        };
+        s3Client.copyObject(params, function (err, data) {
+          if (err) {
+            return done(err);
+          }
+          /"[a-fA-F0-9]{32}"/.test(data.ETag).should.equal(true);
+          moment(data.LastModified).isValid().should.equal(true);
+          done();
+        });
+      });
     });
   });
 
@@ -735,7 +770,7 @@ describe('S3rver Tests', function () {
 describe('S3rver Tests with Static Web Hosting', function () {
   var s3Client;
   var s3rver;
-  before(function (done) {
+  beforeEach(function (done) {
     s3rver = new S3rver({
       port: 5694,
       hostname: 'localhost',
@@ -769,7 +804,7 @@ describe('S3rver Tests with Static Web Hosting', function () {
       });
   });
 
-  after(function (done) {
+  afterEach(function (done) {
     s3rver.close(done);
   });
 
