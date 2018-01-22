@@ -1050,14 +1050,15 @@ describe('S3rver Tests with Static Web Hosting', function () {
 });
 
 it('Cleans up after close if the removeBucketsOnClose setting is true', function (done) {
-  recreateDirectory('/tmp/s3rver_test_directory1');
+  var directory = '/tmp/s3rver_test_directory';
+  recreateDirectory(directory);
   var s3rver = new S3rver({
     port: 4569,
     hostname: 'localhost',
     silent: true,
     indexDocument: '',
     errorDocument: '',
-    directory: '/tmp/s3rver_test_directory1',
+    directory: directory,
     removeBucketsOnClose: true
   }).run(function () {
     var config = {
@@ -1076,10 +1077,11 @@ it('Cleans up after close if the removeBucketsOnClose setting is true', function
         if (err) return done(err);
         s3rver.close(function (err) {
           if (err) return done(err);
-          fs.exists('/tmp/s3rver_test_directory1', function (exists) {
-            should(exists).equal(false);
-            done();
-          });
+          var exists = fs.existsSync(directory);
+          should(exists).equal(true);
+          var files = fs.readdirSync(directory);
+          should(files.length).equal(0)
+          done();
         });
       });
     });
@@ -1087,14 +1089,15 @@ it('Cleans up after close if the removeBucketsOnClose setting is true', function
 });
 
 it('Does not clean up after close if the removeBucketsOnClose setting is false', function (done) {
-  recreateDirectory('/tmp/s3rver_test_directory2');
+  var directory = '/tmp/s3rver_test_directory';
+  recreateDirectory(directory);
   var s3rver = new S3rver({
     port: 4569,
     hostname: 'localhost',
     silent: true,
     indexDocument: '',
     errorDocument: '',
-    directory: '/tmp/s3rver_test_directory2',
+    directory: directory,
     removeBucketsOnClose: false
   }).run(function () {
     var config = {
@@ -1113,10 +1116,11 @@ it('Does not clean up after close if the removeBucketsOnClose setting is false',
         if (err) return done(err);
         s3rver.close(function (err) {
           if (err) return done(err);
-          fs.exists('/tmp/s3rver_test_directory1', function (exists) {
-            should(exists).equal(false);
-            done();
-          });
+          var exists = fs.existsSync(directory);
+          should(exists).equal(true);
+          var files = fs.readdirSync(directory);
+          should(files.length).equal(1)
+          done();
         });
       });
     });
@@ -1124,14 +1128,15 @@ it('Does not clean up after close if the removeBucketsOnClose setting is false',
 });
 
 it('Does not clean up after close if the removeBucketsOnClose setting is not set', function (done) {
-  recreateDirectory('/tmp/s3rver_test_directory3');
+  var directory = '/tmp/s3rver_test_directory';
+  recreateDirectory(directory);
   var s3rver = new S3rver({
     port: 4569,
     hostname: 'localhost',
     silent: true,
     indexDocument: '',
     errorDocument: '',
-    directory: '/tmp/s3rver_test_directory3'
+    directory: directory
   }).run(function () {
     var config = {
       accessKeyId: '123',
@@ -1149,10 +1154,11 @@ it('Does not clean up after close if the removeBucketsOnClose setting is not set
         if (err) return done(err);
         s3rver.close(function (err) {
           if (err) return done(err);
-          fs.exists('/tmp/s3rver_test_directory1', function (exists) {
-            should(exists).equal(false);
-            done();
-          });
+          var exists = fs.existsSync(directory);
+          should(exists).equal(true);
+          var files = fs.readdirSync(directory);
+          should(files.length).equal(1)
+          done();
         });
       });
     });
