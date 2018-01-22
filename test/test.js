@@ -1178,7 +1178,7 @@ describe('S3rver Class Tests', function() {
     s3rver.options.should.have.property('cert')
     s3rver.options.key.should.be.an.instanceOf(Buffer)
     s3rver.options.cert.should.be.an.instanceOf(Buffer)
-    s3rver.options.removeBucketsOnClose.should,have.property('removeBucketsOnClose', false)
+    s3rver.options.should.have.property('removeBucketsOnClose', true)
   })
 
 });
