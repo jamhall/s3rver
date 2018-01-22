@@ -13,6 +13,13 @@ var S3rver = require('../lib');
 var util = require('util');
 var request = require('request');
 
+function recreateDirectory(path) {
+  try {
+    fs.removeSync(path);
+  } catch (err) {}
+  fs.ensureDirSync(path);
+}
+
 function generateTestObjects(s3Client, bucket, amount, callback) {
   var testObjects = _.times(amount, function (i) {
     return {
@@ -56,21 +63,11 @@ describe('S3rver Tests', function () {
         /**
          * Remove if exists and recreate the temporary directory
          */
-        fs.remove(directory, function (err) {
-          if (err) {
-            return done(err);
-          }
-          fs.mkdirs(directory, function (err) {
-            if (err) {
-              return done(err);
-            }
-
-            // Create 6 buckets
-            async.eachSeries(buckets, function (bucket, callback) {
-              s3Client.createBucket({Bucket: bucket}, callback);
-            }, done);
-          });
-        });
+        recreateDirectory(directory);
+        // Create 6 buckets
+        async.eachSeries(buckets, function (bucket, callback) {
+          s3Client.createBucket({Bucket: bucket}, callback);
+        }, done);
       });
   });
 
@@ -1053,29 +1050,32 @@ describe('S3rver Tests with Static Web Hosting', function () {
 });
 
 it('Cleans up after close if the removeBucketsOnClose setting is true', function (done) {
-  fs.mkdirs('/tmp/s3rver_test_directory1', function () {
-    var s3rver = new S3rver({
-      port: 4569,
-      hostname: 'localhost',
-      silent: true,
-      indexDocument: '',
-      errorDocument: '',
-      directory: '/tmp/s3rver_test_directory1',
-      removeBucketsOnClose: true
-    }).run(function () {
-      var config = {
-        accessKeyId: '123',
-        secretAccessKey: 'abc',
-        endpoint: util.format('%s:%d', 'localhost', 4569),
-        sslEnabled: false,
-        s3ForcePathStyle: true
-      };
-      AWS.config.update(config);
-      var s3Client = new AWS.S3();
-      s3Client.endpoint = new AWS.Endpoint(config.endpoint);
-      s3Client.createBucket({Bucket: 'foobars'});
-      generateTestObjects(s3Client, 'foobars', 10, function () {
-        s3rver.close(function () {
+  recreateDirectory('/tmp/s3rver_test_directory1');
+  var s3rver = new S3rver({
+    port: 4569,
+    hostname: 'localhost',
+    silent: true,
+    indexDocument: '',
+    errorDocument: '',
+    directory: '/tmp/s3rver_test_directory1',
+    removeBucketsOnClose: true
+  }).run(function () {
+    var config = {
+      accessKeyId: '123',
+      secretAccessKey: 'abc',
+      endpoint: util.format('%s:%d', 'localhost', 4569),
+      sslEnabled: false,
+      s3ForcePathStyle: true
+    };
+    AWS.config.update(config);
+    var s3Client = new AWS.S3();
+    s3Client.endpoint = new AWS.Endpoint(config.endpoint);
+    s3Client.createBucket({Bucket: 'foobars'}, function (err) {
+      if (err) return done(err);
+      generateTestObjects(s3Client, 'foobars', 10, function (err) {
+        if (err) return done(err);
+        s3rver.close(function (err) {
+          if (err) return done(err);
           fs.exists('/tmp/s3rver_test_directory1', function (exists) {
             should(exists).equal(false);
             done();
@@ -1087,31 +1087,34 @@ it('Cleans up after close if the removeBucketsOnClose setting is true', function
 });
 
 it('Does not clean up after close if the removeBucketsOnClose setting is false', function (done) {
-  fs.mkdirs('/tmp/s3rver_test_directory2', function () {
-    var s3rver = new S3rver({
-      port: 4569,
-      hostname: 'localhost',
-      silent: true,
-      indexDocument: '',
-      errorDocument: '',
-      directory: '/tmp/s3rver_test_directory2',
-      removeBucketsOnClose: false
-    }).run(function () {
-      var config = {
-        accessKeyId: '123',
-        secretAccessKey: 'abc',
-        endpoint: util.format('%s:%d', 'localhost', 4569),
-        sslEnabled: false,
-        s3ForcePathStyle: true
-      };
-      AWS.config.update(config);
-      var s3Client = new AWS.S3();
-      s3Client.endpoint = new AWS.Endpoint(config.endpoint);
-      s3Client.createBucket({Bucket: 'foobars'});
-      generateTestObjects(s3Client, 'foobars', 10, function () {
-        s3rver.close(function () {
-          fs.exists('/tmp/s3rver_test_directory2', function (exists) {
-            should(exists).equal(true);
+  recreateDirectory('/tmp/s3rver_test_directory2');
+  var s3rver = new S3rver({
+    port: 4569,
+    hostname: 'localhost',
+    silent: true,
+    indexDocument: '',
+    errorDocument: '',
+    directory: '/tmp/s3rver_test_directory2',
+    removeBucketsOnClose: false
+  }).run(function () {
+    var config = {
+      accessKeyId: '123',
+      secretAccessKey: 'abc',
+      endpoint: util.format('%s:%d', 'localhost', 4569),
+      sslEnabled: false,
+      s3ForcePathStyle: true
+    };
+    AWS.config.update(config);
+    var s3Client = new AWS.S3();
+    s3Client.endpoint = new AWS.Endpoint(config.endpoint);
+    s3Client.createBucket({Bucket: 'foobars'}, function (err) {
+      if (err) return done(err);
+      generateTestObjects(s3Client, 'foobars', 10, function (err) {
+        if (err) return done(err);
+        s3rver.close(function (err) {
+          if (err) return done(err);
+          fs.exists('/tmp/s3rver_test_directory1', function (exists) {
+            should(exists).equal(false);
             done();
           });
         });
@@ -1121,31 +1124,33 @@ it('Does not clean up after close if the removeBucketsOnClose setting is false',
 });
 
 it('Does not clean up after close if the removeBucketsOnClose setting is not set', function (done) {
-  fs.mkdirs('/tmp/s3rver_test_directory3', function () {
-    var s3rver = new S3rver({
-      port: 4569,
-      hostname: 'localhost',
-      silent: true,
-      indexDocument: '',
-      errorDocument: '',
-      directory: '/tmp/s3rver_test_directory3',
-      removeBucketsOnClose: false
-    }).run(function () {
-      var config = {
-        accessKeyId: '123',
-        secretAccessKey: 'abc',
-        endpoint: util.format('%s:%d', 'localhost', 4569),
-        sslEnabled: false,
-        s3ForcePathStyle: true
-      };
-      AWS.config.update(config);
-      var s3Client = new AWS.S3();
-      s3Client.endpoint = new AWS.Endpoint(config.endpoint);
-      s3Client.createBucket({Bucket: 'foobars'});
-      generateTestObjects(s3Client, 'foobars', 10, function () {
-        s3rver.close(function () {
-          fs.exists('/tmp/s3rver_test_directory3', function (exists) {
-            should(exists).equal(true);
+  recreateDirectory('/tmp/s3rver_test_directory3');
+  var s3rver = new S3rver({
+    port: 4569,
+    hostname: 'localhost',
+    silent: true,
+    indexDocument: '',
+    errorDocument: '',
+    directory: '/tmp/s3rver_test_directory3'
+  }).run(function () {
+    var config = {
+      accessKeyId: '123',
+      secretAccessKey: 'abc',
+      endpoint: util.format('%s:%d', 'localhost', 4569),
+      sslEnabled: false,
+      s3ForcePathStyle: true
+    };
+    AWS.config.update(config);
+    var s3Client = new AWS.S3();
+    s3Client.endpoint = new AWS.Endpoint(config.endpoint);
+    s3Client.createBucket({Bucket: 'foobars'}, function (err) {
+      if (err) return done(err);
+      generateTestObjects(s3Client, 'foobars', 10, function (err) {
+        if (err) return done(err);
+        s3rver.close(function (err) {
+          if (err) return done(err);
+          fs.exists('/tmp/s3rver_test_directory1', function (exists) {
+            should(exists).equal(false);
             done();
           });
         });
