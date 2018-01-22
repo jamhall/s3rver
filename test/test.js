@@ -1053,31 +1053,33 @@ describe('S3rver Tests with Static Web Hosting', function () {
 });
 
 it('Cleans up after close if the removeBucketsOnClose setting is true', function (done) {
-  var s3rver = new S3rver({
-    port: 4569,
-    hostname: 'localhost',
-    silent: true,
-    indexDocument: '',
-    errorDocument: '',
-    directory: '/tmp/s3rver_test_directory1',
-    removeBucketsOnClose: true
-  }).run(function () {
-    var config = {
-      accessKeyId: '123',
-      secretAccessKey: 'abc',
-      endpoint: util.format('%s:%d', 'localhost', 4569),
-      sslEnabled: false,
-      s3ForcePathStyle: true
-    };
-    AWS.config.update(config);
-    var s3Client = new AWS.S3();
-    s3Client.endpoint = new AWS.Endpoint(config.endpoint);
-    s3Client.createBucket({Bucket: 'foobars'});
-    generateTestObjects(s3Client, 'foobars', 10, function () {
-      s3rver.close(function () {
-        fs.exists('/tmp/s3rver_test_directory1', function (exists) {
-          should(exists).equal(false);
-          done();
+  fs.mkdirs('/tmp/s3rver_test_directory1', function () {
+    var s3rver = new S3rver({
+      port: 4569,
+      hostname: 'localhost',
+      silent: true,
+      indexDocument: '',
+      errorDocument: '',
+      directory: '/tmp/s3rver_test_directory1',
+      removeBucketsOnClose: true
+    }).run(function () {
+      var config = {
+        accessKeyId: '123',
+        secretAccessKey: 'abc',
+        endpoint: util.format('%s:%d', 'localhost', 4569),
+        sslEnabled: false,
+        s3ForcePathStyle: true
+      };
+      AWS.config.update(config);
+      var s3Client = new AWS.S3();
+      s3Client.endpoint = new AWS.Endpoint(config.endpoint);
+      s3Client.createBucket({Bucket: 'foobars'});
+      generateTestObjects(s3Client, 'foobars', 10, function () {
+        s3rver.close(function () {
+          fs.exists('/tmp/s3rver_test_directory1', function (exists) {
+            should(exists).equal(false);
+            done();
+          });
         });
       });
     });
@@ -1085,31 +1087,33 @@ it('Cleans up after close if the removeBucketsOnClose setting is true', function
 });
 
 it('Does not clean up after close if the removeBucketsOnClose setting is false', function (done) {
-  var s3rver = new S3rver({
-    port: 4569,
-    hostname: 'localhost',
-    silent: true,
-    indexDocument: '',
-    errorDocument: '',
-    directory: '/tmp/s3rver_test_directory2',
-    removeBucketsOnClose: false
-  }).run(function () {
-    var config = {
-      accessKeyId: '123',
-      secretAccessKey: 'abc',
-      endpoint: util.format('%s:%d', 'localhost', 4569),
-      sslEnabled: false,
-      s3ForcePathStyle: true
-    };
-    AWS.config.update(config);
-    var s3Client = new AWS.S3();
-    s3Client.endpoint = new AWS.Endpoint(config.endpoint);
-    s3Client.createBucket({Bucket: 'foobars'});
-    generateTestObjects(s3Client, 'foobars', 10, function () {
-      s3rver.close(function () {
-        fs.exists('/tmp/s3rver_test_directory2', function (exists) {
-          should(exists).equal(true);
-          done();
+  fs.mkdirs('/tmp/s3rver_test_directory2', function () {
+    var s3rver = new S3rver({
+      port: 4569,
+      hostname: 'localhost',
+      silent: true,
+      indexDocument: '',
+      errorDocument: '',
+      directory: '/tmp/s3rver_test_directory2',
+      removeBucketsOnClose: false
+    }).run(function () {
+      var config = {
+        accessKeyId: '123',
+        secretAccessKey: 'abc',
+        endpoint: util.format('%s:%d', 'localhost', 4569),
+        sslEnabled: false,
+        s3ForcePathStyle: true
+      };
+      AWS.config.update(config);
+      var s3Client = new AWS.S3();
+      s3Client.endpoint = new AWS.Endpoint(config.endpoint);
+      s3Client.createBucket({Bucket: 'foobars'});
+      generateTestObjects(s3Client, 'foobars', 10, function () {
+        s3rver.close(function () {
+          fs.exists('/tmp/s3rver_test_directory2', function (exists) {
+            should(exists).equal(true);
+            done();
+          });
         });
       });
     });
@@ -1117,31 +1121,33 @@ it('Does not clean up after close if the removeBucketsOnClose setting is false',
 });
 
 it('Does not clean up after close if the removeBucketsOnClose setting is not set', function (done) {
-  var s3rver = new S3rver({
-    port: 4569,
-    hostname: 'localhost',
-    silent: true,
-    indexDocument: '',
-    errorDocument: '',
-    directory: '/tmp/s3rver_test_directory3',
-    removeBucketsOnClose: false
-  }).run(function () {
-    var config = {
-      accessKeyId: '123',
-      secretAccessKey: 'abc',
-      endpoint: util.format('%s:%d', 'localhost', 4569),
-      sslEnabled: false,
-      s3ForcePathStyle: true
-    };
-    AWS.config.update(config);
-    var s3Client = new AWS.S3();
-    s3Client.endpoint = new AWS.Endpoint(config.endpoint);
-    s3Client.createBucket({Bucket: 'foobars'});
-    generateTestObjects(s3Client, 'foobars', 10, function () {
-      s3rver.close(function () {
-        fs.exists('/tmp/s3rver_test_directory3', function (exists) {
-          should(exists).equal(true);
-          done();
+  fs.mkdirs('/tmp/s3rver_test_directory3', function () {
+    var s3rver = new S3rver({
+      port: 4569,
+      hostname: 'localhost',
+      silent: true,
+      indexDocument: '',
+      errorDocument: '',
+      directory: '/tmp/s3rver_test_directory3',
+      removeBucketsOnClose: false
+    }).run(function () {
+      var config = {
+        accessKeyId: '123',
+        secretAccessKey: 'abc',
+        endpoint: util.format('%s:%d', 'localhost', 4569),
+        sslEnabled: false,
+        s3ForcePathStyle: true
+      };
+      AWS.config.update(config);
+      var s3Client = new AWS.S3();
+      s3Client.endpoint = new AWS.Endpoint(config.endpoint);
+      s3Client.createBucket({Bucket: 'foobars'});
+      generateTestObjects(s3Client, 'foobars', 10, function () {
+        s3rver.close(function () {
+          fs.exists('/tmp/s3rver_test_directory3', function (exists) {
+            should(exists).equal(true);
+            done();
+          });
         });
       });
     });
@@ -1157,7 +1163,8 @@ describe('S3rver Class Tests', function() {
       errorDocument: '',
       directory: '/tmp/s3rver_test_directory',
       key: new Buffer([1, 2, 3]),
-      cert: new Buffer([1, 2, 3])
+      cert: new Buffer([1, 2, 3]),
+      removeBucketsOnClose: true
     })
 
     s3rver.options.should.have.property('hostname', 'testhost')
@@ -1171,6 +1178,7 @@ describe('S3rver Class Tests', function() {
     s3rver.options.should.have.property('cert')
     s3rver.options.key.should.be.an.instanceOf(Buffer)
     s3rver.options.cert.should.be.an.instanceOf(Buffer)
+    s3rver.options.removeBucketsOnClose.should,have.property('removeBucketsOnClose', false)
   })
 
 });
