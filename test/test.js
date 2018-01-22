@@ -13,23 +13,23 @@ var S3rver = require('../lib');
 var util = require('util');
 var request = require('request');
 
+function generateTestObjects(s3Client, bucket, amount, callback) {
+  var testObjects = _.times(amount, function (i) {
+    return {
+      Bucket: bucket,
+      Key: 'key' + i,
+      Body: 'Hello!'
+    }
+  });
+  async.eachSeries(testObjects, function (testObject, callback) {
+    s3Client.putObject(testObject, callback);
+  }, callback)
+}
+
 describe('S3rver Tests', function () {
   var s3Client;
   var buckets = ['bucket1', 'bucket2', 'bucket3', 'bucket4', 'bucket5', 'bucket6'];
   var s3rver;
-
-  function generateTestObjects(bucket, amount, callback) {
-    var testObjects = _.times(amount, function (i) {
-      return {
-        Bucket: bucket,
-        Key: 'key' + i,
-        Body: 'Hello!'
-      }
-    });
-    async.eachSeries(testObjects, function (testObject, callback) {
-      s3Client.putObject(testObject, callback);
-    }, callback)
-  }
 
   beforeEach(function (done) {
     s3rver = new S3rver({
@@ -575,7 +575,7 @@ describe('S3rver Tests', function () {
   });
 
   it('should fail to delete a bucket because it is not empty', function (done) {
-    generateTestObjects(buckets[0], 20, function () {
+    generateTestObjects(s3Client, buckets[0], 20, function () {
       s3Client.deleteBucket({Bucket: buckets[0]}, function (err) {
         err.code.should.equal('BucketNotEmpty');
         err.statusCode.should.equal(409);
@@ -820,7 +820,7 @@ describe('S3rver Tests', function () {
 
   it('should return one thousand small objects', function (done) {
     this.timeout(15000)    
-    generateTestObjects(buckets[2], 2000, function () {
+    generateTestObjects(s3Client, buckets[2], 2000, function () {
       s3Client.listObjects({'Bucket': buckets[2]}, function (err, objects) {
         if (err) {
           return done(err);
@@ -833,7 +833,7 @@ describe('S3rver Tests', function () {
 
   it('should return 500 small objects', function (done) {
     this.timeout(15000)
-    generateTestObjects(buckets[2], 1000, function () {
+    generateTestObjects(s3Client, buckets[2], 1000, function () {
       s3Client.listObjects({'Bucket': buckets[2], MaxKeys: 500}, function (err, objects) {
         if (err) {
           return done(err);
@@ -846,7 +846,7 @@ describe('S3rver Tests', function () {
 
   it('should delete 500 small objects', function (done) {
     this.timeout(15000)
-    generateTestObjects(buckets[2], 500, function () {
+    generateTestObjects(s3Client, buckets[2], 500, function () {
       var testObjects = [];
       for (var i = 1; i <= 500; i++) {
         testObjects.push({Bucket: buckets[2], Key: 'key' + i});
@@ -859,7 +859,7 @@ describe('S3rver Tests', function () {
 
   it('should delete 500 small objects with deleteObjects', function (done) {
     this.timeout(15000)
-    generateTestObjects(buckets[2], 500, function () {
+    generateTestObjects(s3Client, buckets[2], 500, function () {
       var deleteObj = {Objects: []};
       for (var i = 501; i <= 1000; i++) {
         deleteObj.Objects.push({Key: 'key' + i});
@@ -1047,6 +1047,102 @@ describe('S3rver Tests with Static Web Hosting', function () {
         }
 
         done();
+      });
+    });
+  });
+});
+
+it('Cleans up after close if the removeBucketsOnClose setting is true', function (done) {
+  var s3rver = new S3rver({
+    port: 4569,
+    hostname: 'localhost',
+    silent: true,
+    indexDocument: '',
+    errorDocument: '',
+    directory: '/tmp/s3rver_test_directory1',
+    removeBucketsOnClose: true
+  }).run(function () {
+    var config = {
+      accessKeyId: '123',
+      secretAccessKey: 'abc',
+      endpoint: util.format('%s:%d', 'localhost', 4569),
+      sslEnabled: false,
+      s3ForcePathStyle: true
+    };
+    AWS.config.update(config);
+    var s3Client = new AWS.S3();
+    s3Client.endpoint = new AWS.Endpoint(config.endpoint);
+    s3Client.createBucket({Bucket: 'foobars'});
+    generateTestObjects(s3Client, 'foobars', 10, function () {
+      s3rver.close(function () {
+        fs.exists('/tmp/s3rver_test_directory1', function (exists) {
+          should(exists).equal(false);
+          done();
+        });
+      });
+    });
+  });
+});
+
+it('Does not clean up after close if the removeBucketsOnClose setting is false', function (done) {
+  var s3rver = new S3rver({
+    port: 4569,
+    hostname: 'localhost',
+    silent: true,
+    indexDocument: '',
+    errorDocument: '',
+    directory: '/tmp/s3rver_test_directory2',
+    removeBucketsOnClose: false
+  }).run(function () {
+    var config = {
+      accessKeyId: '123',
+      secretAccessKey: 'abc',
+      endpoint: util.format('%s:%d', 'localhost', 4569),
+      sslEnabled: false,
+      s3ForcePathStyle: true
+    };
+    AWS.config.update(config);
+    var s3Client = new AWS.S3();
+    s3Client.endpoint = new AWS.Endpoint(config.endpoint);
+    s3Client.createBucket({Bucket: 'foobars'});
+    generateTestObjects(s3Client, 'foobars', 10, function () {
+      s3rver.close(function () {
+        fs.exists('/tmp/s3rver_test_directory2', function (exists) {
+          should(exists).equal(true);
+          done();
+        });
+      });
+    });
+  });
+});
+
+it('Does not clean up after close if the removeBucketsOnClose setting is not set', function (done) {
+  var s3rver = new S3rver({
+    port: 4569,
+    hostname: 'localhost',
+    silent: true,
+    indexDocument: '',
+    errorDocument: '',
+    directory: '/tmp/s3rver_test_directory3',
+    removeBucketsOnClose: false
+  }).run(function () {
+    var config = {
+      accessKeyId: '123',
+      secretAccessKey: 'abc',
+      endpoint: util.format('%s:%d', 'localhost', 4569),
+      sslEnabled: false,
+      s3ForcePathStyle: true
+    };
+    AWS.config.update(config);
+    var s3Client = new AWS.S3();
+    s3Client.endpoint = new AWS.Endpoint(config.endpoint);
+    s3Client.createBucket({Bucket: 'foobars'});
+    generateTestObjects(s3Client, 'foobars', 10, function () {
+      s3rver.close(function () {
+        fs.exists('/tmp/s3rver_test_directory3', function (exists) {
+          should(exists).equal(true);
+          done();
+        });
       });
     });
   });
