@@ -799,6 +799,7 @@ describe('S3rver Tests', function () {
   });
 
   it('should generate a few thousand small objects', function (done) {
+    this.timeout(0);    
     var testObjects = [];
     for (var i = 1; i <= 2000; i++) {
       testObjects.push({Bucket: buckets[2], Key: 'key' + i, Body: 'Hello!'});
@@ -815,6 +816,7 @@ describe('S3rver Tests', function () {
   });
 
   it('should return one thousand small objects', function (done) {
+    this.timeout(0);
     generateTestObjects(s3Client, buckets[2], 2000, function () {
       s3Client.listObjects({'Bucket': buckets[2]}, function (err, objects) {
         if (err) {
@@ -827,6 +829,7 @@ describe('S3rver Tests', function () {
   });
 
   it('should return 500 small objects', function (done) {
+    this.timeout(0);    
     generateTestObjects(s3Client, buckets[2], 1000, function () {
       s3Client.listObjects({'Bucket': buckets[2], MaxKeys: 500}, function (err, objects) {
         if (err) {
@@ -839,6 +842,7 @@ describe('S3rver Tests', function () {
   });
 
   it('should delete 500 small objects', function (done) {
+    this.timeout(0);        
     generateTestObjects(s3Client, buckets[2], 500, function () {
       var testObjects = [];
       for (var i = 1; i <= 500; i++) {
@@ -851,6 +855,7 @@ describe('S3rver Tests', function () {
   });
 
   it('should delete 500 small objects with deleteObjects', function (done) {
+    this.timeout(0);    
     generateTestObjects(s3Client, buckets[2], 500, function () {
       var deleteObj = {Objects: []};
       for (var i = 501; i <= 1000; i++) {
@@ -1157,6 +1162,38 @@ it('Does not clean up after close if the removeBucketsOnClose setting is not set
         });
       });
     });
+  });
+});
+
+it('Can delete a bucket that is empty after some key that includes a directory has been deleted', function (done) {
+  var directory = '/tmp/s3rver_test_directory';
+  recreateDirectory(directory);
+  var s3rver = new S3rver({
+    port: 4569,
+    hostname: 'localhost',
+    silent: true,
+    indexDocument: '',
+    errorDocument: '',
+    directory: directory,
+  }).run(function () {
+    var config = {
+      accessKeyId: '123',
+      secretAccessKey: 'abc',
+      endpoint: util.format('%s:%d', 'localhost', 4569),
+      sslEnabled: false,
+      s3ForcePathStyle: true
+    };
+    AWS.config.update(config);
+    var s3Client = new AWS.S3();
+    s3Client.endpoint = new AWS.Endpoint(config.endpoint);
+    var bucket = 'foobars';
+
+    s3Client.createBucket({Bucket: bucket}).promise()
+      .then(() => s3Client.putObject({ Bucket: bucket, Key: 'foo/foo.txt', Body: 'Hello!'}).promise())
+      .then(() => s3Client.deleteObject({ Bucket: bucket, Key: 'foo/foo.txt' }).promise())
+      .then(() => s3Client.deleteBucket({ Bucket: bucket }).promise())
+      .then(() => s3rver.close(done))
+      .catch(err => s3rver.close(() => done(err)));
   });
 });
 
