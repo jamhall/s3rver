@@ -799,7 +799,6 @@ describe('S3rver Tests', function () {
   });
 
   it('should generate a few thousand small objects', function (done) {
-    this.timeout(15000)
     var testObjects = [];
     for (var i = 1; i <= 2000; i++) {
       testObjects.push({Bucket: buckets[2], Key: 'key' + i, Body: 'Hello!'});
@@ -816,7 +815,6 @@ describe('S3rver Tests', function () {
   });
 
   it('should return one thousand small objects', function (done) {
-    this.timeout(15000)    
     generateTestObjects(s3Client, buckets[2], 2000, function () {
       s3Client.listObjects({'Bucket': buckets[2]}, function (err, objects) {
         if (err) {
@@ -829,7 +827,6 @@ describe('S3rver Tests', function () {
   });
 
   it('should return 500 small objects', function (done) {
-    this.timeout(15000)
     generateTestObjects(s3Client, buckets[2], 1000, function () {
       s3Client.listObjects({'Bucket': buckets[2], MaxKeys: 500}, function (err, objects) {
         if (err) {
@@ -842,7 +839,6 @@ describe('S3rver Tests', function () {
   });
 
   it('should delete 500 small objects', function (done) {
-    this.timeout(15000)
     generateTestObjects(s3Client, buckets[2], 500, function () {
       var testObjects = [];
       for (var i = 1; i <= 500; i++) {
@@ -855,7 +851,6 @@ describe('S3rver Tests', function () {
   });
 
   it('should delete 500 small objects with deleteObjects', function (done) {
-    this.timeout(15000)
     generateTestObjects(s3Client, buckets[2], 500, function () {
       var deleteObj = {Objects: []};
       for (var i = 501; i <= 1000; i++) {
