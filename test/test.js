@@ -1160,7 +1160,7 @@ it('Does not clean up after close if the removeBucketsOnClose setting is not set
   });
 });
 
-it('Can delete a bucket that is empty after some key that includes a directory is deleted', function (done) {
+it('Can delete a bucket that is empty after some key that includes a directory has been deleted', function (done) {
   var directory = '/tmp/s3rver_test_directory';
   recreateDirectory(directory);
   var s3rver = new S3rver({
