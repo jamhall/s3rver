@@ -1188,7 +1188,7 @@ it('Can delete a bucket that is empty after some key that includes a directory h
       .then(() => s3Client.deleteObject({ Bucket: bucket, Key: 'foo/foo.txt' }).promise())
       .then(() => s3Client.deleteBucket({ Bucket: bucket }).promise())
       .then(() => s3rver.close(done))
-      .catch(err => s3rver.close(() => done(err)))
+      .catch(err => s3rver.close(() => done(err)));
   });
 });
 
