@@ -1,10 +1,10 @@
 #!/usr/bin/env node
 'use strict';
-var pkg     = require('../package.json');
-var version = pkg.version;
-var program = require('commander');
-var fs      = require('fs-extra');
-var S3rver  = require('../lib');
+const pkg     = require('../package.json');
+const version = pkg.version;
+const program = require('commander');
+const fs      = require('fs-extra');
+const S3rver  = require('../lib');
 
 program.version(version, '--version');
 program.option('-h, --hostname [value]', 'Set the host name or ip for the server', 'localhost')
@@ -24,7 +24,7 @@ if (program.directory === undefined) {
 }
 
 try {
-  var stats = fs.lstatSync(program.directory);
+  const stats = fs.lstatSync(program.directory);
   if (stats.isDirectory() === false) {
     throw Error();
   }
@@ -39,7 +39,7 @@ if (program.key && program.cert) {
   program.cert = fs.readFileSync(program.cert);
 }
 
-var s3rver = new S3rver(program).run(function (err, host, port) {
+const s3rver = new S3rver(program).run(function (err, host, port) {
   if (err) {
     console.error(err)
   } else {
