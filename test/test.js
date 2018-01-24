@@ -72,7 +72,10 @@ describe('S3rver Tests', function () {
   });
 
   afterEach(function (done) {
-    s3rver.close(done);
+    s3rver.close(() => {
+      process.removeAllListeners('uncaughtException');
+      done();
+    });
   });
 
   it('should fetch fetch six buckets', function (done) {
