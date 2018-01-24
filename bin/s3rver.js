@@ -3,7 +3,7 @@
 var pkg     = require('../package.json'),
     version = pkg.version,
     program = require('commander'),
-    fs      = require('fs'),
+    fs      = require('fs-extra'),
     S3rver  = require('../lib');
 
 program.version(version, '--version');
