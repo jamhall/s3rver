@@ -13,23 +13,30 @@ var S3rver = require('../lib');
 var util = require('util');
 var request = require('request');
 
+function recreateDirectory(path) {
+  try {
+    fs.removeSync(path);
+  } catch (err) {}
+  fs.ensureDirSync(path);
+}
+
+function generateTestObjects(s3Client, bucket, amount, callback) {
+  var testObjects = _.times(amount, function (i) {
+    return {
+      Bucket: bucket,
+      Key: 'key' + i,
+      Body: 'Hello!'
+    }
+  });
+  async.eachSeries(testObjects, function (testObject, callback) {
+    s3Client.putObject(testObject, callback);
+  }, callback)
+}
+
 describe('S3rver Tests', function () {
   var s3Client;
   var buckets = ['bucket1', 'bucket2', 'bucket3', 'bucket4', 'bucket5', 'bucket6'];
   var s3rver;
-
-  function generateTestObjects(bucket, amount, callback) {
-    var testObjects = _.times(amount, function (i) {
-      return {
-        Bucket: bucket,
-        Key: 'key' + i,
-        Body: 'Hello!'
-      }
-    });
-    async.eachSeries(testObjects, function (testObject, callback) {
-      s3Client.putObject(testObject, callback);
-    }, callback)
-  }
 
   beforeEach(function (done) {
     s3rver = new S3rver({
@@ -56,21 +63,11 @@ describe('S3rver Tests', function () {
         /**
          * Remove if exists and recreate the temporary directory
          */
-        fs.remove(directory, function (err) {
-          if (err) {
-            return done(err);
-          }
-          fs.mkdirs(directory, function (err) {
-            if (err) {
-              return done(err);
-            }
-
-            // Create 6 buckets
-            async.eachSeries(buckets, function (bucket, callback) {
-              s3Client.createBucket({Bucket: bucket}, callback);
-            }, done);
-          });
-        });
+        recreateDirectory(directory);
+        // Create 6 buckets
+        async.eachSeries(buckets, function (bucket, callback) {
+          s3Client.createBucket({Bucket: bucket}, callback);
+        }, done);
       });
   });
 
@@ -575,7 +572,7 @@ describe('S3rver Tests', function () {
   });
 
   it('should fail to delete a bucket because it is not empty', function (done) {
-    generateTestObjects(buckets[0], 20, function () {
+    generateTestObjects(s3Client, buckets[0], 20, function () {
       s3Client.deleteBucket({Bucket: buckets[0]}, function (err) {
         err.code.should.equal('BucketNotEmpty');
         err.statusCode.should.equal(409);
@@ -820,7 +817,7 @@ describe('S3rver Tests', function () {
 
   it('should return one thousand small objects', function (done) {
     this.timeout(15000)    
-    generateTestObjects(buckets[2], 2000, function () {
+    generateTestObjects(s3Client, buckets[2], 2000, function () {
       s3Client.listObjects({'Bucket': buckets[2]}, function (err, objects) {
         if (err) {
           return done(err);
@@ -833,7 +830,7 @@ describe('S3rver Tests', function () {
 
   it('should return 500 small objects', function (done) {
     this.timeout(15000)
-    generateTestObjects(buckets[2], 1000, function () {
+    generateTestObjects(s3Client, buckets[2], 1000, function () {
       s3Client.listObjects({'Bucket': buckets[2], MaxKeys: 500}, function (err, objects) {
         if (err) {
           return done(err);
@@ -846,7 +843,7 @@ describe('S3rver Tests', function () {
 
   it('should delete 500 small objects', function (done) {
     this.timeout(15000)
-    generateTestObjects(buckets[2], 500, function () {
+    generateTestObjects(s3Client, buckets[2], 500, function () {
       var testObjects = [];
       for (var i = 1; i <= 500; i++) {
         testObjects.push({Bucket: buckets[2], Key: 'key' + i});
@@ -859,7 +856,7 @@ describe('S3rver Tests', function () {
 
   it('should delete 500 small objects with deleteObjects', function (done) {
     this.timeout(15000)
-    generateTestObjects(buckets[2], 500, function () {
+    generateTestObjects(s3Client, buckets[2], 500, function () {
       var deleteObj = {Objects: []};
       for (var i = 501; i <= 1000; i++) {
         deleteObj.Objects.push({Key: 'key' + i});
@@ -1052,6 +1049,122 @@ describe('S3rver Tests with Static Web Hosting', function () {
   });
 });
 
+it('Cleans up after close if the removeBucketsOnClose setting is true', function (done) {
+  var directory = '/tmp/s3rver_test_directory';
+  recreateDirectory(directory);
+  var s3rver = new S3rver({
+    port: 4569,
+    hostname: 'localhost',
+    silent: true,
+    indexDocument: '',
+    errorDocument: '',
+    directory: directory,
+    removeBucketsOnClose: true
+  }).run(function () {
+    var config = {
+      accessKeyId: '123',
+      secretAccessKey: 'abc',
+      endpoint: util.format('%s:%d', 'localhost', 4569),
+      sslEnabled: false,
+      s3ForcePathStyle: true
+    };
+    AWS.config.update(config);
+    var s3Client = new AWS.S3();
+    s3Client.endpoint = new AWS.Endpoint(config.endpoint);
+    s3Client.createBucket({Bucket: 'foobars'}, function (err) {
+      if (err) return done(err);
+      generateTestObjects(s3Client, 'foobars', 10, function (err) {
+        if (err) return done(err);
+        s3rver.close(function (err) {
+          if (err) return done(err);
+          var exists = fs.existsSync(directory);
+          should(exists).equal(true);
+          var files = fs.readdirSync(directory);
+          should(files.length).equal(0)
+          done();
+        });
+      });
+    });
+  });
+});
+
+it('Does not clean up after close if the removeBucketsOnClose setting is false', function (done) {
+  var directory = '/tmp/s3rver_test_directory';
+  recreateDirectory(directory);
+  var s3rver = new S3rver({
+    port: 4569,
+    hostname: 'localhost',
+    silent: true,
+    indexDocument: '',
+    errorDocument: '',
+    directory: directory,
+    removeBucketsOnClose: false
+  }).run(function () {
+    var config = {
+      accessKeyId: '123',
+      secretAccessKey: 'abc',
+      endpoint: util.format('%s:%d', 'localhost', 4569),
+      sslEnabled: false,
+      s3ForcePathStyle: true
+    };
+    AWS.config.update(config);
+    var s3Client = new AWS.S3();
+    s3Client.endpoint = new AWS.Endpoint(config.endpoint);
+    s3Client.createBucket({Bucket: 'foobars'}, function (err) {
+      if (err) return done(err);
+      generateTestObjects(s3Client, 'foobars', 10, function (err) {
+        if (err) return done(err);
+        s3rver.close(function (err) {
+          if (err) return done(err);
+          var exists = fs.existsSync(directory);
+          should(exists).equal(true);
+          var files = fs.readdirSync(directory);
+          should(files.length).equal(1)
+          done();
+        });
+      });
+    });
+  });
+});
+
+it('Does not clean up after close if the removeBucketsOnClose setting is not set', function (done) {
+  var directory = '/tmp/s3rver_test_directory';
+  recreateDirectory(directory);
+  var s3rver = new S3rver({
+    port: 4569,
+    hostname: 'localhost',
+    silent: true,
+    indexDocument: '',
+    errorDocument: '',
+    directory: directory
+  }).run(function () {
+    var config = {
+      accessKeyId: '123',
+      secretAccessKey: 'abc',
+      endpoint: util.format('%s:%d', 'localhost', 4569),
+      sslEnabled: false,
+      s3ForcePathStyle: true
+    };
+    AWS.config.update(config);
+    var s3Client = new AWS.S3();
+    s3Client.endpoint = new AWS.Endpoint(config.endpoint);
+    s3Client.createBucket({Bucket: 'foobars'}, function (err) {
+      if (err) return done(err);
+      generateTestObjects(s3Client, 'foobars', 10, function (err) {
+        if (err) return done(err);
+        s3rver.close(function (err) {
+          if (err) return done(err);
+          var exists = fs.existsSync(directory);
+          should(exists).equal(true);
+          var files = fs.readdirSync(directory);
+          should(files.length).equal(1)
+          done();
+        });
+      });
+    });
+  });
+});
+
 describe('S3rver Class Tests', function() {
 
   it('should merge default options with provided options', function () {
@@ -1061,7 +1174,8 @@ describe('S3rver Class Tests', function() {
       errorDocument: '',
       directory: '/tmp/s3rver_test_directory',
       key: new Buffer([1, 2, 3]),
-      cert: new Buffer([1, 2, 3])
+      cert: new Buffer([1, 2, 3]),
+      removeBucketsOnClose: true
     })
 
     s3rver.options.should.have.property('hostname', 'testhost')
@@ -1075,6 +1189,7 @@ describe('S3rver Class Tests', function() {
     s3rver.options.should.have.property('cert')
     s3rver.options.key.should.be.an.instanceOf(Buffer)
     s3rver.options.cert.should.be.an.instanceOf(Buffer)
+    s3rver.options.should.have.property('removeBucketsOnClose', true)
   })
 
 });
