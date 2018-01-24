@@ -1160,6 +1160,38 @@ it('Does not clean up after close if the removeBucketsOnClose setting is not set
   });
 });
 
+it('Can delete a bucket that is empty after some key that includes a directory is deleted', function (done) {
+  var directory = '/tmp/s3rver_test_directory';
+  recreateDirectory(directory);
+  var s3rver = new S3rver({
+    port: 4569,
+    hostname: 'localhost',
+    silent: true,
+    indexDocument: '',
+    errorDocument: '',
+    directory: directory,
+  }).run(function () {
+    var config = {
+      accessKeyId: '123',
+      secretAccessKey: 'abc',
+      endpoint: util.format('%s:%d', 'localhost', 4569),
+      sslEnabled: false,
+      s3ForcePathStyle: true
+    };
+    AWS.config.update(config);
+    var s3Client = new AWS.S3();
+    s3Client.endpoint = new AWS.Endpoint(config.endpoint);
+    var bucket = 'foobars';
+
+    s3Client.createBucket({Bucket: bucket}).promise()
+      .then(() => s3Client.putObject({ Bucket: bucket, Key: 'foo/foo.txt', Body: 'Hello!'}).promise())
+      .then(() => s3Client.deleteObject({ Bucket: bucket, Key: 'foo/foo.txt' }).promise())
+      .then(() => s3Client.deleteBucket({ Bucket: bucket }).promise())
+      .then(() => s3rver.close(done))
+      .catch(err => s3rver.close(() => done(err)))
+  });
+});
+
 describe('S3rver Class Tests', function() {
 
   it('should merge default options with provided options', function () {
