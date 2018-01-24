@@ -13,8 +13,6 @@ var S3rver = require('../lib');
 var util = require('util');
 var request = require('request');
 
-var longRunningTestTimeout = 60 * 1000
-
 function recreateDirectory(path) {
   try {
     fs.removeSync(path);
