@@ -450,6 +450,30 @@ describe('S3rver Tests', function () {
     });
   });
 
+  it('should get partial image from a bucket with a range request', function (done) {
+    const file = path.join(__dirname, 'resources/image.jpg');
+    fs.readFile(file, function (err, data) {
+      const params = {
+        Bucket: buckets[0],
+        Key: 'image',
+        Body: data,
+        ContentType: 'image/jpeg',
+        ContentLength: data.length,
+      };
+      s3Client.putObject(params, function (err) {
+        const url = s3Client.getSignedUrl('getObject', { Bucket: buckets[0], Key: 'image' });
+        request({ url, headers: { range: 'bytes=0-99' } }, function (err, response, body) {
+          if (err) return done(err);
+
+          response.statusCode.should.equal(206);
+          response.headers.should.have.properties('content-range', 'accept-ranges');
+          response.headers.should.have.property('content-length', '100');
+          done();
+        });
+      });
+    });
+  });
+
   it('should get image metadata from a bucket using HEAD method', function (done) {
     const file = path.join(__dirname, 'resources/image.jpg');
     fs.readFile(file, function (err, data) {
