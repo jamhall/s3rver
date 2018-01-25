@@ -929,6 +929,160 @@ describe('S3rver Tests', function () {
   });
 });
 
+describe('S3rver CORS Policy Tests', function () {
+  const bucket = 'foobars';
+  let s3Client;
+
+  before('Initialize bucket', function (done) {
+    const s3rver = new S3rver({
+      port: 4569,
+      hostname: 'localhost',
+      silent: true
+    }).run((err, hostname, port, directory) => {
+      if (err) return done(err);
+
+      s3Client = new AWS.S3({
+        accessKeyId: '123',
+        secretAccessKey: 'abc',
+        endpoint: util.format('http://%s:%d', 'localhost', 4569),
+        sslEnabled: false,
+        s3ForcePathStyle: true
+      });
+      const file = fs.readFileSync('./test/resources/image.jpg');
+      const params = {
+        Bucket: bucket,
+        Key: 'image',
+        Body: new Buffer(file),
+        ContentType: 'image/jpeg',
+        ContentLength: file.length
+      };
+      s3Client.createBucket({ Bucket: bucket }).promise()
+        .then(() => s3Client.putObject(params).promise())
+        .then(() =>  s3rver.close(done))
+        .catch((err) => s3rver.close(() => done(err)));
+    });
+  });
+
+  it('should add the Access-Control-Allow-Origin header for default (wildcard) configurations', function (done) {
+    const origin = 'http://a-test.example.com';
+    const params = { Bucket: bucket, Key: 'image' };
+    const url = s3Client.getSignedUrl('getObject', params);
+    const s3rver = new S3rver({
+      port: 4569,
+      hostname: 'localhost',
+      silent: true
+    }).run((err) => {
+      if (err) return done(err);
+
+      request({ url, headers: { origin } }, function (err, response, body) {
+        s3rver.close(() => {
+          if (err) return done(err);
+
+          response.statusCode.should.equal(200);
+          response.headers.should.have.property('access-control-allow-origin', '*');
+          done();
+        });
+      });
+    });
+  });
+
+  it('should add the Access-Control-Allow-Origin header for a matching origin', function (done) {
+    const origin = 'http://a-test.example.com';
+    const params = { Bucket: bucket, Key: 'image' };
+    const url = s3Client.getSignedUrl('getObject', params);
+    const s3rver = new S3rver({
+      port: 4569,
+      hostname: 'localhost',
+      silent: true,
+      cors: fs.readFileSync('./test/resources/cors_test1.xml')
+    }).run((err) => {
+      if (err) return done(err);
+
+      request({ url, headers: { origin } }, function (err, response, body) {
+        s3rver.close(() => {
+          if (err) return done(err);
+
+          response.statusCode.should.equal(200);
+          response.headers.should.have.property('access-control-allow-origin', origin);
+          done();
+        });
+      });
+    });
+  });
+
+  it('should match an origin to a CORSRule with a wildcard character', function (done) {
+    const origin = 'http://foo.bar.com';
+    const params = { Bucket: bucket, Key: 'image' };
+    const url = s3Client.getSignedUrl('getObject', params);
+    const s3rver = new S3rver({
+      port: 4569,
+      hostname: 'localhost',
+      silent: true,
+      cors: fs.readFileSync('./test/resources/cors_test1.xml')
+    }).run((err) => {
+      if (err) return done(err);
+
+      request({ url, headers: { origin } }, function (err, response, body) {
+        s3rver.close(() => {
+          if (err) return done(err);
+
+          response.statusCode.should.equal(200);
+          response.headers.should.have.property('access-control-allow-origin', origin);
+          done();
+        });
+      });
+    });
+  });
+
+  it('should not add the Access-Control-Allow-Origin header for a non-matching origin', function (done) {
+    const origin = 'http://b-test.example.com';
+    const params = { Bucket: bucket, Key: 'image' };
+    const url = s3Client.getSignedUrl('getObject', params);
+    const s3rver = new S3rver({
+      port: 4569,
+      hostname: 'localhost',
+      silent: true,
+      cors: fs.readFileSync('./test/resources/cors_test1.xml')
+    }).run((err) => {
+      if (err) return done(err);
+
+      request({ url, headers: { origin } }, function (err, response, body) {
+        s3rver.close(() => {
+          if (err) return done(err);
+
+          response.statusCode.should.equal(200);
+          response.headers.should.not.have.property('access-control-allow-origin');
+          done();
+        });
+      });
+    });
+  });
+
+  it('should expose appropriate headers for a range request', function (done) {
+    const origin = 'http://a-test.example.com';
+    const params = { Bucket: bucket, Key: 'image' };
+    const url = s3Client.getSignedUrl('getObject', params);
+    const s3rver = new S3rver({
+      port: 4569,
+      hostname: 'localhost',
+      silent: true,
+      cors: fs.readFileSync('./test/resources/cors_test1.xml')
+    }).run((err) => {
+      if (err) return done(err);
+
+      request({ url, headers: { origin, range: 'bytes=0-100' } }, function (err, response, body) {
+        s3rver.close(() => {
+          if (err) return done(err);
+
+          response.statusCode.should.equal(206);
+          response.headers.should.have.property('access-control-expose-headers', 'Accept-Ranges, Content-Range');
+          done();
+        });
+      });
+    });
+  });
+});
+
 describe('S3rver Tests with Static Web Hosting', function () {
   let s3Client;
   let s3rver;
