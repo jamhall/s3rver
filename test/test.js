@@ -1,17 +1,22 @@
 'use strict';
 const AWS = require('aws-sdk');
 const async = require('async');
-const should = require('should');
-const fs = require('fs-extra');
-const _ = require('lodash');
-const moment = require('moment');
 const Chance = require('chance');
-const chance = new Chance();
-const path = require('path');
+const _ = require('lodash');
+const fs = require('fs-extra');
 const md5 = require('md5');
-const S3rver = require('../lib');
-const util = require('util');
+const moment = require('moment');
+const os = require('os');
+const path = require('path');
 const request = require('request');
+const should = require('should');
+const util = require('util');
+
+const S3rver = require('../lib');
+
+const chance = new Chance();
+
+const tmpDir = path.join(os.tmpdir(), 's3rver_test');
 
 function recreateDirectory(path) {
   try {
@@ -45,30 +50,38 @@ describe('S3rver Tests', function () {
       silent: true,
       indexDocument: '',
       errorDocument: '',
-      directory: '/tmp/s3rver_test_directory'
+      directory: tmpDir
     }).run(function (err, hostname, port, directory) {
-        if (err) {
-          return done('Error starting server', err);
-        }
-        const config = {
-          accessKeyId: '123',
-          secretAccessKey: 'abc',
-          endpoint: util.format('%s:%d', hostname, port),
-          sslEnabled: false,
-          s3ForcePathStyle: true
-        };
-        AWS.config.update(config);
-        s3Client = new AWS.S3();
-        s3Client.endpoint = new AWS.Endpoint(config.endpoint);
-        /**
-         * Remove if exists and recreate the temporary directory
-         */
-        recreateDirectory(directory);
-        // Create 6 buckets
-        async.eachSeries(buckets, function (bucket, callback) {
-          s3Client.createBucket({Bucket: bucket}, callback);
-        }, done);
-      });
+      if (err) {
+        return done('Error starting server', err);
+      }
+      const config = {
+        accessKeyId: '123',
+        secretAccessKey: 'abc',
+        endpoint: util.format('%s:%d', hostname, port),
+        sslEnabled: false,
+        s3ForcePathStyle: true
+      };
+      AWS.config.update(config);
+      s3Client = new AWS.S3();
+      s3Client.endpoint = new AWS.Endpoint(config.endpoint);
+      /**
+       * Remove if exists and recreate the temporary directory
+       * 
+       * Be aware of https://github.com/isaacs/rimraf/issues/25
+       * Buckets will fail to delete on Windows likely due to a bug/shortcoming in Node.js
+       */
+      recreateDirectory(directory);
+      // Create 6 buckets
+      async.eachSeries(buckets, (bucket, callback) => {
+        s3Client.createBucket({ Bucket: bucket }, (err) => {
+          if (err && err.code !== 'BucketAlreadyExists') {
+            return callback(err);
+          }
+          callback();
+        });
+      }, done);
+    });
   });
 
   afterEach(function (done) {
@@ -918,31 +931,27 @@ describe('S3rver Tests with Static Web Hosting', function () {
       silent: true,
       indexDocument: 'index.html',
       errorDocument: '',
-      directory: '/tmp/s3rver_test_directory'
+      directory: tmpDir
     }).run(function (err, hostname, port, directory) {
-        if (err) {
-          return done('Error starting server', err);
-        }
-        const config = {
-          accessKeyId: '123',
-          secretAccessKey: 'abc',
-          endpoint: util.format('%s:%d', hostname, port),
-          sslEnabled: false,
-          s3ForcePathStyle: true
-        };
-        AWS.config.update(config);
-        s3Client = new AWS.S3();
-        s3Client.endpoint = new AWS.Endpoint(config.endpoint);
-        /**
-         * Remove if exists and recreate the temporary directory
-         */
-        fs.remove(directory, function (err) {
-          if (err) {
-            return done(err);
-          }
-          fs.mkdirs(directory, done);
-        });
-      });
+      if (err) {
+        return done('Error starting server', err);
+      }
+      const config = {
+        accessKeyId: '123',
+        secretAccessKey: 'abc',
+        endpoint: util.format('%s:%d', hostname, port),
+        sslEnabled: false,
+        s3ForcePathStyle: true
+      };
+      AWS.config.update(config);
+      s3Client = new AWS.S3();
+      s3Client.endpoint = new AWS.Endpoint(config.endpoint);
+      /**
+       * Remove if exists and recreate the temporary directory
+       */
+      recreateDirectory(directory);
+      done();
+    });
   });
 
   afterEach(function (done) {
@@ -1053,7 +1062,7 @@ describe('S3rver Tests with Static Web Hosting', function () {
 });
 
 it('Cleans up after close if the removeBucketsOnClose setting is true', function (done) {
-  const directory = '/tmp/s3rver_test_directory';
+  const directory = tmpDir;
   recreateDirectory(directory);
   const s3rver = new S3rver({
     port: 4569,
@@ -1092,7 +1101,7 @@ it('Cleans up after close if the removeBucketsOnClose setting is true', function
 });
 
 it('Does not clean up after close if the removeBucketsOnClose setting is false', function (done) {
-  const directory = '/tmp/s3rver_test_directory';
+  const directory = tmpDir;
   recreateDirectory(directory);
   const s3rver = new S3rver({
     port: 4569,
@@ -1131,7 +1140,7 @@ it('Does not clean up after close if the removeBucketsOnClose setting is false',
 });
 
 it('Does not clean up after close if the removeBucketsOnClose setting is not set', function (done) {
-  const directory = '/tmp/s3rver_test_directory';
+  const directory = tmpDir;
   recreateDirectory(directory);
   const s3rver = new S3rver({
     port: 4569,
@@ -1169,7 +1178,7 @@ it('Does not clean up after close if the removeBucketsOnClose setting is not set
 });
 
 it('Can delete a bucket that is empty after some key that includes a directory has been deleted', function (done) {
-  const directory = '/tmp/s3rver_test_directory';
+  const directory = tmpDir;
   recreateDirectory(directory);
   const s3rver = new S3rver({
     port: 4569,
@@ -1207,7 +1216,7 @@ describe('S3rver Class Tests', function() {
       hostname: 'testhost',
       indexDocument: 'index.html',
       errorDocument: '',
-      directory: '/tmp/s3rver_test_directory',
+      directory: tmpDir,
       key: new Buffer([1, 2, 3]),
       cert: new Buffer([1, 2, 3]),
       removeBucketsOnClose: true
@@ -1218,7 +1227,7 @@ describe('S3rver Class Tests', function() {
     s3rver.options.should.have.property('silent', false)
     s3rver.options.should.have.property('indexDocument', 'index.html')
     s3rver.options.should.have.property('errorDocument', '')
-    s3rver.options.should.have.property('directory', '/tmp/s3rver_test_directory')
+    s3rver.options.should.have.property('directory', tmpDir)
     s3rver.options.should.have.property('key')
     s3rver.options.should.have.property('cert')
     s3rver.options.key.should.be.an.instanceOf(Buffer)

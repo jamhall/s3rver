@@ -45,6 +45,9 @@
     "request": "2.83.0",
     "should": "13.2.1"
   },
+  "engines": {
+    "node": ">=6.0.0"
+  },
   "bugs": {
     "url": "https://github.com/jamhall/s3rver/issues"
   },
