@@ -1,10 +1,10 @@
 "use strict";
 
-const AWS = require("aws-sdk");
 const async = require("async");
+const AWS = require("aws-sdk");
 const Chance = require("chance");
-const _ = require("lodash");
 const fs = require("fs-extra");
+const { find, times } = require("lodash");
 const md5 = require("md5");
 const moment = require("moment");
 const os = require("os");
@@ -35,16 +35,14 @@ function resetTmpDir() {
 }
 
 function generateTestObjects(s3Client, bucket, amount, callback) {
-  const testObjects = _.times(amount, function(i) {
-    return {
-      Bucket: bucket,
-      Key: "key" + i,
-      Body: "Hello!"
-    };
-  });
+  const testObjects = times(amount, i => ({
+    Bucket: bucket,
+    Key: "key" + i,
+    Body: "Hello!"
+  }));
   async.eachSeries(
     testObjects,
-    function(testObject, callback) {
+    (testObject, callback) => {
       s3Client.putObject(testObject, callback);
     },
     callback
@@ -100,30 +98,29 @@ describe("S3rver Tests", function() {
   });
 
   it("should fetch fetch six buckets", function(done) {
-    s3Client.listBuckets(function(err, buckets) {
-      if (err) {
-        return done(err);
-      }
+    s3Client.listBuckets((err, buckets) => {
+      if (err) return done(err);
       buckets.Buckets.length.should.equal(6);
-      _.forEach(buckets.Buckets, function(bucket) {
+      for (const bucket of buckets.Buckets) {
         should.exist(bucket.Name);
         moment(bucket.CreationDate)
           .isValid()
           .should.equal(true);
-      });
+      }
       done();
     });
   });
 
   it("should create a bucket with valid domain-style name", function(done) {
-    s3Client.createBucket({ Bucket: "a-test.example.com" }, function(err) {
+    s3Client.createBucket({ Bucket: "a-test.example.com" }, err => {
       should.not.exist(err);
       done();
     });
   });
 
   it("should fail to create a bucket because of invalid name", function(done) {
-    s3Client.createBucket({ Bucket: "-$%!nvalid" }, function(err) {
+    s3Client.createBucket({ Bucket: "-$%!nvalid" }, err => {
+      should.exist(err);
       err.statusCode.should.equal(400);
       err.code.should.equal("InvalidBucketName");
       should.exist(err);
@@ -132,7 +129,8 @@ describe("S3rver Tests", function() {
   });
 
   it("should fail to create a bucket because of invalid domain-style name", function(done) {
-    s3Client.createBucket({ Bucket: ".example.com" }, function(err) {
+    s3Client.createBucket({ Bucket: ".example.com" }, err => {
+      should.exist(err);
       err.statusCode.should.equal(400);
       err.code.should.equal("InvalidBucketName");
       should.exist(err);
@@ -143,7 +141,8 @@ describe("S3rver Tests", function() {
   it("should fail to create a bucket because name is too long", function(done) {
     s3Client.createBucket(
       { Bucket: chance.string({ length: 64, pool: "abcd" }) },
-      function(err) {
+      err => {
+        should.exist(err);
         err.statusCode.should.equal(400);
         err.code.should.equal("InvalidBucketName");
         should.exist(err);
@@ -153,7 +152,8 @@ describe("S3rver Tests", function() {
   });
 
   it("should fail to create a bucket because name is too short", function(done) {
-    s3Client.createBucket({ Bucket: "ab" }, function(err) {
+    s3Client.createBucket({ Bucket: "ab" }, err => {
+      should.exist(err);
       err.statusCode.should.equal(400);
       err.code.should.equal("InvalidBucketName");
       should.exist(err);
@@ -162,20 +162,14 @@ describe("S3rver Tests", function() {
   });
 
   it("should delete a bucket", function(done) {
-    s3Client.deleteBucket({ Bucket: buckets[4] }, function(err) {
-      if (err) {
-        return done(err);
-      }
-      return done();
-    });
+    s3Client.deleteBucket({ Bucket: buckets[4] }, done);
   });
 
   it("should not fetch the deleted bucket", function(done) {
-    s3Client.deleteBucket({ Bucket: buckets[4] }, function(err) {
-      if (err) {
-        return done(err);
-      }
-      s3Client.listObjects({ Bucket: buckets[4] }, function(err) {
+    s3Client.deleteBucket({ Bucket: buckets[4] }, err => {
+      if (err) return done(err);
+      s3Client.listObjects({ Bucket: buckets[4] }, err => {
+        should.exist(err);
         err.code.should.equal("NoSuchBucket");
         err.statusCode.should.equal(404);
         done();
@@ -184,10 +178,8 @@ describe("S3rver Tests", function() {
   });
 
   it("should list no objects for a bucket", function(done) {
-    s3Client.listObjects({ Bucket: buckets[3] }, function(err, objects) {
-      if (err) {
-        return done(err);
-      }
+    s3Client.listObjects({ Bucket: buckets[3] }, (err, objects) => {
+      if (err) return done(err);
       objects.Contents.length.should.equal(0);
       done();
     });
@@ -195,37 +187,33 @@ describe("S3rver Tests", function() {
 
   it("should store a text object in a bucket", function(done) {
     const params = { Bucket: buckets[0], Key: "text", Body: "Hello!" };
-    s3Client.putObject(params, function(err, data) {
+    s3Client.putObject(params, (err, data) => {
+      if (err) return done(err);
       /"[a-fA-F0-9]{32}"/.test(data.ETag).should.equal(true);
-      if (err) {
-        return done(err);
-      }
       done();
     });
   });
 
   it("should trigger a Put event", function(done) {
     const params = { Bucket: buckets[0], Key: "testPutKey", Body: "Hello!" };
-    const putSubs = s3rver.s3Event.subscribe(function(event) {
+    const putSubs = s3rver.s3Event.subscribe(event => {
       event.Records[0].eventName.should.equal("ObjectCreated:Put");
       event.Records[0].s3.bucket.name.should.equal(buckets[0]);
       event.Records[0].s3.object.key.should.equal("testPutKey");
       putSubs.unsubscribe();
       done();
     });
-    s3Client.putObject(params, function(err) {
-      if (err) {
-        return done(err);
-      }
+    s3Client.putObject(params, err => {
+      if (err) return done(err);
     });
   });
 
   it("should trigger a Copy event", function(done) {
     const copySubs = s3rver.s3Event
-      .filter(function(eventType) {
-        return eventType.Records[0].eventName == "ObjectCreated:Copy";
-      })
-      .subscribe(function(event) {
+      .filter(
+        eventType => eventType.Records[0].eventName == "ObjectCreated:Copy"
+      )
+      .subscribe(event => {
         event.Records[0].eventName.should.equal("ObjectCreated:Copy");
         event.Records[0].s3.bucket.name.should.equal(buckets[4]);
         event.Records[0].s3.object.key.should.equal("testCopy");
@@ -234,29 +222,25 @@ describe("S3rver Tests", function() {
       });
 
     const putParams = { Bucket: buckets[0], Key: "testPut", Body: "Hello!" };
-    s3Client.putObject(putParams, function(err) {
-      if (err) {
-        return done(err);
-      }
+    s3Client.putObject(putParams, err => {
+      if (err) return done(err);
       const params = {
         Bucket: buckets[4],
         Key: "testCopy",
         CopySource: "/" + buckets[0] + "/testPut"
       };
-      s3Client.copyObject(params, function(err) {
-        if (err) {
-          return done(err);
-        }
+      s3Client.copyObject(params, err => {
+        if (err) return done(err);
       });
     });
   });
 
   it("should trigger a Delete event", function(done) {
     const delSubs = s3rver.s3Event
-      .filter(eventType => {
-        return eventType.Records[0].eventName == "ObjectRemoved:Delete";
-      })
-      .subscribe(function(event) {
+      .filter(
+        eventType => eventType.Records[0].eventName == "ObjectRemoved:Delete"
+      )
+      .subscribe(event => {
         event.Records[0].eventName.should.equal("ObjectRemoved:Delete");
         event.Records[0].s3.bucket.name.should.equal(buckets[0]);
         event.Records[0].s3.object.key.should.equal("testDelete");
@@ -265,16 +249,10 @@ describe("S3rver Tests", function() {
       });
 
     const putParams = { Bucket: buckets[0], Key: "testDelete", Body: "Hello!" };
-    s3Client.putObject(putParams, function(err) {
-      if (err) {
-        return done(err);
-      }
-      s3Client.deleteObject({ Bucket: buckets[0], Key: "testDelete" }, function(
-        err
-      ) {
-        if (err) {
-          return done(err);
-        }
+    s3Client.putObject(putParams, err => {
+      if (err) return done(err);
+      s3Client.deleteObject({ Bucket: buckets[0], Key: "testDelete" }, err => {
+        if (err) return done(err);
       });
     });
   });
@@ -288,11 +266,9 @@ describe("S3rver Tests", function() {
         someKey: "value"
       }
     };
-    s3Client.putObject(params, function(err, data) {
+    s3Client.putObject(params, (err, data) => {
+      if (err) return done(err);
       /"[a-fA-F0-9]{32}"/.test(data.ETag).should.equal(true);
-      if (err) {
-        return done(err);
-      }
       done();
     });
   });
@@ -306,30 +282,24 @@ describe("S3rver Tests", function() {
         someKey: "value"
       }
     };
-    s3Client.putObject(params, function(err, data) {
+    s3Client.putObject(params, (err, data) => {
+      if (err) return done(err);
       /"[a-fA-F0-9]{32}"/.test(data.ETag).should.equal(true);
-      if (err) {
-        return done(err);
-      }
-      s3Client.getObject({ Bucket: buckets[0], Key: "textmetadata" }, function(
-        err,
-        object
-      ) {
-        if (err) {
-          return done(err);
+      s3Client.getObject(
+        { Bucket: buckets[0], Key: "textmetadata" },
+        (err, object) => {
+          if (err) return done(err);
+          object.Metadata.somekey.should.equal("value");
+          done();
         }
-        object.Metadata.somekey.should.equal("value");
-        done();
-      });
+      );
     });
   });
 
   it("should store an image in a bucket", function(done) {
     const file = path.join(__dirname, "resources/image.jpg");
-    fs.readFile(file, function(err, data) {
-      if (err) {
-        return done(err);
-      }
+    fs.readFile(file, (err, data) => {
+      if (err) return done(err);
       const params = {
         Bucket: buckets[0],
         Key: "image",
@@ -337,11 +307,9 @@ describe("S3rver Tests", function() {
         ContentType: "image/jpeg",
         ContentLength: data.length
       };
-      s3Client.putObject(params, function(err, data) {
+      s3Client.putObject(params, (err, data) => {
+        if (err) return done(err);
         /"[a-fA-F0-9]{32}"/.test(data.ETag).should.equal(true);
-        if (err) {
-          return done(err);
-        }
         done();
       });
     });
@@ -360,21 +328,19 @@ describe("S3rver Tests", function() {
       ContentLength: stats.size
     };
 
-    s3Client.putObject(params, function(err) {
+    s3Client.putObject(params, err => {
       if (err) return done(err);
 
-      s3Client.getObject({ Bucket: buckets[0], Key: "jquery" }, function(
-        err,
-        object
-      ) {
-        if (err) {
-          return done(err);
+      s3Client.getObject(
+        { Bucket: buckets[0], Key: "jquery" },
+        (err, object) => {
+          if (err) return done(err);
+          object.ContentLength.should.equal(stats.size);
+          object.ContentEncoding.should.equal("gzip");
+          object.ContentType.should.equal("application/javascript");
+          done();
         }
-        object.ContentLength.should.equal(stats.size);
-        object.ContentEncoding.should.equal("gzip");
-        object.ContentType.should.equal("application/javascript");
-        done();
-      });
+      );
     });
   });
 
@@ -383,7 +349,7 @@ describe("S3rver Tests", function() {
     const destKey = "image/jamie";
 
     const file = path.join(__dirname, "resources/image.jpg");
-    fs.readFile(file, function(err, data) {
+    fs.readFile(file, (err, data) => {
       if (err) {
         return done(err);
       }
@@ -394,20 +360,16 @@ describe("S3rver Tests", function() {
         ContentType: "image/jpeg",
         ContentLength: data.length
       };
-      s3Client.putObject(params, function(err, data) {
+      s3Client.putObject(params, (err, data) => {
+        if (err) return done(err);
         /"[a-fA-F0-9]{32}"/.test(data.ETag).should.equal(true);
-        if (err) {
-          return done(err);
-        }
         const params = {
           Bucket: buckets[3],
           Key: destKey,
           CopySource: "/" + buckets[0] + "/" + srcKey
         };
-        s3Client.copyObject(params, function(err, data) {
-          if (err) {
-            return done(err);
-          }
+        s3Client.copyObject(params, (err, data) => {
+          if (err) return done(err);
           /"[a-fA-F0-9]{32}"/.test(data.ETag).should.equal(true);
           moment(data.LastModified)
             .isValid()
@@ -423,10 +385,8 @@ describe("S3rver Tests", function() {
     const destKey = "image/jamie";
 
     const file = path.join(__dirname, "resources/image.jpg");
-    fs.readFile(file, function(err, data) {
-      if (err) {
-        return done(err);
-      }
+    fs.readFile(file, (err, data) => {
+      if (err) return done(err);
       const params = {
         Bucket: buckets[0],
         Key: srcKey,
@@ -437,32 +397,26 @@ describe("S3rver Tests", function() {
           someKey: "value"
         }
       };
-      s3Client.putObject(params, function(err, data) {
+      s3Client.putObject(params, (err, data) => {
+        if (err) return done(err);
         /"[a-fA-F0-9]{32}"/.test(data.ETag).should.equal(true);
-        if (err) {
-          return done(err);
-        }
         const params = {
           Bucket: buckets[3],
           Key: destKey,
           // MetadataDirective is implied to be COPY
           CopySource: "/" + buckets[0] + "/" + srcKey
         };
-        s3Client.copyObject(params, function(err) {
-          if (err) {
-            return done(err);
-          }
-          s3Client.getObject({ Bucket: buckets[3], Key: destKey }, function(
-            err,
-            object
-          ) {
-            if (err) {
-              return done(err);
+        s3Client.copyObject(params, err => {
+          if (err) return done(err);
+          s3Client.getObject(
+            { Bucket: buckets[3], Key: destKey },
+            (err, object) => {
+              if (err) return done(err);
+              object.Metadata.should.have.property("somekey", "value");
+              object.ContentType.should.equal("image/jpeg");
+              done();
             }
-            object.Metadata.should.have.property("somekey", "value");
-            object.ContentType.should.equal("image/jpeg");
-            done();
-          });
+          );
         });
       });
     });
@@ -473,10 +427,8 @@ describe("S3rver Tests", function() {
     const destKey = "image/jamie";
 
     const file = path.join(__dirname, "resources/image.jpg");
-    fs.readFile(file, function(err, data) {
-      if (err) {
-        return done(err);
-      }
+    fs.readFile(file, (err, data) => {
+      if (err) return done(err);
       const params = {
         Bucket: buckets[0],
         Key: srcKey,
@@ -484,11 +436,9 @@ describe("S3rver Tests", function() {
         ContentType: "image/jpeg",
         ContentLength: data.length
       };
-      s3Client.putObject(params, function(err, data) {
+      s3Client.putObject(params, (err, data) => {
+        if (err) return done(err);
         /"[a-fA-F0-9]{32}"/.test(data.ETag).should.equal(true);
-        if (err) {
-          return done(err);
-        }
         const params = {
           Bucket: buckets[3],
           Key: destKey,
@@ -498,21 +448,17 @@ describe("S3rver Tests", function() {
             someKey: "value"
           }
         };
-        s3Client.copyObject(params, function(err) {
-          if (err) {
-            return done(err);
-          }
-          s3Client.getObject({ Bucket: buckets[3], Key: destKey }, function(
-            err,
-            object
-          ) {
-            if (err) {
-              return done(err);
+        s3Client.copyObject(params, err => {
+          if (err) return done(err);
+          s3Client.getObject(
+            { Bucket: buckets[3], Key: destKey },
+            (err, object) => {
+              if (err) done(err);
+              object.Metadata.should.have.property("somekey", "value");
+              object.ContentType.should.equal("image/jpeg");
+              done();
             }
-            object.Metadata.should.have.property("somekey", "value");
-            object.ContentType.should.equal("image/jpeg");
-            done();
-          });
+          );
         });
       });
     });
@@ -523,10 +469,8 @@ describe("S3rver Tests", function() {
     const destKey = "image/jamie";
 
     const file = path.join(__dirname, "resources/image.jpg");
-    fs.readFile(file, function(err, data) {
-      if (err) {
-        return done(err);
-      }
+    fs.readFile(file, (err, data) => {
+      if (err) return done(err);
       const params = {
         Bucket: buckets[0],
         Key: srcKey,
@@ -534,7 +478,8 @@ describe("S3rver Tests", function() {
         ContentType: "image/jpeg",
         ContentLength: data.length
       };
-      s3Client.putObject(params, function() {
+      s3Client.putObject(params, err => {
+        if (err) return done(err);
         const params = {
           Bucket: buckets[3],
           Key: destKey,
@@ -544,18 +489,17 @@ describe("S3rver Tests", function() {
             someKey: "value"
           }
         };
-        s3Client.copyObject(params, function() {
-          s3Client.getObject({ Bucket: buckets[3], Key: destKey }, function(
-            err,
-            object
-          ) {
-            if (err) {
-              return done(err);
+        s3Client.copyObject(params, err => {
+          if (err) return done(err);
+          s3Client.getObject(
+            { Bucket: buckets[3], Key: destKey },
+            (err, object) => {
+              if (err) return done(err);
+              object.Metadata.somekey.should.equal("value");
+              object.ContentType.should.equal("image/jpeg");
+              done();
             }
-            object.Metadata.somekey.should.equal("value");
-            object.ContentType.should.equal("image/jpeg");
-            done();
-          });
+          );
         });
       });
     });
@@ -567,7 +511,8 @@ describe("S3rver Tests", function() {
       Key: "image/jamie",
       CopySource: "/" + buckets[0] + "/doesnotexist"
     };
-    s3Client.copyObject(params, function(err) {
+    s3Client.copyObject(params, err => {
+      should.exist(err);
       err.code.should.equal("NoSuchKey");
       err.statusCode.should.equal(404);
       done();
@@ -580,7 +525,8 @@ describe("S3rver Tests", function() {
       Key: "image/jamie",
       CopySource: "/falsebucket/doesnotexist"
     };
-    s3Client.copyObject(params, function(err) {
+    s3Client.copyObject(params, err => {
+      should.exist(err);
       err.code.should.equal("NoSuchBucket");
       err.statusCode.should.equal(404);
       done();
@@ -591,10 +537,8 @@ describe("S3rver Tests", function() {
     // 20M
     const b = new Buffer(20000000);
     const params = { Bucket: buckets[0], Key: "large", Body: b };
-    s3Client.putObject(params, function(err, data) {
-      if (err) {
-        return done(err);
-      }
+    s3Client.putObject(params, (err, data) => {
+      if (err) return done(err);
       /"[a-fA-F0-9]{32}"/.test(data.ETag).should.equal(true);
       done();
     });
@@ -602,7 +546,8 @@ describe("S3rver Tests", function() {
 
   it("should get an image from a bucket", function(done) {
     const file = path.join(__dirname, "resources/image.jpg");
-    fs.readFile(file, function(err, data) {
+    fs.readFile(file, (err, data) => {
+      if (err) return done(err);
       const params = {
         Bucket: buckets[0],
         Key: "image",
@@ -610,26 +555,26 @@ describe("S3rver Tests", function() {
         ContentType: "image/jpeg",
         ContentLength: data.length
       };
-      s3Client.putObject(params, function() {
-        s3Client.getObject({ Bucket: buckets[0], Key: "image" }, function(
-          err,
-          object
-        ) {
-          if (err) {
-            return done(err);
+      s3Client.putObject(params, err => {
+        if (err) return done(err);
+        s3Client.getObject(
+          { Bucket: buckets[0], Key: "image" },
+          (err, object) => {
+            if (err) return done(err);
+            object.ETag.should.equal(JSON.stringify(md5(data)));
+            object.ContentLength.should.equal(data.length);
+            object.ContentType.should.equal("image/jpeg");
+            done();
           }
-          object.ETag.should.equal('"' + md5(data) + '"');
-          object.ContentLength.should.equal(data.length);
-          object.ContentType.should.equal("image/jpeg");
-          done();
-        });
+        );
       });
     });
   });
 
   it("should get partial image from a bucket with a range request", function(done) {
     const file = path.join(__dirname, "resources/image.jpg");
-    fs.readFile(file, function(err, data) {
+    fs.readFile(file, (err, data) => {
+      if (err) return done(err);
       const params = {
         Bucket: buckets[0],
         Key: "image",
@@ -637,15 +582,13 @@ describe("S3rver Tests", function() {
         ContentType: "image/jpeg",
         ContentLength: data.length
       };
-      s3Client.putObject(params, function() {
+      s3Client.putObject(params, err => {
+        if (err) return done(err);
         const url = s3Client.getSignedUrl("getObject", {
           Bucket: buckets[0],
           Key: "image"
         });
-        request({ url, headers: { range: "bytes=0-99" } }, function(
-          err,
-          response
-        ) {
+        request({ url, headers: { range: "bytes=0-99" } }, (err, response) => {
           if (err) return done(err);
 
           response.statusCode.should.equal(206);
@@ -662,7 +605,8 @@ describe("S3rver Tests", function() {
 
   it("should get image metadata from a bucket using HEAD method", function(done) {
     const file = path.join(__dirname, "resources/image.jpg");
-    fs.readFile(file, function(err, data) {
+    fs.readFile(file, (err, data) => {
+      if (err) return done(err);
       const params = {
         Bucket: buckets[0],
         Key: "image",
@@ -670,129 +614,109 @@ describe("S3rver Tests", function() {
         ContentType: "image/jpeg",
         ContentLength: data.length
       };
-      s3Client.putObject(params, function() {
-        s3Client.headObject({ Bucket: buckets[0], Key: "image" }, function(
-          err,
-          object
-        ) {
-          if (err) {
-            return done(err);
+      s3Client.putObject(params, err => {
+        if (err) return done(err);
+        s3Client.headObject(
+          { Bucket: buckets[0], Key: "image" },
+          (err, object) => {
+            if (err) return done(err);
+            object.ETag.should.equal(JSON.stringify(md5(data)));
+            object.ContentLength.should.equal(data.length);
+            object.ContentType.should.equal("image/jpeg");
+            done();
           }
-          object.ETag.should.equal('"' + md5(data) + '"');
-          object.ContentLength.should.equal(data.length);
-          object.ContentType.should.equal("image/jpeg");
-          done();
-        });
+        );
       });
     });
   });
 
   it("should store a different image and update the previous image", function(done) {
-    setTimeout(function() {
-      async.waterfall(
-        [
-          /**
-           * Get object from store
-           */
-          function(callback) {
-            const file = path.join(__dirname, "resources/image.jpg");
-            fs.readFile(file, function(err, data) {
-              const params = {
-                Bucket: buckets[0],
-                Key: "image",
-                Body: data,
-                ContentType: "image/jpeg",
-                ContentLength: data.length
-              };
-              s3Client.putObject(params, function() {
-                s3Client.getObject(
-                  { Bucket: buckets[0], Key: "image" },
-                  function(err, object) {
-                    if (err) {
-                      return callback(err);
-                    }
-                    callback(null, object);
-                  }
-                );
-              });
+    async.waterfall(
+      [
+        /**
+         * Get object from store
+         */
+        callback => {
+          const file = path.join(__dirname, "resources/image.jpg");
+          fs.readFile(file, (err, data) => {
+            const params = {
+              Bucket: buckets[0],
+              Key: "image",
+              Body: data,
+              ContentType: "image/jpeg",
+              ContentLength: data.length
+            };
+            s3Client.putObject(params, err => {
+              if (err) return callback(err);
+              s3Client.getObject(
+                { Bucket: buckets[0], Key: "image" },
+                callback
+              );
             });
-          },
-          /**
-           * Store different object
-           */
-          function(object, callback) {
-            const file = path.join(__dirname, "resources/image1.jpg");
-            fs.readFile(file, function(err, data) {
-              if (err) {
-                return callback(err);
-              }
-              const params = {
-                Bucket: buckets[0],
-                Key: "image",
-                Body: new Buffer(data),
-                ContentType: "image/jpeg",
-                ContentLength: data.length
-              };
-              s3Client.putObject(params, function(err, storedObject) {
-                storedObject.ETag.should.not.equal(object.ETag);
-
-                if (err) {
-                  return callback(err);
-                }
-                callback(null, object);
-              });
+          });
+        },
+        /**
+         * Store different object
+         */
+        (object, callback) => {
+          const file = path.join(__dirname, "resources/image1.jpg");
+          fs.readFile(file, (err, data) => {
+            if (err) return callback(err);
+            const params = {
+              Bucket: buckets[0],
+              Key: "image",
+              Body: new Buffer(data),
+              ContentType: "image/jpeg",
+              ContentLength: data.length
+            };
+            s3Client.putObject(params, (err, storedObject) => {
+              storedObject.ETag.should.not.equal(object.ETag);
+              callback(err, object);
             });
-          },
-          /**
-           * Get object again and do some comparisons
-           */
-          function(object, callback) {
-            s3Client.getObject({ Bucket: buckets[0], Key: "image" }, function(
-              err,
-              newObject
-            ) {
-              if (err) {
-                return callback(err);
-              }
+          });
+        },
+        /**
+         * Get object again and do some comparisons
+         */
+        (object, callback) => {
+          s3Client.getObject(
+            { Bucket: buckets[0], Key: "image" },
+            (err, newObject) => {
+              if (err) return callback(err);
               newObject.LastModified.should.not.equal(object.LastModified);
               newObject.ContentLength.should.not.equal(object.ContentLength);
-              callback(null);
-            });
-          }
-        ],
-        function(err) {
-          if (err) {
-            return done(err);
-          }
-          return done();
+              callback();
+            }
+          );
         }
-      );
-    }, 1000);
+      ],
+      done
+    );
   });
 
   it("should get an objects acl from a bucket", function(done) {
-    s3Client.getObjectAcl({ Bucket: buckets[0], Key: "image" }, function(
-      err,
-      object
-    ) {
-      if (err) {
-        return done(err);
+    s3Client.getObjectAcl(
+      { Bucket: buckets[0], Key: "image" },
+      (err, object) => {
+        if (err) return done(err);
+        object.Owner.DisplayName.should.equal("S3rver");
+        done();
       }
-      object.Owner.DisplayName.should.equal("S3rver");
-      done();
-    });
+    );
   });
 
   it("should delete an image from a bucket", function(done) {
     const b = new Buffer(10);
     const params = { Bucket: buckets[0], Key: "large", Body: b };
-    s3Client.putObject(params, function() {
+    s3Client.putObject(params, err => {
+      if (err) return done(err);
       s3Client.deleteObject({ Bucket: buckets[0], Key: "image" }, done);
     });
   });
 
   it("should not find an image from a bucket", function(done) {
-    s3Client.getObject({ Bucket: buckets[0], Key: "image" }, function(err) {
+    s3Client.getObject({ Bucket: buckets[0], Key: "image" }, err => {
+      should.exist(err);
       err.code.should.equal("NoSuchKey");
       err.statusCode.should.equal(404);
       done();
@@ -804,8 +728,10 @@ describe("S3rver Tests", function() {
   });
 
   it("should fail to delete a bucket because it is not empty", function(done) {
-    generateTestObjects(s3Client, buckets[0], 20, function() {
-      s3Client.deleteBucket({ Bucket: buckets[0] }, function(err) {
+    generateTestObjects(s3Client, buckets[0], 20, err => {
+      if (err) return done(err);
+      s3Client.deleteBucket({ Bucket: buckets[0] }, err => {
+        should.exist(err);
         err.code.should.equal("BucketNotEmpty");
         err.statusCode.should.equal(409);
         done();
@@ -819,11 +745,9 @@ describe("S3rver Tests", function() {
       Key: "multi/directory/path/text",
       Body: "Hello!"
     };
-    s3Client.putObject(params, function(err, data) {
+    s3Client.putObject(params, (err, data) => {
+      if (err) return done(err);
       /"[a-fA-F0-9]{32}"/.test(data.ETag).should.equal(true);
-      if (err) {
-        return done(err);
-      }
       done();
     });
   });
@@ -834,11 +758,9 @@ describe("S3rver Tests", function() {
       Key: "multi/directory/path/multipart",
       Body: Buffer.alloc(5e6)
     }; // 5MB
-    s3Client.upload(params, function(err, data) {
+    s3Client.upload(params, (err, data) => {
+      if (err) return done(err);
       /"[a-fA-F0-9]{32}"/.test(data.ETag).should.equal(true);
-      if (err) {
-        return done(err);
-      }
       done();
     });
   });
@@ -849,11 +771,9 @@ describe("S3rver Tests", function() {
       Key: "multi/directory/path/multipart",
       Body: Buffer.alloc(2e7)
     }; // 20MB
-    s3Client.upload(params, function(err, data) {
+    s3Client.upload(params, (err, data) => {
+      if (err) return done(err);
       /"[a-fA-F0-9]{32}"/.test(data.ETag).should.equal(true);
-      if (err) {
-        return done(err);
-      }
       done();
     });
   });
@@ -864,14 +784,13 @@ describe("S3rver Tests", function() {
       Key: "multi/directory/path/text",
       Body: "Hello!"
     };
-    s3Client.putObject(params, function() {
+    s3Client.putObject(params, err => {
+      if (err) return done(err);
       s3Client.getObject(
         { Bucket: buckets[0], Key: "multi/directory/path/text" },
-        function(err, object) {
-          if (err) {
-            return done(err);
-          }
-          object.ETag.should.equal('"' + md5("Hello!") + '"');
+        (err, object) => {
+          if (err) return done(err);
+          object.ETag.should.equal(JSON.stringify(md5("Hello!")));
           object.ContentLength.should.equal(6);
           object.ContentType.should.equal("application/octet-stream");
           done();
@@ -893,21 +812,18 @@ describe("S3rver Tests", function() {
     ];
     async.eachSeries(
       testObjects,
-      function(testObject, callback) {
+      (testObject, callback) => {
         const params = { Bucket: buckets[1], Key: testObject, Body: "Hello!" };
-        s3Client.putObject(params, function(err, object) {
+        s3Client.putObject(params, (err, object) => {
+          if (err) return callback(err);
           /[a-fA-F0-9]{32}/.test(object.ETag).should.equal(true);
-          callback(err);
+          callback();
         });
       },
-      function(err) {
-        if (err) {
-          return done(err);
-        }
-        s3Client.listObjects({ Bucket: buckets[1] }, function(err, objects) {
-          if (err) {
-            return done(err);
-          }
+      err => {
+        if (err) return done(err);
+        s3Client.listObjects({ Bucket: buckets[1] }, (err, objects) => {
+          if (err) return done(err);
           should(objects.Contents.length).equal(testObjects.length);
           done();
         });
@@ -927,25 +843,24 @@ describe("S3rver Tests", function() {
     ];
     async.eachSeries(
       testObjects,
-      function(testObject, callback) {
+      (testObject, callback) => {
         const params = { Bucket: buckets[1], Key: testObject, Body: "Hello!" };
         s3Client.putObject(params, callback);
       },
-      function() {
+      err => {
+        if (err) return done(err);
         // Create some test objects
-        s3Client.listObjects({ Bucket: buckets[1], Prefix: "key" }, function(
-          err,
-          objects
-        ) {
-          if (err) {
-            return done(err);
+        s3Client.listObjects(
+          { Bucket: buckets[1], Prefix: "key" },
+          (err, objects) => {
+            if (err) return done(err);
+            should(objects.Contents.length).equal(4);
+            should.not.exist(find(objects.Contents, { Key: "akey1" }));
+            should.not.exist(find(objects.Contents, { Key: "akey2" }));
+            should.not.exist(find(objects.Contents, { Key: "akey3" }));
+            done();
           }
-          should(objects.Contents.length).equal(4);
-          should.not.exist(_.find(objects.Contents, { Key: "akey1" }));
-          should.not.exist(_.find(objects.Contents, { Key: "akey2" }));
-          should.not.exist(_.find(objects.Contents, { Key: "akey3" }));
-          done();
-        });
+        );
       }
     );
   });
@@ -962,24 +877,23 @@ describe("S3rver Tests", function() {
     ];
     async.eachSeries(
       testObjects,
-      function(testObject, callback) {
+      (testObject, callback) => {
         const params = { Bucket: buckets[1], Key: testObject, Body: "Hello!" };
         s3Client.putObject(params, callback);
       },
-      function() {
-        s3Client.listObjectsV2({ Bucket: buckets[1], Prefix: "key" }, function(
-          err,
-          objects
-        ) {
-          if (err) {
-            return done(err);
+      err => {
+        if (err) return done(err);
+        s3Client.listObjectsV2(
+          { Bucket: buckets[1], Prefix: "key" },
+          (err, objects) => {
+            if (err) return done(err);
+            should(objects.Contents.length).equal(4);
+            should.not.exist(find(objects.Contents, { Key: "akey1" }));
+            should.not.exist(find(objects.Contents, { Key: "akey2" }));
+            should.not.exist(find(objects.Contents, { Key: "akey3" }));
+            done();
           }
-          should(objects.Contents.length).equal(4);
-          should.not.exist(_.find(objects.Contents, { Key: "akey1" }));
-          should.not.exist(_.find(objects.Contents, { Key: "akey2" }));
-          should.not.exist(_.find(objects.Contents, { Key: "akey3" }));
-          done();
-        });
+        );
       }
     );
   });
@@ -996,21 +910,20 @@ describe("S3rver Tests", function() {
     ];
     async.eachSeries(
       testObjects,
-      function(testObject, callback) {
+      (testObject, callback) => {
         const params = { Bucket: buckets[1], Key: testObject, Body: "Hello!" };
         s3Client.putObject(params, callback);
       },
-      function() {
-        s3Client.listObjects({ Bucket: buckets[1], Marker: "akey3" }, function(
-          err,
-          objects
-        ) {
-          if (err) {
-            return done(err);
+      err => {
+        if (err) return done(err);
+        s3Client.listObjects(
+          { Bucket: buckets[1], Marker: "akey3" },
+          (err, objects) => {
+            if (err) return done(err);
+            should(objects.Contents.length).equal(4);
+            done();
           }
-          should(objects.Contents.length).equal(4);
-          done();
-        });
+        );
       }
     );
   });
@@ -1027,17 +940,16 @@ describe("S3rver Tests", function() {
     ];
     async.eachSeries(
       testObjects,
-      function(testObject, callback) {
+      (testObject, callback) => {
         const params = { Bucket: buckets[1], Key: testObject, Body: "Hello!" };
         s3Client.putObject(params, callback);
       },
-      function() {
+      err => {
+        if (err) return done(err);
         s3Client.listObjects(
           { Bucket: buckets[1], Prefix: "akey", Marker: "akey2" },
-          function(err, objects) {
-            if (err) {
-              return done(err);
-            }
+          (err, objects) => {
+            if (err) return done(err);
             should(objects.Contents.length).equal(1);
             done();
           }
@@ -1058,22 +970,21 @@ describe("S3rver Tests", function() {
     ];
     async.eachSeries(
       testObjects,
-      function(testObject, callback) {
+      (testObject, callback) => {
         const params = { Bucket: buckets[1], Key: testObject, Body: "Hello!" };
         s3Client.putObject(params, callback);
       },
-      function() {
-        s3Client.listObjects({ Bucket: buckets[1], Delimiter: "/" }, function(
-          err,
-          objects
-        ) {
-          if (err) {
-            return done(err);
+      err => {
+        if (err) return done(err);
+        s3Client.listObjects(
+          { Bucket: buckets[1], Delimiter: "/" },
+          (err, objects) => {
+            if (err) return done(err);
+            should(objects.Contents.length).equal(6);
+            should.exist(find(objects.CommonPrefixes, { Prefix: "key/" }));
+            done();
           }
-          should(objects.Contents.length).equal(6);
-          should.exist(_.find(objects.CommonPrefixes, { Prefix: "key/" }));
-          done();
-        });
+        );
       }
     );
   });
@@ -1098,28 +1009,24 @@ describe("S3rver Tests", function() {
 
     async.eachSeries(
       testObjects,
-      function(testObject, callback) {
+      (testObject, callback) => {
         s3Client.putObject(testObject, callback);
       },
-      function(err) {
-        if (err) {
-          return done(err);
-        }
+      err => {
+        if (err) return done(err);
         s3Client.listObjects(
           { Bucket: buckets[5], Prefix: "folder1/", Delimiter: "/" },
-          function(err, objects) {
-            if (err) {
-              return done(err);
-            }
+          (err, objects) => {
+            if (err) return done(err);
             should(objects.CommonPrefixes.length).equal(3);
             should.exist(
-              _.find(objects.CommonPrefixes, { Prefix: "folder1/folder2/" })
+              find(objects.CommonPrefixes, { Prefix: "folder1/folder2/" })
             );
             should.exist(
-              _.find(objects.CommonPrefixes, { Prefix: "folder1/folder3/" })
+              find(objects.CommonPrefixes, { Prefix: "folder1/folder3/" })
             );
             should.exist(
-              _.find(objects.CommonPrefixes, { Prefix: "folder1/folder4/" })
+              find(objects.CommonPrefixes, { Prefix: "folder1/folder4/" })
             );
             done();
           }
@@ -1132,10 +1039,8 @@ describe("S3rver Tests", function() {
     // Create some test objects
     s3Client.listObjects(
       { Bucket: buckets[1], Prefix: "myinvalidprefix" },
-      function(err, objects) {
-        if (err) {
-          return done(err);
-        }
+      (err, objects) => {
+        if (err) return done(err);
         should(objects.Contents.length).equal(0);
         done();
       }
@@ -1146,10 +1051,8 @@ describe("S3rver Tests", function() {
     // Create some test objects
     s3Client.listObjects(
       { Bucket: buckets[1], Marker: "myinvalidmarker" },
-      function(err, objects) {
-        if (err) {
-          return done(err);
-        }
+      (err, objects) => {
+        if (err) return done(err);
         should(objects.Contents.length).equal(0);
         done();
       }
@@ -1164,12 +1067,10 @@ describe("S3rver Tests", function() {
     }
     async.eachSeries(
       testObjects,
-      function(testObject, callback) {
-        s3Client.putObject(testObject, function(err, object) {
+      (testObject, callback) => {
+        s3Client.putObject(testObject, (err, object) => {
+          if (err) return callback(err);
           /[a-fA-F0-9]{32}/.test(object.ETag).should.equal(true);
-          if (err) {
-            return callback(err);
-          }
           callback();
         });
       },
@@ -1179,11 +1080,10 @@ describe("S3rver Tests", function() {
 
   it("should return one thousand small objects", function(done) {
     this.timeout(0);
-    generateTestObjects(s3Client, buckets[2], 2000, function() {
-      s3Client.listObjects({ Bucket: buckets[2] }, function(err, objects) {
-        if (err) {
-          return done(err);
-        }
+    generateTestObjects(s3Client, buckets[2], 2000, err => {
+      if (err) return done(err);
+      s3Client.listObjects({ Bucket: buckets[2] }, (err, objects) => {
+        if (err) return done(err);
         should(objects.Contents.length).equal(1000);
         done();
       });
@@ -1192,30 +1092,30 @@ describe("S3rver Tests", function() {
 
   it("should return 500 small objects", function(done) {
     this.timeout(0);
-    generateTestObjects(s3Client, buckets[2], 1000, function() {
-      s3Client.listObjects({ Bucket: buckets[2], MaxKeys: 500 }, function(
-        err,
-        objects
-      ) {
-        if (err) {
-          return done(err);
+    generateTestObjects(s3Client, buckets[2], 1000, err => {
+      if (err) return done(err);
+      s3Client.listObjects(
+        { Bucket: buckets[2], MaxKeys: 500 },
+        (err, objects) => {
+          if (err) return done(err);
+          should(objects.Contents.length).equal(500);
+          done();
         }
-        should(objects.Contents.length).equal(500);
-        done();
-      });
+      );
     });
   });
 
   it("should delete 500 small objects", function(done) {
     this.timeout(0);
-    generateTestObjects(s3Client, buckets[2], 500, function() {
+    generateTestObjects(s3Client, buckets[2], 500, err => {
+      if (err) return done(err);
       const testObjects = [];
       for (let i = 1; i <= 500; i++) {
         testObjects.push({ Bucket: buckets[2], Key: "key" + i });
       }
       async.eachSeries(
         testObjects,
-        function(testObject, callback) {
+        (testObject, callback) => {
           s3Client.deleteObject(testObject, callback);
         },
         done
@@ -1225,17 +1125,16 @@ describe("S3rver Tests", function() {
 
   it("should delete 500 small objects with deleteObjects", function(done) {
     this.timeout(0);
-    generateTestObjects(s3Client, buckets[2], 500, function() {
+    generateTestObjects(s3Client, buckets[2], 500, err => {
+      if (err) return done(err);
       const deleteObj = { Objects: [] };
       for (let i = 501; i <= 1000; i++) {
         deleteObj.Objects.push({ Key: "key" + i });
       }
       s3Client.deleteObjects(
         { Bucket: buckets[2], Delete: deleteObj },
-        function(err, resp) {
-          if (err) {
-            return done(err);
-          }
+        (err, resp) => {
+          if (err) return done(err);
           should.exist(resp.Deleted);
           should(resp.Deleted).have.length(500);
           should(resp.Deleted).containEql({ Key: "key567" });
@@ -1247,18 +1146,16 @@ describe("S3rver Tests", function() {
 
   it("should return nonexistent objects as deleted with deleteObjects", function(done) {
     const deleteObj = { Objects: [{ Key: "doesnotexist" }] };
-    s3Client.deleteObjects({ Bucket: buckets[2], Delete: deleteObj }, function(
-      err,
-      resp
-    ) {
-      if (err) {
-        return done(err);
+    s3Client.deleteObjects(
+      { Bucket: buckets[2], Delete: deleteObj },
+      (err, resp) => {
+        if (err) return done(err);
+        should.exist(resp.Deleted);
+        should(resp.Deleted).have.length(1);
+        should(resp.Deleted).containEql({ Key: "doesnotexist" });
+        done();
       }
-      should.exist(resp.Deleted);
-      should(resp.Deleted).have.length(1);
-      should(resp.Deleted).containEql({ Key: "doesnotexist" });
-      done();
-    });
+    );
   });
 
   it("should reach the server with a bucket vhost", function(done) {
@@ -1267,7 +1164,7 @@ describe("S3rver Tests", function() {
         url: s3Client.endpoint.href,
         headers: { host: buckets[0] + ".s3.amazonaws.com" }
       },
-      function(err, response, body) {
+      (err, response, body) => {
         if (err) return done(err);
 
         response.statusCode.should.equal(200);
@@ -1325,7 +1222,7 @@ describe("S3rver CORS Policy Tests", function() {
     }).run(err => {
       if (err) return done(err);
 
-      request({ url, headers: { origin } }, function(err, response) {
+      request({ url, headers: { origin } }, (err, response) => {
         s3rver.close(() => {
           if (err) return done(err);
 
@@ -1352,7 +1249,7 @@ describe("S3rver CORS Policy Tests", function() {
     }).run(err => {
       if (err) return done(err);
 
-      request({ url, headers: { origin } }, function(err, response) {
+      request({ url, headers: { origin } }, (err, response) => {
         s3rver.close(() => {
           if (err) return done(err);
 
@@ -1379,7 +1276,7 @@ describe("S3rver CORS Policy Tests", function() {
     }).run(err => {
       if (err) return done(err);
 
-      request({ url, headers: { origin } }, function(err, response) {
+      request({ url, headers: { origin } }, (err, response) => {
         s3rver.close(() => {
           if (err) return done(err);
 
@@ -1406,7 +1303,7 @@ describe("S3rver CORS Policy Tests", function() {
     }).run(err => {
       if (err) return done(err);
 
-      request({ url, headers: { origin } }, function(err, response) {
+      request({ url, headers: { origin } }, (err, response) => {
         s3rver.close(() => {
           if (err) return done(err);
 
@@ -1432,21 +1329,21 @@ describe("S3rver CORS Policy Tests", function() {
     }).run(err => {
       if (err) return done(err);
 
-      request({ url, headers: { origin, range: "bytes=0-99" } }, function(
-        err,
-        response
-      ) {
-        s3rver.close(() => {
-          if (err) return done(err);
+      request(
+        { url, headers: { origin, range: "bytes=0-99" } },
+        (err, response) => {
+          s3rver.close(() => {
+            if (err) return done(err);
 
-          response.statusCode.should.equal(206);
-          response.headers.should.have.property(
-            "access-control-expose-headers",
-            "Accept-Ranges, Content-Range"
-          );
-          done();
-        });
-      });
+            response.statusCode.should.equal(206);
+            response.headers.should.have.property(
+              "access-control-expose-headers",
+              "Accept-Ranges, Content-Range"
+            );
+            done();
+          });
+        }
+      );
     });
   });
 
@@ -1538,10 +1435,8 @@ describe("S3rver Tests with Static Web Hosting", function() {
       indexDocument: "index.html",
       errorDocument: "",
       directory: tmpDir
-    }).run(function(err, hostname, port) {
-      if (err) {
-        return done(err);
-      }
+    }).run((err, hostname, port) => {
+      if (err) return done(err);
       s3Client = new AWS.S3({
         accessKeyId: "123",
         secretAccessKey: "abc",
@@ -1559,16 +1454,15 @@ describe("S3rver Tests with Static Web Hosting", function() {
 
   it("should upload a html page to / path", function(done) {
     const bucket = "site";
-    s3Client.createBucket({ Bucket: bucket }, function() {
+    s3Client.createBucket({ Bucket: bucket }, err => {
+      if (err) return done(err);
       const params = {
         Bucket: bucket,
         Key: "index.html",
         Body: "<html><body>Hello</body></html>"
       };
-      s3Client.putObject(params, function(err, data) {
-        if (err) {
-          return done(err);
-        }
+      s3Client.putObject(params, (err, data) => {
+        if (err) return done(err);
         /[a-fA-F0-9]{32}/.test(data.ETag).should.equal(true);
         done();
       });
@@ -1577,16 +1471,15 @@ describe("S3rver Tests with Static Web Hosting", function() {
 
   it("should upload a html page to a directory path", function(done) {
     const bucket = "site";
-    s3Client.createBucket({ Bucket: bucket }, function() {
+    s3Client.createBucket({ Bucket: bucket }, err => {
+      if (err) return done(err);
       const params = {
         Bucket: bucket,
         Key: "page/index.html",
         Body: "<html><body>Hello</body></html>"
       };
-      s3Client.putObject(params, function(err, data) {
-        if (err) {
-          return done(err);
-        }
+      s3Client.putObject(params, (err, data) => {
+        if (err) return done(err);
         /[a-fA-F0-9]{32}/.test(data.ETag).should.equal(true);
         done();
       });
@@ -1595,15 +1488,13 @@ describe("S3rver Tests with Static Web Hosting", function() {
 
   it("should get an index page at / path", function(done) {
     const bucket = "site";
-    s3Client.createBucket({ Bucket: bucket }, function() {
+    s3Client.createBucket({ Bucket: bucket }, err => {
+      if (err) return done(err);
       const expectedBody = "<html><body>Hello</body></html>";
       const params = { Bucket: bucket, Key: "index.html", Body: expectedBody };
-      s3Client.putObject(params, function() {
-        request(s3Client.endpoint.href + "site/", function(
-          error,
-          response,
-          body
-        ) {
+      s3Client.putObject(params, err => {
+        if (err) return done(err);
+        request(s3Client.endpoint.href + "site/", (error, response, body) => {
           if (error) return done(error);
 
           response.statusCode.should.equal(200);
@@ -1616,49 +1507,44 @@ describe("S3rver Tests with Static Web Hosting", function() {
 
   it("should get an index page at /page/ path", function(done) {
     const bucket = "site";
-    s3Client.createBucket({ Bucket: bucket }, function() {
+    s3Client.createBucket({ Bucket: bucket }, err => {
+      if (err) return done(err);
       const expectedBody = "<html><body>Hello</body></html>";
       const params = {
         Bucket: bucket,
         Key: "page/index.html",
         Body: expectedBody
       };
-      s3Client.putObject(params, function(err) {
-        if (err) {
-          return done(err);
-        }
-        request(s3Client.endpoint.href + "site/page/", function(
-          error,
-          response,
-          body
-        ) {
-          if (error) {
-            return done(error);
-          }
+      s3Client.putObject(params, err => {
+        if (err) return done(err);
+        request(
+          s3Client.endpoint.href + "site/page/",
+          (err, response, body) => {
+            if (err) return done(err);
 
-          response.statusCode.should.equal(200);
-          body.should.equal(expectedBody);
-          done();
-        });
+            response.statusCode.should.equal(200);
+            body.should.equal(expectedBody);
+            done();
+          }
+        );
       });
     });
   });
 
   it("should get a 404 error page", function(done) {
     const bucket = "site";
-    s3Client.createBucket({ Bucket: bucket }, function() {
-      request(s3Client.endpoint.href + "site/page/not-exists", function(
-        error,
-        response
-      ) {
-        if (error) {
-          return done(error);
-        }
+    s3Client.createBucket({ Bucket: bucket }, err => {
+      if (err) return done(err);
+      request(
+        s3Client.endpoint.href + "site/page/not-exists",
+        (err, response) => {
+          if (err) return done(err);
 
-        response.statusCode.should.equal(404);
-        response.headers["content-type"].should.equal("text/html");
-        done();
-      });
+          response.statusCode.should.equal(404);
+          response.headers["content-type"].should.equal("text/html");
+          done();
+        }
+      );
     });
   });
 });
@@ -1710,11 +1596,11 @@ describe("Data directory cleanup", function() {
         sslEnabled: false,
         s3ForcePathStyle: true
       });
-      s3Client.createBucket({ Bucket: bucket }, function(err) {
+      s3Client.createBucket({ Bucket: bucket }, err => {
         if (err) return done(err);
-        generateTestObjects(s3Client, bucket, 10, function(err) {
+        generateTestObjects(s3Client, bucket, 10, err => {
           if (err) return done(err);
-          s3rver.close(function(err) {
+          s3rver.close(err => {
             if (err) return done(err);
             const exists = fs.existsSync(directory);
             should(exists).equal(true);
@@ -1735,7 +1621,7 @@ describe("Data directory cleanup", function() {
       hostname: "localhost",
       silent: true,
       removeBucketsOnClose: false
-    }).run(function(err, hostname, port, directory) {
+    }).run((err, hostname, port, directory) => {
       if (err) return done(err);
 
       const s3Client = new AWS.S3({
@@ -1745,11 +1631,11 @@ describe("Data directory cleanup", function() {
         sslEnabled: false,
         s3ForcePathStyle: true
       });
-      s3Client.createBucket({ Bucket: bucket }, function(err) {
+      s3Client.createBucket({ Bucket: bucket }, err => {
         if (err) return done(err);
-        generateTestObjects(s3Client, bucket, 10, function(err) {
+        generateTestObjects(s3Client, bucket, 10, err => {
           if (err) return done(err);
-          s3rver.close(function(err) {
+          s3rver.close(err => {
             if (err) return done(err);
             const exists = fs.existsSync(directory);
             should(exists).equal(true);
@@ -1769,7 +1655,7 @@ describe("Data directory cleanup", function() {
       port: 4569,
       hostname: "localhost",
       silent: true
-    }).run(function(err, hostname, port, directory) {
+    }).run((err, hostname, port, directory) => {
       if (err) return done(err);
       const s3Client = new AWS.S3({
         accessKeyId: "123",
@@ -1778,12 +1664,11 @@ describe("Data directory cleanup", function() {
         sslEnabled: false,
         s3ForcePathStyle: true
       });
-      s3Client.createBucket({ Bucket: bucket }, function(err) {
+      s3Client.createBucket({ Bucket: bucket }, err => {
         if (err) return done(err);
-
-        generateTestObjects(s3Client, bucket, 10, function(err) {
+        generateTestObjects(s3Client, bucket, 10, err => {
           if (err) return done(err);
-          s3rver.close(function(err) {
+          s3rver.close(err => {
             if (err) return done(err);
             const exists = fs.existsSync(directory);
             should(exists).equal(true);
@@ -1803,7 +1688,7 @@ describe("Data directory cleanup", function() {
       port: 4569,
       hostname: "localhost",
       silent: true
-    }).run(function(err, hostname, port) {
+    }).run((err, hostname, port) => {
       if (err) return done(err);
       const s3Client = new AWS.S3({
         accessKeyId: "123",
