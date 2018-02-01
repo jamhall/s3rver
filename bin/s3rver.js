@@ -1,10 +1,10 @@
 #!/usr/bin/env node
 'use strict';
-var pkg     = require('../package.json'),
-    version = pkg.version,
-    program = require('commander'),
-    fs      = require('fs'),
-    S3rver  = require('../lib');
+var pkg     = require('../package.json');
+var version = pkg.version;
+var program = require('commander');
+var fs      = require('fs-extra');
+var S3rver  = require('../lib');
 
 program.version(version, '--version');
 program.option('-h, --hostname [value]', 'Set the host name or ip for the server', 'localhost')
@@ -14,6 +14,8 @@ program.option('-h, --hostname [value]', 'Set the host name or ip for the server
   .option('-e, --errorDocument [path]', 'Custom Error Document for Static Web Hosting', '')
   .option('-d, --directory [path]', 'Data directory')
   .option('-c, --cors', 'Enable CORS', false)
+  .option('--key [path]', 'Path to private key file for running with TLS')
+  .option('--cert [path]', 'Path to certificate file for running with TLS')
   .parse(process.argv);
 
 if (program.directory === undefined) {
@@ -30,6 +32,11 @@ try {
 catch (e) {
   console.error('Directory does not exist. Please create it and then run the command again');
   process.exit();
+}
+
+if (program.key && program.cert) {
+  program.key = fs.readFileSync(program.key);
+  program.cert = fs.readFileSync(program.cert);
 }
 
 var s3rver = new S3rver(program).run(function (err, host, port) {
