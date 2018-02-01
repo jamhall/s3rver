@@ -81,10 +81,11 @@ var client = new S3rver({
         silent: false,
         directory: '/tmp/s3rver_test_directory'
     }).run(function (err, host, port) {
-        if(err) {
-         return done(err);
+        if (err) {
+            console.error(err)
+        } else {
+            console.log('now listening on host %s and port %d', host, port);
         }
-        done();
     });
 
 client.s3Event.subscribe({
