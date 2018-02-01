@@ -179,8 +179,8 @@ describe('S3rver Tests', function () {
   });
 
   it('should trigger a Put event', function (done) {
-    var params = { Bucket: buckets[0], Key: 'testPutKey', Body: 'Hello!' };
-    var putSubs = s3rver.s3Event.subscribe(function (event) {
+    const params = { Bucket: buckets[0], Key: 'testPutKey', Body: 'Hello!' };
+    const putSubs = s3rver.s3Event.subscribe(function (event) {
       event.Records[0].eventName.should.equal('ObjectCreated:Put');
       event.Records[0].s3.bucket.name.should.equal(buckets[0]);
       event.Records[0].s3.object.key.should.equal('testPutKey');
