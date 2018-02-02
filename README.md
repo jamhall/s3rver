@@ -94,11 +94,11 @@ Creates a S3rver instance
 | ------ | ---- | ------- | ----------- |
 | port | `number` | `4578` | Port of the mock S3 server |
 | hostname | `string` | `localhost` | Host/IP to bind to |
-| key | `string | Buffer` |  | Private key for running with TLS |
-| cert | `string | Buffer` |  | Certificate for running with TLS |
+| key | `string` \| `Buffer` |  | Private key for running with TLS |
+| cert | `string` \| `Buffer` |  | Certificate for running with TLS |
 | silent | `boolean` | `false` | Suppress log messages | 
 | directory | `string` |  | Data directory |
-| cors | `string | Buffer` | [S3 Sample policy](test/resources/cors_sample_policy.xml) | Raw XML string or Buffer of CORS policy |
+| cors | `string` \| `Buffer` | [S3 Sample policy](test/resources/cors_sample_policy.xml) | Raw XML string or Buffer of CORS policy |
 | indexDocument | `string` |  | Index document for static web hosting |
 | errorDocument | `string` |  | Error document for static web hosting |
 | removeBucketsOnClose | `boolean` | `false` | Remove all bucket data on server close |
