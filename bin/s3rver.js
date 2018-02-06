@@ -7,13 +7,13 @@ const fs      = require('fs-extra');
 const S3rver  = require('../lib');
 
 program.version(version, '--version');
-program.option('-h, --hostname [value]', 'Set the host name or ip for the server', 'localhost')
+program.option('-h, --hostname [value]', 'Set the host name or IP to bind to', 'localhost')
   .option('-p, --port <n>', 'Set the port of the http server', 4568)
   .option('-s, --silent', 'Suppress log messages', false)
-  .option('-i, --indexDocument [path]', 'Index Document for Static Web Hosting', '')
-  .option('-e, --errorDocument [path]', 'Custom Error Document for Static Web Hosting', '')
+  .option('-i, --indexDocument [path]', 'Index Document for Static Web Hosting')
+  .option('-e, --errorDocument [path]', 'Custom Error Document for Static Web Hosting')
   .option('-d, --directory [path]', 'Data directory')
-  .option('-c, --cors', 'Enable CORS', false)
+  .option('-c, --cors [path]', 'Path to S3 CORS configuration XML file')
   .option('--key [path]', 'Path to private key file for running with TLS')
   .option('--cert [path]', 'Path to certificate file for running with TLS')
   .parse(process.argv);
@@ -32,6 +32,10 @@ try {
 catch (e) {
   console.error('Directory does not exist. Please create it and then run the command again');
   process.exit();
+}
+
+if (program.cors) {
+  program.cors = fs.readFileSync(program.cors);
 }
 
 if (program.key && program.cert) {

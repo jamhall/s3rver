@@ -1,23 +1,36 @@
 'use strict';
+
 const AWS = require('aws-sdk');
 const async = require('async');
-const should = require('should');
-const fs = require('fs-extra');
-const _ = require('lodash');
-const moment = require('moment');
 const Chance = require('chance');
-const chance = new Chance();
-const path = require('path');
+const _ = require('lodash');
+const fs = require('fs-extra');
 const md5 = require('md5');
-const S3rver = require('../lib');
-const util = require('util');
+const moment = require('moment');
+const os = require('os');
+const path = require('path');
 const request = require('request');
+const should = require('should');
+const util = require('util');
 
-function recreateDirectory(path) {
+const S3rver = require('../lib');
+
+const chance = new Chance();
+
+const tmpDir = path.join(os.tmpdir(), 's3rver_test');
+S3rver.defaultOptions.directory = tmpDir;
+
+/**
+ * Remove if exists and recreate the temporary directory
+ * 
+ * Be aware of https://github.com/isaacs/rimraf/issues/25
+ * Buckets can fail to delete on Windows likely due to a bug/shortcoming in Node.js
+ */
+function resetTmpDir() {
   try {
-    fs.removeSync(path);
+    fs.removeSync(tmpDir);
   } catch (err) {}
-  fs.ensureDirSync(path);
+  fs.ensureDirSync(tmpDir);
 }
 
 function generateTestObjects(s3Client, bucket, amount, callback) {
@@ -34,48 +47,40 @@ function generateTestObjects(s3Client, bucket, amount, callback) {
 }
 
 describe('S3rver Tests', function () {
-  let s3Client;
   const buckets = ['bucket1', 'bucket2', 'bucket3', 'bucket4', 'bucket5', 'bucket6'];
   let s3rver;
+  let s3Client;
 
-  beforeEach(function (done) {
+  beforeEach('Reset buckets', resetTmpDir);
+  beforeEach('Start s3rver and create buckets', function (done) {
     s3rver = new S3rver({
       port: 4569,
       hostname: 'localhost',
-      silent: true,
-      indexDocument: '',
-      errorDocument: '',
-      directory: '/tmp/s3rver_test_directory'
-    }).run(function (err, hostname, port, directory) {
-        if (err) {
-          return done('Error starting server', err);
-        }
-        const config = {
-          accessKeyId: '123',
-          secretAccessKey: 'abc',
-          endpoint: util.format('%s:%d', hostname, port),
-          sslEnabled: false,
-          s3ForcePathStyle: true
-        };
-        AWS.config.update(config);
-        s3Client = new AWS.S3();
-        s3Client.endpoint = new AWS.Endpoint(config.endpoint);
-        /**
-         * Remove if exists and recreate the temporary directory
-         */
-        recreateDirectory(directory);
-        // Create 6 buckets
-        async.eachSeries(buckets, function (bucket, callback) {
-          s3Client.createBucket({Bucket: bucket}, callback);
-        }, done);
+      silent: true
+    }).run((err, hostname, port, directory) => {
+      if (err) return done('Error starting server', err);
+
+      s3Client = new AWS.S3({
+        accessKeyId: '123',
+        secretAccessKey: 'abc',
+        endpoint: util.format('http://%s:%d', hostname, port),
+        sslEnabled: false,
+        s3ForcePathStyle: true
       });
+      // Create 6 buckets
+      async.eachSeries(buckets, (bucket, callback) => {
+        s3Client.createBucket({ Bucket: bucket }, (err) => {
+          if (err && err.code !== 'BucketAlreadyExists') {
+            return callback(err);
+          }
+          callback();
+        });
+      }, done);
+    });
   });
 
-  afterEach(function (done) {
-    s3rver.close(() => {
-      process.removeAllListeners('uncaughtException');
-      done();
-    });
+  afterEach('Close s3rver', function (done) {
+    s3rver.close(done);
   });
 
   it('should fetch fetch six buckets', function (done) {
@@ -439,6 +444,30 @@ describe('S3rver Tests', function () {
           object.ETag.should.equal('"' + md5(data) + '"');
           object.ContentLength.should.equal(data.length);
           object.ContentType.should.equal('image/jpeg');
+          done();
+        });
+      });
+    });
+  });
+
+  it('should get partial image from a bucket with a range request', function (done) {
+    const file = path.join(__dirname, 'resources/image.jpg');
+    fs.readFile(file, function (err, data) {
+      const params = {
+        Bucket: buckets[0],
+        Key: 'image',
+        Body: data,
+        ContentType: 'image/jpeg',
+        ContentLength: data.length,
+      };
+      s3Client.putObject(params, function (err) {
+        const url = s3Client.getSignedUrl('getObject', { Bucket: buckets[0], Key: 'image' });
+        request({ url, headers: { range: 'bytes=0-99' } }, function (err, response, body) {
+          if (err) return done(err);
+
+          response.statusCode.should.equal(206);
+          response.headers.should.have.properties('content-range', 'accept-ranges');
+          response.headers.should.have.property('content-length', '100');
           done();
         });
       });
@@ -890,20 +919,166 @@ describe('S3rver Tests', function () {
   });
 
   it('should reach the server with a bucket vhost', function (done) {
-    request({ url: 'http://localhost:4569/', headers: { host: buckets[0] + '.s3.amazonaws.com' } }, function (err, response, body) {
-      if (err) {
-        return done(err);
-      }
+    request({ url: s3Client.endpoint.href, headers: { host: buckets[0] + '.s3.amazonaws.com' } }, function (err, response, body) {
+      if (err) return done(err);
 
-      if (response.statusCode !== 200) {
-        return done(new Error('Invalid status: ' + response.statusCode));
-      }
-
-      if (body.indexOf('ListBucketResult') === -1) {
-        return done(new Error('Unexpected response: ' + body));
-      }
-
+      response.statusCode.should.equal(200);
+      body.should.containEql('ListBucketResult');
       done();
+    });
+  });
+});
+
+describe('S3rver CORS Policy Tests', function () {
+  const bucket = 'foobars';
+  let s3Client;
+
+  before('Initialize bucket', function (done) {
+    const s3rver = new S3rver({
+      port: 4569,
+      hostname: 'localhost',
+      silent: true
+    }).run((err, hostname, port, directory) => {
+      if (err) return done(err);
+
+      s3Client = new AWS.S3({
+        accessKeyId: '123',
+        secretAccessKey: 'abc',
+        endpoint: util.format('http://%s:%d', 'localhost', 4569),
+        sslEnabled: false,
+        s3ForcePathStyle: true
+      });
+      const file = fs.readFileSync('./test/resources/image.jpg');
+      const params = {
+        Bucket: bucket,
+        Key: 'image',
+        Body: new Buffer(file),
+        ContentType: 'image/jpeg',
+        ContentLength: file.length
+      };
+      s3Client.createBucket({ Bucket: bucket }).promise()
+        .then(() => s3Client.putObject(params).promise())
+        .then(() =>  s3rver.close(done))
+        .catch((err) => s3rver.close(() => done(err)));
+    });
+  });
+
+  it('should add the Access-Control-Allow-Origin header for default (wildcard) configurations', function (done) {
+    const origin = 'http://a-test.example.com';
+    const params = { Bucket: bucket, Key: 'image' };
+    const url = s3Client.getSignedUrl('getObject', params);
+    const s3rver = new S3rver({
+      port: 4569,
+      hostname: 'localhost',
+      silent: true
+    }).run((err) => {
+      if (err) return done(err);
+
+      request({ url, headers: { origin } }, function (err, response, body) {
+        s3rver.close(() => {
+          if (err) return done(err);
+
+          response.statusCode.should.equal(200);
+          response.headers.should.have.property('access-control-allow-origin', '*');
+          done();
+        });
+      });
+    });
+  });
+
+  it('should add the Access-Control-Allow-Origin header for a matching origin', function (done) {
+    const origin = 'http://a-test.example.com';
+    const params = { Bucket: bucket, Key: 'image' };
+    const url = s3Client.getSignedUrl('getObject', params);
+    const s3rver = new S3rver({
+      port: 4569,
+      hostname: 'localhost',
+      silent: true,
+      cors: fs.readFileSync('./test/resources/cors_test1.xml')
+    }).run((err) => {
+      if (err) return done(err);
+
+      request({ url, headers: { origin } }, function (err, response, body) {
+        s3rver.close(() => {
+          if (err) return done(err);
+
+          response.statusCode.should.equal(200);
+          response.headers.should.have.property('access-control-allow-origin', origin);
+          done();
+        });
+      });
+    });
+  });
+
+  it('should match an origin to a CORSRule with a wildcard character', function (done) {
+    const origin = 'http://foo.bar.com';
+    const params = { Bucket: bucket, Key: 'image' };
+    const url = s3Client.getSignedUrl('getObject', params);
+    const s3rver = new S3rver({
+      port: 4569,
+      hostname: 'localhost',
+      silent: true,
+      cors: fs.readFileSync('./test/resources/cors_test1.xml')
+    }).run((err) => {
+      if (err) return done(err);
+
+      request({ url, headers: { origin } }, function (err, response, body) {
+        s3rver.close(() => {
+          if (err) return done(err);
+
+          response.statusCode.should.equal(200);
+          response.headers.should.have.property('access-control-allow-origin', origin);
+          done();
+        });
+      });
+    });
+  });
+
+  it('should not add the Access-Control-Allow-Origin header for a non-matching origin', function (done) {
+    const origin = 'http://b-test.example.com';
+    const params = { Bucket: bucket, Key: 'image' };
+    const url = s3Client.getSignedUrl('getObject', params);
+    const s3rver = new S3rver({
+      port: 4569,
+      hostname: 'localhost',
+      silent: true,
+      cors: fs.readFileSync('./test/resources/cors_test1.xml')
+    }).run((err) => {
+      if (err) return done(err);
+
+      request({ url, headers: { origin } }, function (err, response, body) {
+        s3rver.close(() => {
+          if (err) return done(err);
+
+          response.statusCode.should.equal(200);
+          response.headers.should.not.have.property('access-control-allow-origin');
+          done();
+        });
+      });
+    });
+  });
+
+  it('should expose appropriate headers for a range request', function (done) {
+    const origin = 'http://a-test.example.com';
+    const params = { Bucket: bucket, Key: 'image' };
+    const url = s3Client.getSignedUrl('getObject', params);
+    const s3rver = new S3rver({
+      port: 4569,
+      hostname: 'localhost',
+      silent: true,
+      cors: fs.readFileSync('./test/resources/cors_test1.xml')
+    }).run((err) => {
+      if (err) return done(err);
+
+      request({ url, headers: { origin, range: 'bytes=0-100' } }, function (err, response, body) {
+        s3rver.close(() => {
+          if (err) return done(err);
+
+          response.statusCode.should.equal(206);
+          response.headers.should.have.property('access-control-expose-headers', 'Accept-Ranges, Content-Range');
+          done();
+        });
+      });
     });
   });
 });
@@ -911,97 +1086,74 @@ describe('S3rver Tests', function () {
 describe('S3rver Tests with Static Web Hosting', function () {
   let s3Client;
   let s3rver;
-  beforeEach(function (done) {
+
+  beforeEach('Reset site bucket', resetTmpDir);
+  beforeEach('Start s3rver', function (done) {
     s3rver = new S3rver({
       port: 5694,
       hostname: 'localhost',
       silent: true,
       indexDocument: 'index.html',
       errorDocument: '',
-      directory: '/tmp/s3rver_test_directory'
+      directory: tmpDir
     }).run(function (err, hostname, port, directory) {
-        if (err) {
-          return done('Error starting server', err);
-        }
-        const config = {
-          accessKeyId: '123',
-          secretAccessKey: 'abc',
-          endpoint: util.format('%s:%d', hostname, port),
-          sslEnabled: false,
-          s3ForcePathStyle: true
-        };
-        AWS.config.update(config);
-        s3Client = new AWS.S3();
-        s3Client.endpoint = new AWS.Endpoint(config.endpoint);
-        /**
-         * Remove if exists and recreate the temporary directory
-         */
-        fs.remove(directory, function (err) {
-          if (err) {
-            return done(err);
-          }
-          fs.mkdirs(directory, done);
-        });
+      if (err) {
+        return done(err);
+      }
+      s3Client = new AWS.S3({
+        accessKeyId: '123',
+        secretAccessKey: 'abc',
+        endpoint: util.format('http://%s:%d', hostname, port),
+        sslEnabled: false,
+        s3ForcePathStyle: true
       });
+      done();
+    });
   });
 
   afterEach(function (done) {
     s3rver.close(done);
   });
 
-  it('should create a site bucket', function (done) {
-    s3Client.createBucket({Bucket: 'site'}, function (err) {
-      if (err) {
-        return done(err);
-      }
-      done();
-    });
-  });
-
   it('should upload a html page to / path', function (done) {
-    s3Client.createBucket({Bucket: 'site'}, function () {
-      const params = {Bucket: 'site', Key: 'index.html', Body: '<html><body>Hello</body></html>'};
+    const bucket = 'site';
+    s3Client.createBucket({Bucket: bucket}, function () {
+      const params = {Bucket: bucket, Key: 'index.html', Body: '<html><body>Hello</body></html>'};
       s3Client.putObject(params, function (err, data) {
-        if (err) return done(err);
-        /[a-fA-F0-9]{32}/.test(data.ETag).should.equal(true);
         if (err) {
           return done(err);
         }
+        /[a-fA-F0-9]{32}/.test(data.ETag).should.equal(true);
         done();
       });
     });
   });
 
   it('should upload a html page to a directory path', function (done) {
-    s3Client.createBucket({Bucket: 'site'}, function () {
-      const params = {Bucket: 'site', Key: 'page/index.html', Body: '<html><body>Hello</body></html>'};
+    const bucket = 'site';
+    s3Client.createBucket({Bucket: bucket}, function () {
+      const params = {Bucket: bucket, Key: 'page/index.html', Body: '<html><body>Hello</body></html>'};
       s3Client.putObject(params, function (err, data) {
-        /[a-fA-F0-9]{32}/.test(data.ETag).should.equal(true);
         if (err) {
           return done(err);
         }
+        /[a-fA-F0-9]{32}/.test(data.ETag).should.equal(true);
         done();
       });
     });
   });
 
   it('should get an index page at / path', function (done) {
-    s3Client.createBucket({Bucket: 'site'}, function () {
-      const params = {Bucket: 'site', Key: 'index.html', Body: '<html><body>Hello</body></html>'};
+    const bucket = 'site';
+    s3Client.createBucket({Bucket: bucket}, function () {
+      const expectedBody = '<html><body>Hello</body></html>';
+      const params = {Bucket: bucket, Key: 'index.html', Body: expectedBody};
       s3Client.putObject(params, function (err, data) {
-        request('http://localhost:5694/site/', function (error, response, body) {
-          if (error) {
-            return done(error);
-          }
+        request(s3Client.endpoint.href + 'site/', function (error, response, body) {
+          if (error) return done(error);
     
-          if (response.statusCode !== 200) {
-            return done(new Error('Invalid status: ' + response.statusCode));
-          }
-    
-          if (body !== '<html><body>Hello</body></html>') {
-            return done(new Error('Invalid Content: ' + body));
-          }
-    
+          response.statusCode.should.equal(200);
+          body.should.equal(expectedBody);
           done();
         });
       });
@@ -1009,22 +1161,21 @@ describe('S3rver Tests with Static Web Hosting', function () {
   });
 
   it('should get an index page at /page/ path', function (done) {
-    s3Client.createBucket({Bucket: 'site'}, function () {
-      const params = {Bucket: 'site', Key: 'page/index.html', Body: '<html><body>Hello</body></html>'};
-      s3Client.putObject(params, function () {
-        request('http://localhost:5694/site/page/', function (error, response, body) {
+    const bucket = 'site';
+    s3Client.createBucket({Bucket: bucket}, function () {
+      const expectedBody = '<html><body>Hello</body></html>';
+      const params = {Bucket: bucket, Key: 'page/index.html', Body: expectedBody};
+      s3Client.putObject(params, function (err) {
+        if (err) {
+          return done(err);
+        }
+        request(s3Client.endpoint.href + 'site/page/', function (error, response, body) {
           if (error) {
             return done(error);
           }
 
-          if (response.statusCode !== 200) {
-            return done(new Error('Invalid status: ' + response.statusCode));
-          }
-
-          if (body !== '<html><body>Hello</body></html>') {
-            return done(new Error('Invalid Content: ' + body));
-          }
-
+          response.statusCode.should.equal(200);
+          body.should.equal(expectedBody);
           done();
         });
       });
@@ -1032,198 +1183,179 @@ describe('S3rver Tests with Static Web Hosting', function () {
   });
 
   it('should get a 404 error page', function (done) {
-    s3Client.createBucket({Bucket: 'site'}, function () {
-      request('http://localhost:5694/site/page/not-exists', function (error, response) {
+    const bucket = 'site';
+    s3Client.createBucket({Bucket: bucket}, function () {
+      request(s3Client.endpoint.href + 'site/page/not-exists', function (error, response) {
         if (error) {
           return done(error);
         }
 
-        if (response.statusCode !== 404) {
-          return done(new Error('Invalid status: ' + response.statusCode));
-        }
-
-        if (response.headers['content-type'] !== 'text/html') {
-          return done(new Error('Invalid ContentType: ' + response.headers['content-type']));
-        }
-
+        response.statusCode.should.equal(404);
+        response.headers['content-type'].should.equal('text/html');
         done();
       });
     });
   });
 });
 
-it('Cleans up after close if the removeBucketsOnClose setting is true', function (done) {
-  const directory = '/tmp/s3rver_test_directory';
-  recreateDirectory(directory);
-  const s3rver = new S3rver({
-    port: 4569,
-    hostname: 'localhost',
-    silent: true,
-    indexDocument: '',
-    errorDocument: '',
-    directory: directory,
-    removeBucketsOnClose: true
-  }).run(function () {
-    const config = {
-      accessKeyId: '123',
-      secretAccessKey: 'abc',
-      endpoint: util.format('%s:%d', 'localhost', 4569),
-      sslEnabled: false,
-      s3ForcePathStyle: true
-    };
-    AWS.config.update(config);
-    const s3Client = new AWS.S3();
-    s3Client.endpoint = new AWS.Endpoint(config.endpoint);
-    s3Client.createBucket({Bucket: 'foobars'}, function (err) {
-      if (err) return done(err);
-      generateTestObjects(s3Client, 'foobars', 10, function (err) {
-        if (err) return done(err);
-        s3rver.close(function (err) {
-          if (err) return done(err);
-          const exists = fs.existsSync(directory);
-          should(exists).equal(true);
-          const files = fs.readdirSync(directory);
-          should(files.length).equal(0)
-          done();
-        });
-      });
-    });
-  });
-});
-
-it('Does not clean up after close if the removeBucketsOnClose setting is false', function (done) {
-  const directory = '/tmp/s3rver_test_directory';
-  recreateDirectory(directory);
-  const s3rver = new S3rver({
-    port: 4569,
-    hostname: 'localhost',
-    silent: true,
-    indexDocument: '',
-    errorDocument: '',
-    directory: directory,
-    removeBucketsOnClose: false
-  }).run(function () {
-    const config = {
-      accessKeyId: '123',
-      secretAccessKey: 'abc',
-      endpoint: util.format('%s:%d', 'localhost', 4569),
-      sslEnabled: false,
-      s3ForcePathStyle: true
-    };
-    AWS.config.update(config);
-    const s3Client = new AWS.S3();
-    s3Client.endpoint = new AWS.Endpoint(config.endpoint);
-    s3Client.createBucket({Bucket: 'foobars'}, function (err) {
-      if (err) return done(err);
-      generateTestObjects(s3Client, 'foobars', 10, function (err) {
-        if (err) return done(err);
-        s3rver.close(function (err) {
-          if (err) return done(err);
-          const exists = fs.existsSync(directory);
-          should(exists).equal(true);
-          const files = fs.readdirSync(directory);
-          should(files.length).equal(1)
-          done();
-        });
-      });
-    });
-  });
-});
-
-it('Does not clean up after close if the removeBucketsOnClose setting is not set', function (done) {
-  const directory = '/tmp/s3rver_test_directory';
-  recreateDirectory(directory);
-  const s3rver = new S3rver({
-    port: 4569,
-    hostname: 'localhost',
-    silent: true,
-    indexDocument: '',
-    errorDocument: '',
-    directory: directory
-  }).run(function () {
-    const config = {
-      accessKeyId: '123',
-      secretAccessKey: 'abc',
-      endpoint: util.format('%s:%d', 'localhost', 4569),
-      sslEnabled: false,
-      s3ForcePathStyle: true
-    };
-    AWS.config.update(config);
-    const s3Client = new AWS.S3();
-    s3Client.endpoint = new AWS.Endpoint(config.endpoint);
-    s3Client.createBucket({Bucket: 'foobars'}, function (err) {
-      if (err) return done(err);
-      generateTestObjects(s3Client, 'foobars', 10, function (err) {
-        if (err) return done(err);
-        s3rver.close(function (err) {
-          if (err) return done(err);
-          const exists = fs.existsSync(directory);
-          should(exists).equal(true);
-          const files = fs.readdirSync(directory);
-          should(files.length).equal(1)
-          done();
-        });
-      });
-    });
-  });
-});
-
-it('Can delete a bucket that is empty after some key that includes a directory has been deleted', function (done) {
-  const directory = '/tmp/s3rver_test_directory';
-  recreateDirectory(directory);
-  const s3rver = new S3rver({
-    port: 4569,
-    hostname: 'localhost',
-    silent: true,
-    indexDocument: '',
-    errorDocument: '',
-    directory: directory,
-  }).run(function () {
-    const config = {
-      accessKeyId: '123',
-      secretAccessKey: 'abc',
-      endpoint: util.format('%s:%d', 'localhost', 4569),
-      sslEnabled: false,
-      s3ForcePathStyle: true
-    };
-    AWS.config.update(config);
-    const s3Client = new AWS.S3();
-    s3Client.endpoint = new AWS.Endpoint(config.endpoint);
-    const bucket = 'foobars';
-
-    s3Client.createBucket({Bucket: bucket}).promise()
-      .then(() => s3Client.putObject({ Bucket: bucket, Key: 'foo/foo.txt', Body: 'Hello!'}).promise())
-      .then(() => s3Client.deleteObject({ Bucket: bucket, Key: 'foo/foo.txt' }).promise())
-      .then(() => s3Client.deleteBucket({ Bucket: bucket }).promise())
-      .then(() => s3rver.close(done))
-      .catch(err => s3rver.close(() => done(err)));
-  });
-});
-
-describe('S3rver Class Tests', function() {
+describe('S3rver Class Tests', function () {
 
   it('should merge default options with provided options', function () {
     const s3rver = new S3rver({
       hostname: 'testhost',
       indexDocument: 'index.html',
       errorDocument: '',
-      directory: '/tmp/s3rver_test_directory',
+      directory: './testdir',
       key: new Buffer([1, 2, 3]),
       cert: new Buffer([1, 2, 3]),
       removeBucketsOnClose: true
     });
 
-    s3rver.options.should.have.property('hostname', 'testhost')
-    s3rver.options.should.have.property('port', 4578)
-    s3rver.options.should.have.property('silent', false)
-    s3rver.options.should.have.property('indexDocument', 'index.html')
-    s3rver.options.should.have.property('errorDocument', '')
-    s3rver.options.should.have.property('directory', '/tmp/s3rver_test_directory')
-    s3rver.options.should.have.property('key')
-    s3rver.options.should.have.property('cert')
-    s3rver.options.key.should.be.an.instanceOf(Buffer)
-    s3rver.options.cert.should.be.an.instanceOf(Buffer)
-    s3rver.options.should.have.property('removeBucketsOnClose', true)
+    s3rver.options.should.have.property('hostname', 'testhost');
+    s3rver.options.should.have.property('port', 4578);
+    s3rver.options.should.have.property('silent', false);
+    s3rver.options.should.have.property('indexDocument', 'index.html');
+    s3rver.options.should.have.property('errorDocument', '');
+    s3rver.options.should.have.property('directory', './testdir');
+    s3rver.options.should.have.property('key');
+    s3rver.options.should.have.property('cert');
+    s3rver.options.key.should.be.an.instanceOf(Buffer);
+    s3rver.options.cert.should.be.an.instanceOf(Buffer);
+    s3rver.options.should.have.property('removeBucketsOnClose', true);
   })
 
+});
+
+describe('Data directory cleanup', function () {
+
+  beforeEach('Reset buckets', resetTmpDir);
+
+  it('Cleans up after close if the removeBucketsOnClose setting is true', function (done) {
+    const bucket = 'foobars';
+
+    const s3rver = new S3rver({
+      port: 4569,
+      hostname: 'localhost',
+      silent: true,
+      removeBucketsOnClose: true
+    }).run((err, hostname, port, directory) => {
+      if (err) return done(err);
+
+      const s3Client = new AWS.S3({
+        accessKeyId: '123',
+        secretAccessKey: 'abc',
+        endpoint: util.format('http://%s:%d', hostname, port),
+        sslEnabled: false,
+        s3ForcePathStyle: true
+      });
+      s3Client.createBucket({ Bucket: bucket }, function (err) {
+        if (err) return done(err);
+        generateTestObjects(s3Client, bucket, 10, function (err) {
+          if (err) return done(err);
+          s3rver.close(function (err) {
+            if (err) return done(err);
+            const exists = fs.existsSync(directory);
+            should(exists).equal(true);
+            const files = fs.readdirSync(directory);
+            should(files.length).equal(0);
+            done();
+          });
+        });
+      });
+    });
+  });
+
+  it('Does not clean up after close if the removeBucketsOnClose setting is false', function (done) {
+    const bucket = 'foobars';
+
+    const s3rver = new S3rver({
+      port: 4569,
+      hostname: 'localhost',
+      silent: true,
+      removeBucketsOnClose: false
+    }).run(function (err, hostname, port, directory) {
+      if (err) return done(err);
+
+      const s3Client = new AWS.S3({
+        accessKeyId: '123',
+        secretAccessKey: 'abc',
+        endpoint: util.format('http://%s:%d', hostname, port),
+        sslEnabled: false,
+        s3ForcePathStyle: true
+      });
+      s3Client.createBucket({ Bucket: bucket }, function (err) {
+        if (err) return done(err);
+        generateTestObjects(s3Client, bucket, 10, function (err) {
+          if (err) return done(err);
+          s3rver.close(function (err) {
+            if (err) return done(err);
+            const exists = fs.existsSync(directory);
+            should(exists).equal(true);
+            const files = fs.readdirSync(directory);
+            should(files.length).equal(1);
+            done();
+          });
+        });
+      });
+    });
+  });
+
+  it('Does not clean up after close if the removeBucketsOnClose setting is not set', function (done) {
+    const bucket = 'foobars';
+
+    const s3rver = new S3rver({
+      port: 4569,
+      hostname: 'localhost',
+      silent: true
+    }).run(function (err, hostname, port, directory) {
+      if (err) return done(err);
+      const s3Client = new AWS.S3({
+        accessKeyId: '123',
+        secretAccessKey: 'abc',
+        endpoint: util.format('http://%s:%d', hostname, port),
+        sslEnabled: false,
+        s3ForcePathStyle: true
+      });
+      s3Client.createBucket({ Bucket: bucket }, function (err) {
+        if (err) return done(err);
+
+        generateTestObjects(s3Client, bucket, 10, function (err) {
+          if (err) return done(err);
+          s3rver.close(function (err) {
+            if (err) return done(err);
+            const exists = fs.existsSync(directory);
+            should(exists).equal(true);
+            const files = fs.readdirSync(directory);
+            should(files.length).equal(1);
+            done();
+          });
+        });
+      });
+    });
+  });
+
+  it('Can delete a bucket that is empty after some key that includes a directory has been deleted', function (done) {
+    const bucket = 'foobars';
+
+    const s3rver = new S3rver({
+      port: 4569,
+      hostname: 'localhost',
+      silent: true
+    }).run(function (err, hostname, port, directory) {
+      if (err) return done(err);
+      const s3Client = new AWS.S3({
+        accessKeyId: '123',
+        secretAccessKey: 'abc',
+        endpoint: util.format('http://%s:%d', hostname, port),
+        sslEnabled: false,
+        s3ForcePathStyle: true
+      });
+      s3Client.createBucket({ Bucket: bucket }).promise()
+        .then(() => s3Client.putObject({ Bucket: bucket, Key: 'foo/foo.txt', Body: 'Hello!'}).promise())
+        .then(() => s3Client.deleteObject({ Bucket: bucket, Key: 'foo/foo.txt' }).promise())
+        .then(() => s3Client.deleteBucket({ Bucket: bucket }).promise())
+        .then(() => s3rver.close(done))
+        .catch(err => s3rver.close(() => done(err)));
+    });
+  });
 });
