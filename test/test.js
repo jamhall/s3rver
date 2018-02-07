@@ -798,11 +798,10 @@ describe('S3rver Tests', function () {
         if (err) {
           return done(err);
         }
-        should(objects.CommonPrefixes.length).equal(4);
+        should(objects.CommonPrefixes.length).equal(3);
         should.exist(_.find(objects.CommonPrefixes, {'Prefix': 'folder1/folder2/'}));
         should.exist(_.find(objects.CommonPrefixes, {'Prefix': 'folder1/folder3/'}));
         should.exist(_.find(objects.CommonPrefixes, {'Prefix': 'folder1/folder4/'}));
-        should.exist(_.find(objects.CommonPrefixes, {'Prefix': 'folder1/folder4/folder5/'}));
         done();
       });
     });
