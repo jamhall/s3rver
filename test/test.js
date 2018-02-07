@@ -22,7 +22,7 @@ S3rver.defaultOptions.directory = tmpDir;
 
 /**
  * Remove if exists and recreate the temporary directory
- * 
+ *
  * Be aware of https://github.com/isaacs/rimraf/issues/25
  * Buckets can fail to delete on Windows likely due to a bug/shortcoming in Node.js
  */
@@ -157,7 +157,7 @@ describe('S3rver Tests', function () {
       s3Client.listObjects({Bucket: buckets[4]}, function (err) {
         err.code.should.equal('NoSuchBucket');
         err.statusCode.should.equal(404);
-        done();        
+        done();
       })
     })
   });
@@ -831,7 +831,7 @@ describe('S3rver Tests', function () {
   });
 
   it('should generate a few thousand small objects', function (done) {
-    this.timeout(0);    
+    this.timeout(0);
     const testObjects = [];
     for (let i = 1; i <= 2000; i++) {
       testObjects.push({Bucket: buckets[2], Key: 'key' + i, Body: 'Hello!'});
@@ -861,7 +861,7 @@ describe('S3rver Tests', function () {
   });
 
   it('should return 500 small objects', function (done) {
-    this.timeout(0);    
+    this.timeout(0);
     generateTestObjects(s3Client, buckets[2], 1000, function () {
       s3Client.listObjects({'Bucket': buckets[2], MaxKeys: 500}, function (err, objects) {
         if (err) {
@@ -874,7 +874,7 @@ describe('S3rver Tests', function () {
   });
 
   it('should delete 500 small objects', function (done) {
-    this.timeout(0);        
+    this.timeout(0);
     generateTestObjects(s3Client, buckets[2], 500, function () {
       const testObjects = [];
       for (let i = 1; i <= 500; i++) {
@@ -887,7 +887,7 @@ describe('S3rver Tests', function () {
   });
 
   it('should delete 500 small objects with deleteObjects', function (done) {
-    this.timeout(0);    
+    this.timeout(0);
     generateTestObjects(s3Client, buckets[2], 500, function () {
       const deleteObj = {Objects: []};
       for (let i = 501; i <= 1000; i++) {
@@ -1151,7 +1151,7 @@ describe('S3rver Tests with Static Web Hosting', function () {
       s3Client.putObject(params, function (err, data) {
         request(s3Client.endpoint.href + 'site/', function (error, response, body) {
           if (error) return done(error);
-    
+
           response.statusCode.should.equal(200);
           body.should.equal(expectedBody);
           done();
