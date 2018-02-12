@@ -3,4 +3,7 @@ node_js:
   - "6"
   - "8"
   - "9"
-script: npm test
+script:
+  - npm test
+  - npm run eslint
+  - npm run prettier-check
