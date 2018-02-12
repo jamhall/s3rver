@@ -64,12 +64,16 @@ const s3rver = new S3rver(program).run(function(err, host, port) {
   }
 });
 
-s3rver.s3Event.subscribe(function (event) {
+s3rver.s3Event.subscribe(function(event) {
   // eslint-disable-next-line no-console
-    console.log(event);
+  console.log(event);
 });
 
-s3rver.s3Event.filter(function (event) { return event.Records[0].eventName == 'ObjectCreated:Copy' }).subscribe(function (event) {
-  // eslint-disable-next-line no-console
+s3rver.s3Event
+  .filter(function(event) {
+    return event.Records[0].eventName == "ObjectCreated:Copy";
+  })
+  .subscribe(function(event) {
+    // eslint-disable-next-line no-console
     console.log(event);
-});
+  });
