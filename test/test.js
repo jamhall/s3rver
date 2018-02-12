@@ -271,7 +271,8 @@ describe("S3rver Tests", function() {
     });
   });
 
-  it('should store a text object with some custom metadata', function (done) {
+
+  it("should store a text object with some custom metadata", function(done) {
     const params = {
       Bucket: buckets[0],
       Key: "textmetadata",
@@ -688,7 +689,9 @@ describe("S3rver Tests", function() {
               if (err) {
                 return callback(err);
               }
-              callback(null, object);
+              newObject.LastModified.should.not.equal(object.LastModified);
+              newObject.ContentLength.should.not.equal(object.ContentLength);
+              callback(null);
             });
           }
         ],
