@@ -27,6 +27,7 @@ program
   .parse(process.argv);
 
 if (program.directory === undefined) {
+  // eslint-disable-next-line no-console
   console.error("Data directory is required");
   process.exit();
 }
@@ -37,6 +38,7 @@ try {
     throw Error();
   }
 } catch (e) {
+  // eslint-disable-next-line no-console
   console.error(
     "Directory does not exist. Please create it and then run the command again"
   );
@@ -52,10 +54,12 @@ if (program.key && program.cert) {
   program.cert = fs.readFileSync(program.cert);
 }
 
-const s3rver = new S3rver(program).run(function(err, host, port) {
+new S3rver(program).run(function(err, host, port) {
   if (err) {
+    // eslint-disable-next-line no-console
     console.error(err);
   } else {
+    // eslint-disable-next-line no-console
     console.log("now listening on host %s and port %d", host, port);
   }
 });

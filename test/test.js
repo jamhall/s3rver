@@ -29,6 +29,7 @@ S3rver.defaultOptions.directory = tmpDir;
 function resetTmpDir() {
   try {
     fs.removeSync(tmpDir);
+    // eslint-disable-next-line no-empty
   } catch (err) {}
   fs.ensureDirSync(tmpDir);
 }
@@ -68,7 +69,7 @@ describe("S3rver Tests", function() {
       port: 4569,
       hostname: "localhost",
       silent: true
-    }).run((err, hostname, port, directory) => {
+    }).run((err, hostname, port) => {
       if (err) return done("Error starting server", err);
 
       s3Client = new AWS.S3({
@@ -284,7 +285,7 @@ describe("S3rver Tests", function() {
       ContentLength: stats.size
     };
 
-    s3Client.putObject(params, function(err, data) {
+    s3Client.putObject(params, function(err) {
       if (err) return done(err);
 
       s3Client.getObject({ Bucket: buckets[0], Key: "jquery" }, function(
@@ -366,7 +367,7 @@ describe("S3rver Tests", function() {
             someKey: "value"
           }
         };
-        s3Client.copyObject(params, function(err, data) {
+        s3Client.copyObject(params, function(err) {
           if (err) {
             return done(err);
           }
@@ -476,7 +477,7 @@ describe("S3rver Tests", function() {
         ContentType: "image/jpeg",
         ContentLength: data.length
       };
-      s3Client.putObject(params, function(err) {
+      s3Client.putObject(params, function() {
         s3Client.getObject({ Bucket: buckets[0], Key: "image" }, function(
           err,
           object
@@ -503,15 +504,14 @@ describe("S3rver Tests", function() {
         ContentType: "image/jpeg",
         ContentLength: data.length
       };
-      s3Client.putObject(params, function(err) {
+      s3Client.putObject(params, function() {
         const url = s3Client.getSignedUrl("getObject", {
           Bucket: buckets[0],
           Key: "image"
         });
         request({ url, headers: { range: "bytes=0-99" } }, function(
           err,
-          response,
-          body
+          response
         ) {
           if (err) return done(err);
 
@@ -537,7 +537,7 @@ describe("S3rver Tests", function() {
         ContentType: "image/jpeg",
         ContentLength: data.length
       };
-      s3Client.putObject(params, function(err) {
+      s3Client.putObject(params, function() {
         s3Client.headObject({ Bucket: buckets[0], Key: "image" }, function(
           err,
           object
@@ -653,7 +653,7 @@ describe("S3rver Tests", function() {
   it("should delete an image from a bucket", function(done) {
     const b = new Buffer(10);
     const params = { Bucket: buckets[0], Key: "large", Body: b };
-    s3Client.putObject(params, function(err, data) {
+    s3Client.putObject(params, function() {
       s3Client.deleteObject({ Bucket: buckets[0], Key: "image" }, done);
     });
   });
@@ -1154,7 +1154,7 @@ describe("S3rver CORS Policy Tests", function() {
       port: 4569,
       hostname: "localhost",
       silent: true
-    }).run((err, hostname, port, directory) => {
+    }).run(err => {
       if (err) return done(err);
 
       s3Client = new AWS.S3({
@@ -1192,7 +1192,7 @@ describe("S3rver CORS Policy Tests", function() {
     }).run(err => {
       if (err) return done(err);
 
-      request({ url, headers: { origin } }, function(err, response, body) {
+      request({ url, headers: { origin } }, function(err, response) {
         s3rver.close(() => {
           if (err) return done(err);
 
@@ -1219,7 +1219,7 @@ describe("S3rver CORS Policy Tests", function() {
     }).run(err => {
       if (err) return done(err);
 
-      request({ url, headers: { origin } }, function(err, response, body) {
+      request({ url, headers: { origin } }, function(err, response) {
         s3rver.close(() => {
           if (err) return done(err);
 
@@ -1246,7 +1246,7 @@ describe("S3rver CORS Policy Tests", function() {
     }).run(err => {
       if (err) return done(err);
 
-      request({ url, headers: { origin } }, function(err, response, body) {
+      request({ url, headers: { origin } }, function(err, response) {
         s3rver.close(() => {
           if (err) return done(err);
 
@@ -1273,7 +1273,7 @@ describe("S3rver CORS Policy Tests", function() {
     }).run(err => {
       if (err) return done(err);
 
-      request({ url, headers: { origin } }, function(err, response, body) {
+      request({ url, headers: { origin } }, function(err, response) {
         s3rver.close(() => {
           if (err) return done(err);
 
@@ -1301,8 +1301,7 @@ describe("S3rver CORS Policy Tests", function() {
 
       request({ url, headers: { origin, range: "bytes=0-100" } }, function(
         err,
-        response,
-        body
+        response
       ) {
         s3rver.close(() => {
           if (err) return done(err);
@@ -1332,7 +1331,7 @@ describe("S3rver Tests with Static Web Hosting", function() {
       indexDocument: "index.html",
       errorDocument: "",
       directory: tmpDir
-    }).run(function(err, hostname, port, directory) {
+    }).run(function(err, hostname, port) {
       if (err) {
         return done(err);
       }
@@ -1392,7 +1391,7 @@ describe("S3rver Tests with Static Web Hosting", function() {
     s3Client.createBucket({ Bucket: bucket }, function() {
       const expectedBody = "<html><body>Hello</body></html>";
       const params = { Bucket: bucket, Key: "index.html", Body: expectedBody };
-      s3Client.putObject(params, function(err, data) {
+      s3Client.putObject(params, function() {
         request(s3Client.endpoint.href + "site/", function(
           error,
           response,
@@ -1597,7 +1596,7 @@ describe("Data directory cleanup", function() {
       port: 4569,
       hostname: "localhost",
       silent: true
-    }).run(function(err, hostname, port, directory) {
+    }).run(function(err, hostname, port) {
       if (err) return done(err);
       const s3Client = new AWS.S3({
         accessKeyId: "123",
