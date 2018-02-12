@@ -34,7 +34,7 @@
     "xmlbuilder": "^9.0.0"
   },
   "devDependencies": {
-    "aws-sdk": "2.192.0",
+    "aws-sdk": "2.193.0",
     "chance": "1.0.13",
     "eslint": "4.17.0",
     "eslint-config-prettier": "2.9.0",
