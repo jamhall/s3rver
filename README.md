@@ -28,7 +28,7 @@ The goal of S3rver is to minimise runtime dependencies and be more of a developm
 - Get object (including using the HEAD method)
 - Get dummy ACLs for an object
 - Copy object (including updating of metadata)
-- Listen to Put, Copy and Delete events.
+- Listen to Put, Copy, Post and Delete events.
 
 ## Quick Start
 
@@ -88,16 +88,12 @@ var client = new S3rver({
         }
     });
 
-client.s3Event.subscribe({
-    next: function (event) {
-              console.log(event);
-        }
+client.s3Event.subscribe(function (event) {
+    console.log(event);
 });
 
-client.s3Event.filter(function(event){return event.Records[0].eventName == 'ObjectCreated:Copy'}).subscribe({
-        next: function (event) {
-            console.log(event);
-        }
+client.s3Event.filter(function (event) { return event.Records[0].eventName == 'ObjectCreated:Copy' }).subscribe(function (event) {
+    console.log(event);
 });
 ```
 

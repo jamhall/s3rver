@@ -213,7 +213,7 @@ describe("S3rver Tests", function() {
       putSubs.unsubscribe();
       done();
     });
-    s3Client.putObject(params, function (err, data) {
+    s3Client.putObject(params, function (err) {
       if (err) {
         return done(err);
       }
@@ -231,7 +231,7 @@ describe("S3rver Tests", function() {
       });
 
     const putParams = { Bucket: buckets[0], Key: 'testPut', Body: 'Hello!' };
-    s3Client.putObject(putParams, function (err, data) {
+    s3Client.putObject(putParams, function (err) {
       if (err) {
         return done(err);
       }
@@ -240,7 +240,7 @@ describe("S3rver Tests", function() {
         Key: 'testCopy',
         CopySource: '/' + buckets[0] + '/testPut'
       };
-      s3Client.copyObject(params, function (err, data) {
+      s3Client.copyObject(params, function (err) {
         if (err) {
           return done(err);
         }
@@ -259,18 +259,17 @@ describe("S3rver Tests", function() {
       });
 
     const putParams = { Bucket: buckets[0], Key: 'testDelete', Body: 'Hello!' };
-    s3Client.putObject(putParams, function (err, data) {
+    s3Client.putObject(putParams, function (err) {
       if (err) {
         return done(err);
       }
-      s3Client.deleteObject({ Bucket: buckets[0], Key: 'testDelete' }, function (err, data) {
+      s3Client.deleteObject({ Bucket: buckets[0], Key: 'testDelete' }, function (err) {
         if (err) {
           return done(err);
         }
       });
     });
   });
-
 
   it("should store a text object with some custom metadata", function(done) {
     const params = {
