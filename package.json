@@ -19,7 +19,14 @@
     "s3rver": "bin/s3rver.js"
   },
   "license": "MIT",
-  "keywords": ["fake", "s3", "server", "mock", "false", "amazon"],
+  "keywords": [
+    "fake",
+    "s3",
+    "server",
+    "mock",
+    "false",
+    "amazon"
+  ],
   "dependencies": {
     "async": "^2.0.0",
     "commander": "^2.6.0",
