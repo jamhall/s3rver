@@ -67,36 +67,6 @@ mysite.local 127.0.0.1
 ```
 Now you can access the served content at `http://mysite.local:4568/`
 
-## Subscribing to S3 Event 
-
-You can subscribe to Put, Copy and Delete object events in the bucket.
-Please have a look at [Aws page](http://docs.aws.amazon.com/AmazonS3/latest/dev/notification-content-structure.html) for details of event object. 
-Apply filter function to subscribe to specific events.
-
-```
-var S3rver = require('s3rver');
-var client = new S3rver({
-        port: 4569,
-        hostname: 'localhost',
-        silent: false,
-        directory: '/tmp/s3rver_test_directory'
-    }).run(function (err, host, port) {
-        if (err) {
-            console.error(err)
-        } else {
-            console.log('now listening on host %s and port %d', host, port);
-        }
-    });
-
-client.s3Event.subscribe(function (event) {
-    console.log(event);
-});
-
-client.s3Event.filter(function (event) { return event.Records[0].eventName == 'ObjectCreated:Copy' }).subscribe(function (event) {
-    console.log(event);
-});
-```
-
 ## Tests
 
 The tests should be run by one of the active LTS versions. The CI Server runs the tests on the latest `6.x` and `8.x` releases.
@@ -161,6 +131,37 @@ after(function (done) {
     instance.close(done);
 });
 ```
+
+## Subscribing to S3 Event 
+
+You can subscribe to Put, Copy,Post and Delete object events in the bucket, when you run s3rver programmatically.
+Please have a look at [Aws page](http://docs.aws.amazon.com/AmazonS3/latest/dev/notification-content-structure.html) for details of event object. 
+Apply filter function to subscribe to specific events.
+
+```
+const S3rver = require('s3rver');
+const client = new S3rver({
+        port: 4569,
+        hostname: 'localhost',
+        silent: false,
+        directory: '/tmp/s3rver_test_directory'
+    }).run(function (err, host, port) {
+        if (err) {
+            console.error(err)
+        } else {
+            console.log('now listening on host %s and port %d', host, port);
+        }
+    });
+
+client.s3Event.subscribe(function (event) {
+    console.log(event);
+});
+
+client.s3Event.filter(function (event) { return event.Records[0].eventName == 'ObjectCreated:Copy' }).subscribe(function (event) {
+    console.log(event);
+});
+```
+
 
 ### s3rver.callback() ⇒ `function (req, res)`
 *Also aliased as* **s3rver.getMiddleware()**

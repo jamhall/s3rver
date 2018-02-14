@@ -54,7 +54,7 @@ if (program.key && program.cert) {
   program.cert = fs.readFileSync(program.cert);
 }
 
-const s3rver = new S3rver(program).run(function(err, host, port) {
+new S3rver(program).run(function(err, host, port) {
   if (err) {
     // eslint-disable-next-line no-console
     console.error(err);
@@ -63,17 +63,3 @@ const s3rver = new S3rver(program).run(function(err, host, port) {
     console.log("now listening on host %s and port %d", host, port);
   }
 });
-
-s3rver.s3Event.subscribe(function(event) {
-  // eslint-disable-next-line no-console
-  console.log(event);
-});
-
-s3rver.s3Event
-  .filter(function(event) {
-    return event.Records[0].eventName == "ObjectCreated:Copy";
-  })
-  .subscribe(function(event) {
-    // eslint-disable-next-line no-console
-    console.log(event);
-  });
