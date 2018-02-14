@@ -418,6 +418,7 @@ describe("S3rver Tests", function() {
           Bucket: buckets[3],
           Key: destKey,
           CopySource: "/" + buckets[0] + "/" + srcKey,
+          MetadataDirective: "REPLACE",
           Metadata: {
             someKey: "value"
           }
