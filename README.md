@@ -28,6 +28,7 @@ The goal of S3rver is to minimise runtime dependencies and be more of a developm
 - Get object (including using the HEAD method)
 - Get dummy ACLs for an object
 - Copy object (including updating of metadata)
+- Listen to Put, Copy, Post and Delete events.
 
 ## Quick Start
 
@@ -130,6 +131,37 @@ after(function (done) {
     instance.close(done);
 });
 ```
+
+## Subscribing to S3 Event 
+
+You can subscribe to Put, Copy,Post and Delete object events in the bucket, when you run s3rver programmatically.
+Please have a look at [Aws page](http://docs.aws.amazon.com/AmazonS3/latest/dev/notification-content-structure.html) for details of event object. 
+Apply filter function to subscribe to specific events.
+
+```
+const S3rver = require('s3rver');
+const client = new S3rver({
+        port: 4569,
+        hostname: 'localhost',
+        silent: false,
+        directory: '/tmp/s3rver_test_directory'
+    }).run(function (err, host, port) {
+        if (err) {
+            console.error(err)
+        } else {
+            console.log('now listening on host %s and port %d', host, port);
+        }
+    });
+
+client.s3Event.subscribe(function (event) {
+    console.log(event);
+});
+
+client.s3Event.filter(function (event) { return event.Records[0].eventName == 'ObjectCreated:Copy' }).subscribe(function (event) {
+    console.log(event);
+});
+```
+
 
 ### s3rver.callback() ⇒ `function (req, res)`
 *Also aliased as* **s3rver.getMiddleware()**

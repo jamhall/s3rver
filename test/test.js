@@ -204,6 +204,81 @@ describe("S3rver Tests", function() {
     });
   });
 
+  it("should trigger a Put event", function(done) {
+    const params = { Bucket: buckets[0], Key: "testPutKey", Body: "Hello!" };
+    const putSubs = s3rver.s3Event.subscribe(function(event) {
+      event.Records[0].eventName.should.equal("ObjectCreated:Put");
+      event.Records[0].s3.bucket.name.should.equal(buckets[0]);
+      event.Records[0].s3.object.key.should.equal("testPutKey");
+      putSubs.unsubscribe();
+      done();
+    });
+    s3Client.putObject(params, function(err) {
+      if (err) {
+        return done(err);
+      }
+    });
+  });
+
+  it("should trigger a Copy event", function(done) {
+    const copySubs = s3rver.s3Event
+      .filter(function(eventType) {
+        return eventType.Records[0].eventName == "ObjectCreated:Copy";
+      })
+      .subscribe(function(event) {
+        event.Records[0].eventName.should.equal("ObjectCreated:Copy");
+        event.Records[0].s3.bucket.name.should.equal(buckets[4]);
+        event.Records[0].s3.object.key.should.equal("testCopy");
+        copySubs.unsubscribe();
+        done();
+      });
+
+    const putParams = { Bucket: buckets[0], Key: "testPut", Body: "Hello!" };
+    s3Client.putObject(putParams, function(err) {
+      if (err) {
+        return done(err);
+      }
+      const params = {
+        Bucket: buckets[4],
+        Key: "testCopy",
+        CopySource: "/" + buckets[0] + "/testPut"
+      };
+      s3Client.copyObject(params, function(err) {
+        if (err) {
+          return done(err);
+        }
+      });
+    });
+  });
+
+  it("should trigger a Delete event", function(done) {
+    const delSubs = s3rver.s3Event
+      .filter(eventType => {
+        return eventType.Records[0].eventName == "ObjectRemoved:Delete";
+      })
+      .subscribe(function(event) {
+        event.Records[0].eventName.should.equal("ObjectRemoved:Delete");
+        event.Records[0].s3.bucket.name.should.equal(buckets[0]);
+        event.Records[0].s3.object.key.should.equal("testDelete");
+        delSubs.unsubscribe();
+        done();
+      });
+
+    const putParams = { Bucket: buckets[0], Key: "testDelete", Body: "Hello!" };
+    s3Client.putObject(putParams, function(err) {
+      if (err) {
+        return done(err);
+      }
+      s3Client.deleteObject({ Bucket: buckets[0], Key: "testDelete" }, function(
+        err
+      ) {
+        if (err) {
+          return done(err);
+        }
+      });
+    });
+  });
+
   it("should store a text object with some custom metadata", function(done) {
     const params = {
       Bucket: buckets[0],
