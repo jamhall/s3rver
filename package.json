@@ -44,7 +44,7 @@
   "devDependencies": {
     "aws-sdk": "2.197.0",
     "chance": "1.0.13",
-    "eslint": "4.17.0",
+    "eslint": "4.18.0",
     "eslint-config-prettier": "2.9.0",
     "md5": "2.2.1",
     "mocha": "5.0.1",
