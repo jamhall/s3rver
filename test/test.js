@@ -379,6 +379,9 @@ describe("S3rver Tests", function() {
   });
 
   it("should copy an image object into another bucket", function(done) {
+    const srcKey = "image";
+    const destKey = "image/jamie";
+
     const file = path.join(__dirname, "resources/image.jpg");
     fs.readFile(file, function(err, data) {
       if (err) {
@@ -386,7 +389,7 @@ describe("S3rver Tests", function() {
       }
       const params = {
         Bucket: buckets[0],
-        Key: "image",
+        Key: srcKey,
         Body: new Buffer(data),
         ContentType: "image/jpeg",
         ContentLength: data.length
@@ -398,8 +401,8 @@ describe("S3rver Tests", function() {
         }
         const params = {
           Bucket: buckets[3],
-          Key: "image/jamie",
-          CopySource: "/" + buckets[0] + "/image"
+          Key: destKey,
+          CopySource: "/" + buckets[0] + "/" + srcKey
         };
         s3Client.copyObject(params, function(err, data) {
           if (err) {
@@ -415,7 +418,10 @@ describe("S3rver Tests", function() {
     });
   });
 
-  it("should update the metadata of an image object", function(done) {
+  it("should copy an image object into another bucket including its metadata", function(done) {
+    const srcKey = "image";
+    const destKey = "image/jamie";
+
     const file = path.join(__dirname, "resources/image.jpg");
     fs.readFile(file, function(err, data) {
       if (err) {
@@ -423,7 +429,57 @@ describe("S3rver Tests", function() {
       }
       const params = {
         Bucket: buckets[0],
-        Key: "image/jamie",
+        Key: srcKey,
+        Body: new Buffer(data),
+        ContentType: "image/jpeg",
+        ContentLength: data.length,
+        Metadata: {
+          someKey: "value"
+        }
+      };
+      s3Client.putObject(params, function(err, data) {
+        /"[a-fA-F0-9]{32}"/.test(data.ETag).should.equal(true);
+        if (err) {
+          return done(err);
+        }
+        const params = {
+          Bucket: buckets[3],
+          Key: destKey,
+          // MetadataDirective is implied to be COPY
+          CopySource: "/" + buckets[0] + "/" + srcKey
+        };
+        s3Client.copyObject(params, function(err) {
+          if (err) {
+            return done(err);
+          }
+          s3Client.getObject({ Bucket: buckets[3], Key: destKey }, function(
+            err,
+            object
+          ) {
+            if (err) {
+              return done(err);
+            }
+            object.Metadata.should.have.property("somekey", "value");
+            object.ContentType.should.equal("image/jpeg");
+            done();
+          });
+        });
+      });
+    });
+  });
+
+  it("should update the metadata of an image object", function(done) {
+    const srcKey = "image";
+    const destKey = "image/jamie";
+
+    const file = path.join(__dirname, "resources/image.jpg");
+    fs.readFile(file, function(err, data) {
+      if (err) {
+        return done(err);
+      }
+      const params = {
+        Bucket: buckets[0],
+        Key: srcKey,
         Body: new Buffer(data),
         ContentType: "image/jpeg",
         ContentLength: data.length
@@ -433,11 +489,11 @@ describe("S3rver Tests", function() {
         if (err) {
           return done(err);
         }
-        const key = "image/jamie";
         const params = {
           Bucket: buckets[3],
-          Key: key,
-          CopySource: "/" + buckets[0] + "/" + key,
+          Key: destKey,
+          CopySource: "/" + buckets[0] + "/" + srcKey,
+          MetadataDirective: "REPLACE",
           Metadata: {
             someKey: "value"
           }
@@ -446,14 +502,14 @@ describe("S3rver Tests", function() {
           if (err) {
             return done(err);
           }
-          s3Client.getObject({ Bucket: buckets[3], Key: key }, function(
+          s3Client.getObject({ Bucket: buckets[3], Key: destKey }, function(
             err,
             object
           ) {
             if (err) {
               return done(err);
             }
-            object.Metadata.somekey.should.equal("value");
+            object.Metadata.should.have.property("somekey", "value");
             object.ContentType.should.equal("image/jpeg");
             done();
           });
@@ -463,6 +519,9 @@ describe("S3rver Tests", function() {
   });
 
   it("should copy an image object into another bucket and update its metadata", function(done) {
+    const srcKey = "image";
+    const destKey = "image/jamie";
+
     const file = path.join(__dirname, "resources/image.jpg");
     fs.readFile(file, function(err, data) {
       if (err) {
@@ -470,24 +529,23 @@ describe("S3rver Tests", function() {
       }
       const params = {
         Bucket: buckets[0],
-        Key: "image",
+        Key: srcKey,
         Body: new Buffer(data),
         ContentType: "image/jpeg",
         ContentLength: data.length
       };
       s3Client.putObject(params, function() {
-        const key = "image/jamie";
         const params = {
           Bucket: buckets[3],
-          Key: key,
-          CopySource: "/" + buckets[0] + "/image",
+          Key: destKey,
+          CopySource: "/" + buckets[0] + "/" + srcKey,
           MetadataDirective: "REPLACE",
           Metadata: {
             someKey: "value"
           }
         };
         s3Client.copyObject(params, function() {
-          s3Client.getObject({ Bucket: buckets[3], Key: key }, function(
+          s3Client.getObject({ Bucket: buckets[3], Key: destKey }, function(
             err,
             object
           ) {
