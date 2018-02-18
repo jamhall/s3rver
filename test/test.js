@@ -1432,7 +1432,7 @@ describe("S3rver CORS Policy Tests", function() {
     }).run(err => {
       if (err) return done(err);
 
-      request({ url, headers: { origin, range: "bytes=0-100" } }, function(
+      request({ url, headers: { origin, range: "bytes=0-99" } }, function(
         err,
         response
       ) {
@@ -1447,6 +1447,80 @@ describe("S3rver CORS Policy Tests", function() {
           done();
         });
       });
+    });
+  });
+
+  it("should respond to OPTIONS requests with allowed headers", function(done) {
+    const origin = "http://foo.bar.com";
+    const params = { Bucket: bucket, Key: "image" };
+    const url = s3Client.getSignedUrl("getObject", params);
+    const s3rver = new S3rver({
+      port: 4569,
+      hostname: "localhost",
+      silent: true,
+      cors: fs.readFileSync("./test/resources/cors_test1.xml")
+    }).run(err => {
+      if (err) return done(err);
+
+      request(
+        {
+          method: "OPTIONS",
+          url,
+          headers: {
+            origin,
+            "Access-Control-Request-Method": "GET",
+            "Access-Control-Request-Headers": "Range, Authorization"
+          }
+        },
+        (err, response) => {
+          s3rver.close(() => {
+            if (err) return done(err);
+            response.statusCode.should.equal(200);
+            response.headers.should.have.property(
+              "access-control-allow-origin",
+              "*"
+            );
+            response.headers.should.have.property(
+              "access-control-allow-headers",
+              "range, authorization"
+            );
+            done();
+          });
+        }
+      );
+    });
+  });
+
+  it("should respond to OPTIONS requests with a Forbidden response", function(done) {
+    const origin = "http://a-test.example.com";
+    const params = { Bucket: bucket, Key: "image" };
+    const url = s3Client.getSignedUrl("getObject", params);
+    const s3rver = new S3rver({
+      port: 4569,
+      hostname: "localhost",
+      silent: true,
+      cors: fs.readFileSync("./test/resources/cors_test1.xml")
+    }).run(err => {
+      if (err) return done(err);
+
+      request(
+        {
+          method: "OPTIONS",
+          url,
+          headers: {
+            origin,
+            "Access-Control-Request-Method": "GET",
+            "Access-Control-Request-Headers": "Range, Authorization"
+          }
+        },
+        (err, response) => {
+          s3rver.close(() => {
+            if (err) return done(err);
+            response.statusCode.should.equal(403);
+            done();
+          });
+        }
+      );
     });
   });
 });
