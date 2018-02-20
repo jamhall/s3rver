@@ -882,22 +882,23 @@ describe("S3rver Tests", function() {
             done();
           }
         );
-
       });
     };
-    request.post({
-      url: s3Client.endpoint.href + bucket,
-      formData: formData },
+    request.post(
+      {
+        url: s3Client.endpoint.href + bucket,
+        formData: formData
+      },
       function(err, response, body) {
         if (err) {
           return done(err);
         }
         response.statusCode.should.equal(204);
-        body.should.equal('');
+        body.should.equal("");
         validateFile(filename, done);
-      });
+      }
+    );
   });
-
 
   it("should find a text file in a multi directory path", function(done) {
     const params = {
