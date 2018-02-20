@@ -858,6 +858,47 @@ describe("S3rver Tests", function() {
     });
   });
 
+  it("should multipart/form-data POST an image in a bucket", function(done) {
+    const filename = path.join(__dirname, "resources/image.jpg");
+    const bucket = buckets[0];
+    const formData = {
+      bucket: bucket,
+      key: "image_from_multipart_formdata",
+      file: fs.createReadStream(filename)
+    };
+    const validateFile = function(filename, done) {
+      fs.readFile(filename, function(err, data) {
+        if (err) {
+          return done(err);
+        }
+        s3Client.getObject(
+          { Bucket: bucket, Key: "image_from_multipart_formdata" },
+          function(err, object) {
+            if (err) {
+              return done(err);
+            }
+            object.ETag.should.equal('"' + md5(data) + '"');
+            object.ContentType.should.equal("binary/octet-stream");
+            done();
+          }
+        );
+
+      });
+    };
+    request.post({
+      url: s3Client.endpoint.href + bucket,
+      formData: formData },
+      function(err, response, body) {
+        if (err) {
+          return done(err);
+        }
+        response.statusCode.should.equal(204);
+        body.should.equal('');
+        validateFile(filename, done);
+      });
+  });
+
+
   it("should find a text file in a multi directory path", function(done) {
     const params = {
       Bucket: buckets[0],
