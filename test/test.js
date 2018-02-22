@@ -561,6 +561,45 @@ describe("S3rver Tests", function() {
     });
   });
 
+  it("should copy an image object whose key includes a colon into another bucket", function(done) {
+    const srcKey = "test-2017-03-09T10:54:24.jpg";
+    const destKey = "image/test-2017-03-09T10:54:24.jpg";
+    const file = path.join(__dirname, "resources/image.jpg");
+
+    fs.readFile(file, function(err, data) {
+      if (err) {
+        return done(err);
+      }
+      const params = {
+        Bucket: buckets[0],
+        Key: srcKey,
+        Body: new Buffer(data),
+        ContentType: "image/jpeg",
+        ContentLength: data.length
+      };
+      s3Client.putObject(params, function() {
+        const params = {
+          Bucket: buckets[3],
+          Key: destKey,
+          CopySource: "/" + buckets[0] + "/" + srcKey
+        };
+        s3Client.copyObject(params, function(err) {
+          if (err) {
+            return done(err);
+          }
+          s3Client.getObject({ Bucket: buckets[3], Key: destKey }, function(
+            err
+          ) {
+            if (err) {
+              return done(err);
+            }
+            done();
+          });
+        });
+      });
+    });
+  });
+
   it("should fail to copy an image object because the object does not exist", function(done) {
     const params = {
       Bucket: buckets[3],
