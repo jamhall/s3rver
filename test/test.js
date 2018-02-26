@@ -1523,6 +1523,38 @@ describe("S3rver CORS Policy Tests", function() {
       );
     });
   });
+
+  it("should respond to OPTIONS requests with a Forbidden response when CORS is disabled", function(done) {
+    const origin = "http://foo.bar.com";
+    const params = { Bucket: bucket, Key: "image" };
+    const url = s3Client.getSignedUrl("getObject", params);
+    const s3rver = new S3rver({
+      port: 4569,
+      hostname: "localhost",
+      silent: true,
+      cors: false
+    }).run(err => {
+      if (err) return done(err);
+
+      request(
+        {
+          method: "OPTIONS",
+          url,
+          headers: {
+            origin,
+            "Access-Control-Request-Method": "GET"
+          }
+        },
+        (err, response) => {
+          s3rver.close(() => {
+            if (err) return done(err);
+            response.statusCode.should.equal(403);
+            done();
+          });
+        }
+      );
+    });
+  });
 });
 
 describe("S3rver Tests with Static Web Hosting", function() {
