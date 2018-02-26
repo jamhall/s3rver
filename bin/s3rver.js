@@ -1,12 +1,12 @@
 #!/usr/bin/env node
 "use strict";
-const pkg = require("../package.json");
-const version = pkg.version;
-const program = require("commander");
-const fs = require("fs-extra");
-const S3rver = require("../lib");
 
-program.version(version, "--version");
+const fs = require("fs-extra");
+const program = require("commander");
+const pkg = require("../package.json");
+const S3rver = require("..");
+
+program.version(pkg.version, "--version");
 program
   .option(
     "-h, --hostname [value]",
