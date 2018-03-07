@@ -1605,6 +1605,17 @@ describe("S3rver Class Tests", function() {
     s3rver.options.cert.should.be.an.instanceOf(Buffer);
     s3rver.options.should.have.property("removeBucketsOnClose", true);
   });
+  it("should support running on port 0", function(done) {
+    const s3rver = new S3rver({
+      port: 0,
+      hostname: "localhost",
+      silent: true
+    }).run((err, hostname, port) => {
+      if (err) return done(err);
+      should(port).be.above(0);
+      s3rver.close(done);
+    });
+  });
 });
 
 describe("Data directory cleanup", function() {
