@@ -1747,4 +1747,41 @@ describe("Data directory cleanup", function() {
         .catch(err => s3rver.close(() => done(err)));
     });
   });
+
+  it("Can put an object in a bucket that is empty after some key that does not include a directory has been deleted", function(done) {
+    const bucket = "foobars";
+
+    const s3rver = new S3rver({
+      port: 4569,
+      hostname: "localhost",
+      silent: true
+    }).run((err, hostname, port) => {
+      if (err) return done(err);
+      const s3Client = new AWS.S3({
+        accessKeyId: "123",
+        secretAccessKey: "abc",
+        endpoint: util.format("http://%s:%d", hostname, port),
+        sslEnabled: false,
+        s3ForcePathStyle: true
+      });
+      s3Client
+        .createBucket({ Bucket: bucket })
+        .promise()
+        .then(() =>
+          s3Client
+            .putObject({ Bucket: bucket, Key: "foo.txt", Body: "Hello!" })
+            .promise()
+        )
+        .then(() =>
+          s3Client.deleteObject({ Bucket: bucket, Key: "foo.txt" }).promise()
+        )
+        .then(() =>
+          s3Client
+            .putObject({ Bucket: bucket, Key: "foo2.txt", Body: "Hello2!" })
+            .promise()
+        )
+        .then(() => s3rver.close(done))
+        .catch(err => s3rver.close(() => done(err)));
+    });
+  });
 });
