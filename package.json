@@ -5,10 +5,10 @@
   "main": "lib/index.js",
   "scripts": {
     "test": "mocha --timeout 30000 --reporter spec --ui bdd",
-    "prettier-check": "prettier-check --ignore-path .gitignore **/*.js",
-    "prettier-fix": "prettier --ignore-path .gitignore --write **/*.js",
-    "eslint": "eslint --ignore-path .gitignore **/*.js",
-    "eslint-fix": "eslint --ignore-path .gitignore --fix **/*.js"
+    "prettier-check": "prettier-check --ignore-path .gitignore \"**/*.js\"",
+    "prettier-fix": "prettier --ignore-path .gitignore --write \"**/*.js\"",
+    "eslint": "eslint --ignore-path .gitignore \"**/*.js\"",
+    "eslint-fix": "eslint --ignore-path .gitignore --fix \"**/*.js\""
   },
   "author": {
     "name": "Jamie Hall",
