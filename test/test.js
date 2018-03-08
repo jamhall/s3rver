@@ -13,7 +13,7 @@ const request = require("request");
 const should = require("should");
 const util = require("util");
 
-const S3rver = require("../lib");
+const S3rver = require("..");
 
 const chance = new Chance();
 
@@ -455,7 +455,7 @@ describe("S3rver Tests", function() {
             (err, object) => {
               if (err) done(err);
               object.Metadata.should.have.property("somekey", "value");
-              object.ContentType.should.equal("image/jpeg");
+              object.ContentType.should.equal("application/octet-stream");
               done();
             }
           );
@@ -496,7 +496,7 @@ describe("S3rver Tests", function() {
             (err, object) => {
               if (err) return done(err);
               object.Metadata.somekey.should.equal("value");
-              object.ContentType.should.equal("image/jpeg");
+              object.ContentType.should.equal("application/octet-stream");
               done();
             }
           );
@@ -530,6 +530,39 @@ describe("S3rver Tests", function() {
       err.code.should.equal("NoSuchBucket");
       err.statusCode.should.equal(404);
       done();
+    });
+  });
+
+  it("should fail to update the metadata of an image object when no REPLACE MetadataDirective is specified", function(done) {
+    const key = "image";
+
+    const file = path.join(__dirname, "resources/image.jpg");
+    fs.readFile(file, (err, data) => {
+      if (err) return done(err);
+      const params = {
+        Bucket: buckets[0],
+        Key: key,
+        Body: new Buffer(data),
+        ContentType: "image/jpeg",
+        ContentLength: data.length
+      };
+      s3Client.putObject(params, (err, data) => {
+        if (err) return done(err);
+        /"[a-fA-F0-9]{32}"/.test(data.ETag).should.equal(true);
+        const params = {
+          Bucket: buckets[0],
+          Key: key,
+          CopySource: "/" + buckets[0] + "/" + key,
+          Metadata: {
+            someKey: "value"
+          }
+        };
+        s3Client.copyObject(params, err => {
+          should.exist(err);
+          err.statusCode.should.equal(400);
+          done();
+        });
+      });
     });
   });
 
