@@ -2,7 +2,7 @@
 
 const async = require("async");
 const AWS = require("aws-sdk");
-const Chance = require("chance");
+const { expect } = require('chai');
 const fs = require("fs-extra");
 const { find, times } = require("lodash");
 const md5 = require("md5");
@@ -10,12 +10,9 @@ const moment = require("moment");
 const os = require("os");
 const path = require("path");
 const request = require("request");
-const should = require("should");
 const util = require("util");
 
 const S3rver = require("..");
-
-const chance = new Chance();
 
 const tmpDir = path.join(os.tmpdir(), "s3rver_test");
 S3rver.defaultOptions.directory = tmpDir;
@@ -100,63 +97,52 @@ describe("S3rver Tests", function() {
   it("should fetch fetch six buckets", function(done) {
     s3Client.listBuckets((err, buckets) => {
       if (err) return done(err);
-      buckets.Buckets.length.should.equal(6);
+      expect(buckets.Buckets).to.have.lengthOf(6);
       for (const bucket of buckets.Buckets) {
-        should.exist(bucket.Name);
-        moment(bucket.CreationDate)
-          .isValid()
-          .should.equal(true);
+        expect(bucket.Name).to.exist;
+        expect(moment(bucket.CreationDate)
+          .isValid()).to.be.true;
       }
       done();
     });
   });
 
   it("should create a bucket with valid domain-style name", function(done) {
-    s3Client.createBucket({ Bucket: "a-test.example.com" }, err => {
-      should.not.exist(err);
-      done();
-    });
+    s3Client.createBucket({ Bucket: "a-test.example.com" }, done);
   });
 
   it("should fail to create a bucket because of invalid name", function(done) {
     s3Client.createBucket({ Bucket: "-$%!nvalid" }, err => {
-      should.exist(err);
-      err.statusCode.should.equal(400);
-      err.code.should.equal("InvalidBucketName");
-      should.exist(err);
+      expect(err).to.exist;
+      expect(err.statusCode).to.equal(400);
+      expect(err.code).to.equal("InvalidBucketName");
       done();
     });
   });
 
   it("should fail to create a bucket because of invalid domain-style name", function(done) {
     s3Client.createBucket({ Bucket: ".example.com" }, err => {
-      should.exist(err);
-      err.statusCode.should.equal(400);
-      err.code.should.equal("InvalidBucketName");
-      should.exist(err);
+      expect(err).to.exist;
+      expect(err.statusCode).to.equal(400);
+      expect(err.code).to.equal("InvalidBucketName");
       done();
     });
   });
 
   it("should fail to create a bucket because name is too long", function(done) {
-    s3Client.createBucket(
-      { Bucket: chance.string({ length: 64, pool: "abcd" }) },
-      err => {
-        should.exist(err);
-        err.statusCode.should.equal(400);
-        err.code.should.equal("InvalidBucketName");
-        should.exist(err);
-        done();
-      }
-    );
+    s3Client.createBucket({ Bucket: "abcd".repeat(16) }, err => {
+      expect(err).to.exist;
+      expect(err.statusCode).to.equal(400);
+      expect(err.code).to.equal("InvalidBucketName");
+      done();
+    });
   });
 
   it("should fail to create a bucket because name is too short", function(done) {
     s3Client.createBucket({ Bucket: "ab" }, err => {
-      should.exist(err);
-      err.statusCode.should.equal(400);
-      err.code.should.equal("InvalidBucketName");
-      should.exist(err);
+      expect(err).to.exist;
+      expect(err.statusCode).to.equal(400);
+      expect(err.code).to.equal("InvalidBucketName");
       done();
     });
   });
@@ -169,9 +155,9 @@ describe("S3rver Tests", function() {
     s3Client.deleteBucket({ Bucket: buckets[4] }, err => {
       if (err) return done(err);
       s3Client.listObjects({ Bucket: buckets[4] }, err => {
-        should.exist(err);
-        err.code.should.equal("NoSuchBucket");
-        err.statusCode.should.equal(404);
+        expect(err).to.exist;
+        expect(err.code).to.equal("NoSuchBucket");
+        expect(err.statusCode).to.equal(404);
         done();
       });
     });
@@ -180,7 +166,7 @@ describe("S3rver Tests", function() {
   it("should list no objects for a bucket", function(done) {
     s3Client.listObjects({ Bucket: buckets[3] }, (err, objects) => {
       if (err) return done(err);
-      objects.Contents.length.should.equal(0);
+      expect(objects.Contents).to.have.lengthOf(0);
       done();
     });
   });
@@ -189,7 +175,7 @@ describe("S3rver Tests", function() {
     const params = { Bucket: buckets[0], Key: "text", Body: "Hello!" };
     s3Client.putObject(params, (err, data) => {
       if (err) return done(err);
-      /"[a-fA-F0-9]{32}"/.test(data.ETag).should.equal(true);
+      expect(data.ETag).to.match(/"[a-fA-F0-9]{32}"/);
       done();
     });
   });
@@ -204,11 +190,11 @@ describe("S3rver Tests", function() {
       },
       (err, res) => {
         if (err) return done(err);
-        should(res.statusCode).equal(200);
+        expect(res.statusCode).to.equal(200);
         const params = { Bucket: buckets[0], Key: "text" };
         s3Client.getObject(params, (err, data) => {
           if (err) return done(err);
-          should(data.ContentType).equal("binary/octet-stream");
+          expect(data.ContentType).to.equal("binary/octet-stream");
           done();
         });
       }
@@ -218,9 +204,9 @@ describe("S3rver Tests", function() {
   it("should trigger a Put event", function(done) {
     const params = { Bucket: buckets[0], Key: "testPutKey", Body: "Hello!" };
     const putSubs = s3rver.s3Event.subscribe(event => {
-      event.Records[0].eventName.should.equal("ObjectCreated:Put");
-      event.Records[0].s3.bucket.name.should.equal(buckets[0]);
-      event.Records[0].s3.object.key.should.equal("testPutKey");
+      expect(event.Records[0].eventName).to.equal("ObjectCreated:Put");
+      expect(event.Records[0].s3.bucket.name).to.equal(buckets[0]);
+      expect(event.Records[0].s3.object.key).to.equal("testPutKey");
       putSubs.unsubscribe();
       done();
     });
@@ -235,9 +221,9 @@ describe("S3rver Tests", function() {
         eventType => eventType.Records[0].eventName == "ObjectCreated:Copy"
       )
       .subscribe(event => {
-        event.Records[0].eventName.should.equal("ObjectCreated:Copy");
-        event.Records[0].s3.bucket.name.should.equal(buckets[4]);
-        event.Records[0].s3.object.key.should.equal("testCopy");
+        expect(event.Records[0].eventName).to.equal("ObjectCreated:Copy");
+        expect(event.Records[0].s3.bucket.name).to.equal(buckets[4]);
+        expect(event.Records[0].s3.object.key).to.equal("testCopy");
         copySubs.unsubscribe();
         done();
       });
@@ -262,9 +248,9 @@ describe("S3rver Tests", function() {
         eventType => eventType.Records[0].eventName == "ObjectRemoved:Delete"
       )
       .subscribe(event => {
-        event.Records[0].eventName.should.equal("ObjectRemoved:Delete");
-        event.Records[0].s3.bucket.name.should.equal(buckets[0]);
-        event.Records[0].s3.object.key.should.equal("testDelete");
+        expect(event.Records[0].eventName).to.equal("ObjectRemoved:Delete");
+        expect(event.Records[0].s3.bucket.name).to.equal(buckets[0]);
+        expect(event.Records[0].s3.object.key).to.equal("testDelete");
         delSubs.unsubscribe();
         done();
       });
@@ -289,7 +275,7 @@ describe("S3rver Tests", function() {
     };
     s3Client.putObject(params, (err, data) => {
       if (err) return done(err);
-      /"[a-fA-F0-9]{32}"/.test(data.ETag).should.equal(true);
+      expect(data.ETag).to.match(/"[a-fA-F0-9]{32}"/);
       done();
     });
   });
@@ -305,12 +291,12 @@ describe("S3rver Tests", function() {
     };
     s3Client.putObject(params, (err, data) => {
       if (err) return done(err);
-      /"[a-fA-F0-9]{32}"/.test(data.ETag).should.equal(true);
+      expect(data.ETag).to.match(/"[a-fA-F0-9]{32}"/);
       s3Client.getObject(
         { Bucket: buckets[0], Key: "textmetadata" },
         (err, object) => {
           if (err) return done(err);
-          object.Metadata.somekey.should.equal("value");
+          expect(object.Metadata.somekey).to.equal("value");
           done();
         }
       );
@@ -330,7 +316,7 @@ describe("S3rver Tests", function() {
       };
       s3Client.putObject(params, (err, data) => {
         if (err) return done(err);
-        /"[a-fA-F0-9]{32}"/.test(data.ETag).should.equal(true);
+        expect(data.ETag).to.match(/"[a-fA-F0-9]{32}"/);
         done();
       });
     });
@@ -356,9 +342,9 @@ describe("S3rver Tests", function() {
         { Bucket: buckets[0], Key: "jquery" },
         (err, object) => {
           if (err) return done(err);
-          object.ContentLength.should.equal(stats.size);
-          object.ContentEncoding.should.equal("gzip");
-          object.ContentType.should.equal("application/javascript");
+          expect(object.ContentLength).to.equal(stats.size);
+          expect(object.ContentEncoding).to.equal("gzip");
+          expect(object.ContentType).to.equal("application/javascript");
           done();
         }
       );
@@ -383,7 +369,7 @@ describe("S3rver Tests", function() {
       };
       s3Client.putObject(params, (err, data) => {
         if (err) return done(err);
-        /"[a-fA-F0-9]{32}"/.test(data.ETag).should.equal(true);
+        expect(data.ETag).to.match(/"[a-fA-F0-9]{32}"/);
         const params = {
           Bucket: buckets[3],
           Key: destKey,
@@ -391,10 +377,8 @@ describe("S3rver Tests", function() {
         };
         s3Client.copyObject(params, (err, data) => {
           if (err) return done(err);
-          /"[a-fA-F0-9]{32}"/.test(data.ETag).should.equal(true);
-          moment(data.LastModified)
-            .isValid()
-            .should.equal(true);
+          expect(data.ETag).to.match(/"[a-fA-F0-9]{32}"/);
+          expect(moment(data.LastModified).isValid()).to.be.true;
           done();
         });
       });
@@ -420,7 +404,7 @@ describe("S3rver Tests", function() {
       };
       s3Client.putObject(params, (err, data) => {
         if (err) return done(err);
-        /"[a-fA-F0-9]{32}"/.test(data.ETag).should.equal(true);
+        expect(data.ETag).to.match(/"[a-fA-F0-9]{32}"/);
         const params = {
           Bucket: buckets[3],
           Key: destKey,
@@ -433,8 +417,8 @@ describe("S3rver Tests", function() {
             { Bucket: buckets[3], Key: destKey },
             (err, object) => {
               if (err) return done(err);
-              object.Metadata.should.have.property("somekey", "value");
-              object.ContentType.should.equal("image/jpeg");
+              expect(object.Metadata).to.have.property("somekey", "value");
+              expect(object.ContentType).to.equal("image/jpeg");
               done();
             }
           );
@@ -459,7 +443,7 @@ describe("S3rver Tests", function() {
       };
       s3Client.putObject(params, (err, data) => {
         if (err) return done(err);
-        /"[a-fA-F0-9]{32}"/.test(data.ETag).should.equal(true);
+        expect(data.ETag).to.match(/"[a-fA-F0-9]{32}"/);
         const params = {
           Bucket: buckets[3],
           Key: destKey,
@@ -475,8 +459,8 @@ describe("S3rver Tests", function() {
             { Bucket: buckets[3], Key: destKey },
             (err, object) => {
               if (err) done(err);
-              object.Metadata.should.have.property("somekey", "value");
-              object.ContentType.should.equal("application/octet-stream");
+              expect(object.Metadata).to.have.property("somekey", "value");
+              expect(object.ContentType).to.equal("application/octet-stream");
               done();
             }
           );
@@ -516,8 +500,8 @@ describe("S3rver Tests", function() {
             { Bucket: buckets[3], Key: destKey },
             (err, object) => {
               if (err) return done(err);
-              object.Metadata.somekey.should.equal("value");
-              object.ContentType.should.equal("application/octet-stream");
+              expect(object.Metadata.somekey).to.equal("value");
+              expect(object.ContentType).to.equal("application/octet-stream");
               done();
             }
           );
@@ -533,9 +517,9 @@ describe("S3rver Tests", function() {
       CopySource: "/" + buckets[0] + "/doesnotexist"
     };
     s3Client.copyObject(params, err => {
-      should.exist(err);
-      err.code.should.equal("NoSuchKey");
-      err.statusCode.should.equal(404);
+      expect(err).to.exist;
+      expect(err.code).to.equal("NoSuchKey");
+      expect(err.statusCode).to.equal(404);
       done();
     });
   });
@@ -547,9 +531,9 @@ describe("S3rver Tests", function() {
       CopySource: "/falsebucket/doesnotexist"
     };
     s3Client.copyObject(params, err => {
-      should.exist(err);
-      err.code.should.equal("NoSuchBucket");
-      err.statusCode.should.equal(404);
+      expect(err).to.exist;
+      expect(err.code).to.equal("NoSuchBucket");
+      expect(err.statusCode).to.equal(404);
       done();
     });
   });
@@ -569,7 +553,7 @@ describe("S3rver Tests", function() {
       };
       s3Client.putObject(params, (err, data) => {
         if (err) return done(err);
-        /"[a-fA-F0-9]{32}"/.test(data.ETag).should.equal(true);
+        expect(data.ETag).to.match(/"[a-fA-F0-9]{32}"/);
         const params = {
           Bucket: buckets[0],
           Key: key,
@@ -579,8 +563,8 @@ describe("S3rver Tests", function() {
           }
         };
         s3Client.copyObject(params, err => {
-          should.exist(err);
-          err.statusCode.should.equal(400);
+          expect(err).to.exist;
+          expect(err.statusCode).to.equal(400);
           done();
         });
       });
@@ -593,7 +577,7 @@ describe("S3rver Tests", function() {
     const params = { Bucket: buckets[0], Key: "large", Body: b };
     s3Client.putObject(params, (err, data) => {
       if (err) return done(err);
-      /"[a-fA-F0-9]{32}"/.test(data.ETag).should.equal(true);
+      expect(data.ETag).to.match(/"[a-fA-F0-9]{32}"/);
       done();
     });
   });
@@ -615,9 +599,9 @@ describe("S3rver Tests", function() {
           { Bucket: buckets[0], Key: "image" },
           (err, object) => {
             if (err) return done(err);
-            object.ETag.should.equal(JSON.stringify(md5(data)));
-            object.ContentLength.should.equal(data.length);
-            object.ContentType.should.equal("image/jpeg");
+            expect(object.ETag).to.equal(JSON.stringify(md5(data)));
+            expect(object.ContentLength).to.equal(data.length);
+            expect(object.ContentType).to.equal("image/jpeg");
             done();
           }
         );
@@ -645,12 +629,10 @@ describe("S3rver Tests", function() {
         request({ url, headers: { range: "bytes=0-99" } }, (err, response) => {
           if (err) return done(err);
 
-          response.statusCode.should.equal(206);
-          response.headers.should.have.properties(
-            "content-range",
-            "accept-ranges"
-          );
-          response.headers.should.have.property("content-length", "100");
+          expect(response.statusCode).to.equal(206);
+          expect(response.headers).to.have.property("content-range");
+          expect(response.headers).to.have.property("accept-ranges");
+          expect(response.headers).to.have.property("content-length", "100");
           done();
         });
       });
@@ -674,9 +656,9 @@ describe("S3rver Tests", function() {
           { Bucket: buckets[0], Key: "image" },
           (err, object) => {
             if (err) return done(err);
-            object.ETag.should.equal(JSON.stringify(md5(data)));
-            object.ContentLength.should.equal(data.length);
-            object.ContentType.should.equal("image/jpeg");
+            expect(object.ETag).to.equal(JSON.stringify(md5(data)));
+            expect(object.ContentLength).to.equal(data.length);
+            expect(object.ContentType).to.equal("image/jpeg");
             done();
           }
         );
@@ -724,7 +706,7 @@ describe("S3rver Tests", function() {
               ContentLength: data.length
             };
             s3Client.putObject(params, (err, storedObject) => {
-              storedObject.ETag.should.not.equal(object.ETag);
+              expect(storedObject.ETag).to.not.equal(object.ETag);
               callback(err, object);
             });
           });
@@ -737,8 +719,8 @@ describe("S3rver Tests", function() {
             { Bucket: buckets[0], Key: "image" },
             (err, newObject) => {
               if (err) return callback(err);
-              newObject.LastModified.should.not.equal(object.LastModified);
-              newObject.ContentLength.should.not.equal(object.ContentLength);
+              expect(newObject.LastModified).to.not.equal(object.LastModified);
+              expect(newObject.ContentLength).to.not.equal(object.ContentLength);
               callback();
             }
           );
@@ -753,7 +735,7 @@ describe("S3rver Tests", function() {
       { Bucket: buckets[0], Key: "image" },
       (err, object) => {
         if (err) return done(err);
-        object.Owner.DisplayName.should.equal("S3rver");
+        expect(object.Owner.DisplayName).to.equal("S3rver");
         done();
       }
     );
@@ -770,9 +752,9 @@ describe("S3rver Tests", function() {
 
   it("should not find an image from a bucket", function(done) {
     s3Client.getObject({ Bucket: buckets[0], Key: "image" }, err => {
-      should.exist(err);
-      err.code.should.equal("NoSuchKey");
-      err.statusCode.should.equal(404);
+      expect(err).to.exist;
+      expect(err.code).to.equal("NoSuchKey");
+      expect(err.statusCode).to.equal(404);
       done();
     });
   });
@@ -785,9 +767,9 @@ describe("S3rver Tests", function() {
     generateTestObjects(s3Client, buckets[0], 20, err => {
       if (err) return done(err);
       s3Client.deleteBucket({ Bucket: buckets[0] }, err => {
-        should.exist(err);
-        err.code.should.equal("BucketNotEmpty");
-        err.statusCode.should.equal(409);
+        expect(err).to.exist;
+        expect(err.code).to.equal("BucketNotEmpty");
+        expect(err.statusCode).to.equal(409);
         done();
       });
     });
@@ -801,7 +783,7 @@ describe("S3rver Tests", function() {
     };
     s3Client.putObject(params, (err, data) => {
       if (err) return done(err);
-      /"[a-fA-F0-9]{32}"/.test(data.ETag).should.equal(true);
+      expect(data.ETag).to.match(/"[a-fA-F0-9]{32}"/);
       done();
     });
   });
@@ -814,7 +796,7 @@ describe("S3rver Tests", function() {
     }; // 5MB
     s3Client.upload(params, (err, data) => {
       if (err) return done(err);
-      /"[a-fA-F0-9]{32}"/.test(data.ETag).should.equal(true);
+      expect(data.ETag).to.match(/"[a-fA-F0-9]{32}"/);
       done();
     });
   });
@@ -827,7 +809,7 @@ describe("S3rver Tests", function() {
     }; // 20MB
     s3Client.upload(params, (err, data) => {
       if (err) return done(err);
-      /"[a-fA-F0-9]{32}"/.test(data.ETag).should.equal(true);
+      expect(data.ETag).to.match(/"[a-fA-F0-9]{32}"/);
       done();
     });
   });
@@ -844,9 +826,9 @@ describe("S3rver Tests", function() {
         { Bucket: buckets[0], Key: "multi/directory/path/text" },
         (err, object) => {
           if (err) return done(err);
-          object.ETag.should.equal(JSON.stringify(md5("Hello!")));
-          object.ContentLength.should.equal(6);
-          object.ContentType.should.equal("application/octet-stream");
+          expect(object.ETag).to.equal(JSON.stringify(md5("Hello!")));
+          expect(object.ContentLength).to.equal(6);
+          expect(object.ContentType).to.equal("application/octet-stream");
           done();
         }
       );
@@ -870,7 +852,7 @@ describe("S3rver Tests", function() {
         const params = { Bucket: buckets[1], Key: testObject, Body: "Hello!" };
         s3Client.putObject(params, (err, object) => {
           if (err) return callback(err);
-          /[a-fA-F0-9]{32}/.test(object.ETag).should.equal(true);
+          expect(object.ETag).to.match(/[a-fA-F0-9]{32}/);
           callback();
         });
       },
@@ -878,7 +860,7 @@ describe("S3rver Tests", function() {
         if (err) return done(err);
         s3Client.listObjects({ Bucket: buckets[1] }, (err, objects) => {
           if (err) return done(err);
-          should(objects.Contents.length).equal(testObjects.length);
+          expect(objects.Contents).to.have.lengthOf(testObjects.length);
           done();
         });
       }
@@ -908,10 +890,10 @@ describe("S3rver Tests", function() {
           { Bucket: buckets[1], Prefix: "key" },
           (err, objects) => {
             if (err) return done(err);
-            should(objects.Contents.length).equal(4);
-            should.not.exist(find(objects.Contents, { Key: "akey1" }));
-            should.not.exist(find(objects.Contents, { Key: "akey2" }));
-            should.not.exist(find(objects.Contents, { Key: "akey3" }));
+            expect(objects.Contents).to.have.lengthOf(4);
+            expect(find(objects.Contents, { Key: "akey1" })).to.not.exist;
+            expect(find(objects.Contents, { Key: "akey2" })).to.not.exist;
+            expect(find(objects.Contents, { Key: "akey3" })).to.not.exist;
             done();
           }
         );
@@ -941,10 +923,10 @@ describe("S3rver Tests", function() {
           { Bucket: buckets[1], Prefix: "key" },
           (err, objects) => {
             if (err) return done(err);
-            should(objects.Contents.length).equal(4);
-            should.not.exist(find(objects.Contents, { Key: "akey1" }));
-            should.not.exist(find(objects.Contents, { Key: "akey2" }));
-            should.not.exist(find(objects.Contents, { Key: "akey3" }));
+            expect(objects.Contents).to.have.lengthOf(4);
+            expect(find(objects.Contents, { Key: "akey1" })).to.not.exist;
+            expect(find(objects.Contents, { Key: "akey2" })).to.not.exist;
+            expect(find(objects.Contents, { Key: "akey3" })).to.not.exist;
             done();
           }
         );
@@ -974,7 +956,7 @@ describe("S3rver Tests", function() {
           { Bucket: buckets[1], Marker: "akey3" },
           (err, objects) => {
             if (err) return done(err);
-            should(objects.Contents.length).equal(4);
+            expect(objects.Contents).to.have.lengthOf(4);
             done();
           }
         );
@@ -1004,7 +986,7 @@ describe("S3rver Tests", function() {
           { Bucket: buckets[1], Prefix: "akey", Marker: "akey2" },
           (err, objects) => {
             if (err) return done(err);
-            should(objects.Contents.length).equal(1);
+            expect(objects.Contents).to.have.lengthOf(1);
             done();
           }
         );
@@ -1034,8 +1016,8 @@ describe("S3rver Tests", function() {
           { Bucket: buckets[1], Delimiter: "/" },
           (err, objects) => {
             if (err) return done(err);
-            should(objects.Contents.length).equal(6);
-            should.exist(find(objects.CommonPrefixes, { Prefix: "key/" }));
+            expect(objects.Contents).to.have.lengthOf(6);
+            expect(find(objects.CommonPrefixes, { Prefix: "key/" })).to.exist;
             done();
           }
         );
@@ -1072,16 +1054,16 @@ describe("S3rver Tests", function() {
           { Bucket: buckets[5], Prefix: "folder1/", Delimiter: "/" },
           (err, objects) => {
             if (err) return done(err);
-            should(objects.CommonPrefixes.length).equal(3);
-            should.exist(
+            expect(objects.CommonPrefixes).to.have.lengthOf(3);
+            expect(
               find(objects.CommonPrefixes, { Prefix: "folder1/folder2/" })
-            );
-            should.exist(
+            ).to.exist;
+            expect(
               find(objects.CommonPrefixes, { Prefix: "folder1/folder3/" })
-            );
-            should.exist(
+            ).to.exist;
+            expect(
               find(objects.CommonPrefixes, { Prefix: "folder1/folder4/" })
-            );
+            ).to.exist;
             done();
           }
         );
@@ -1095,7 +1077,7 @@ describe("S3rver Tests", function() {
       { Bucket: buckets[1], Prefix: "myinvalidprefix" },
       (err, objects) => {
         if (err) return done(err);
-        should(objects.Contents.length).equal(0);
+        expect(objects.Contents).to.have.lengthOf(0);
         done();
       }
     );
@@ -1107,7 +1089,7 @@ describe("S3rver Tests", function() {
       { Bucket: buckets[1], Marker: "myinvalidmarker" },
       (err, objects) => {
         if (err) return done(err);
-        should(objects.Contents.length).equal(0);
+        expect(objects.Contents).to.have.lengthOf(0);
         done();
       }
     );
@@ -1124,7 +1106,7 @@ describe("S3rver Tests", function() {
       (testObject, callback) => {
         s3Client.putObject(testObject, (err, object) => {
           if (err) return callback(err);
-          /[a-fA-F0-9]{32}/.test(object.ETag).should.equal(true);
+          expect(object.ETag).to.match(/[a-fA-F0-9]{32}/);
           callback();
         });
       },
@@ -1138,7 +1120,7 @@ describe("S3rver Tests", function() {
       if (err) return done(err);
       s3Client.listObjects({ Bucket: buckets[2] }, (err, objects) => {
         if (err) return done(err);
-        should(objects.Contents.length).equal(1000);
+        expect(objects.Contents).to.have.lengthOf(1000);
         done();
       });
     });
@@ -1152,7 +1134,7 @@ describe("S3rver Tests", function() {
         { Bucket: buckets[2], MaxKeys: 500 },
         (err, objects) => {
           if (err) return done(err);
-          should(objects.Contents.length).equal(500);
+          expect(objects.Contents).to.have.lengthOf(500);
           done();
         }
       );
@@ -1189,9 +1171,9 @@ describe("S3rver Tests", function() {
         { Bucket: buckets[2], Delete: deleteObj },
         (err, resp) => {
           if (err) return done(err);
-          should.exist(resp.Deleted);
-          should(resp.Deleted).have.length(500);
-          should(resp.Deleted).containEql({ Key: "key567" });
+          expect(resp.Deleted).to.exist;
+          expect(resp.Deleted).to.have.lengthOf(500);
+          expect(find(resp.Deleted, { Key: "key567" })).to.exist;
           done();
         }
       );
@@ -1204,9 +1186,9 @@ describe("S3rver Tests", function() {
       { Bucket: buckets[2], Delete: deleteObj },
       (err, resp) => {
         if (err) return done(err);
-        should.exist(resp.Deleted);
-        should(resp.Deleted).have.length(1);
-        should(resp.Deleted).containEql({ Key: "doesnotexist" });
+        expect(resp.Deleted).to.exist;
+        expect(resp.Deleted).to.have.lengthOf(1);
+        expect(find(resp.Deleted, { Key: "doesnotexist" })).to.exist;
         done();
       }
     );
@@ -1221,8 +1203,8 @@ describe("S3rver Tests", function() {
       (err, response, body) => {
         if (err) return done(err);
 
-        response.statusCode.should.equal(200);
-        body.should.containEql("ListBucketResult");
+        expect(response.statusCode).to.equal(200);
+        expect(body).to.include("ListBucketResult");
         done();
       }
     );
@@ -1280,8 +1262,8 @@ describe("S3rver CORS Policy Tests", function() {
         s3rver.close(() => {
           if (err) return done(err);
 
-          response.statusCode.should.equal(200);
-          response.headers.should.have.property(
+          expect(response.statusCode).to.equal(200);
+          expect(response.headers).to.have.property(
             "access-control-allow-origin",
             "*"
           );
@@ -1307,8 +1289,8 @@ describe("S3rver CORS Policy Tests", function() {
         s3rver.close(() => {
           if (err) return done(err);
 
-          response.statusCode.should.equal(200);
-          response.headers.should.have.property(
+          expect(response.statusCode).to.equal(200);
+          expect(response.headers).to.have.property(
             "access-control-allow-origin",
             origin
           );
@@ -1334,8 +1316,8 @@ describe("S3rver CORS Policy Tests", function() {
         s3rver.close(() => {
           if (err) return done(err);
 
-          response.statusCode.should.equal(200);
-          response.headers.should.have.property(
+          expect(response.statusCode).to.equal(200);
+          expect(response.headers).to.have.property(
             "access-control-allow-origin",
             origin
           );
@@ -1361,8 +1343,8 @@ describe("S3rver CORS Policy Tests", function() {
         s3rver.close(() => {
           if (err) return done(err);
 
-          response.statusCode.should.equal(200);
-          response.headers.should.not.have.property(
+          expect(response.statusCode).to.equal(200);
+          expect(response.headers).to.not.have.property(
             "access-control-allow-origin"
           );
           done();
@@ -1389,8 +1371,8 @@ describe("S3rver CORS Policy Tests", function() {
           s3rver.close(() => {
             if (err) return done(err);
 
-            response.statusCode.should.equal(206);
-            response.headers.should.have.property(
+            expect(response.statusCode).to.equal(206);
+            expect(response.headers).to.have.property(
               "access-control-expose-headers",
               "Accept-Ranges, Content-Range"
             );
@@ -1426,12 +1408,12 @@ describe("S3rver CORS Policy Tests", function() {
         (err, response) => {
           s3rver.close(() => {
             if (err) return done(err);
-            response.statusCode.should.equal(200);
-            response.headers.should.have.property(
+            expect(response.statusCode).to.equal(200);
+            expect(response.headers).to.have.property(
               "access-control-allow-origin",
               "*"
             );
-            response.headers.should.have.property(
+            expect(response.headers).to.have.property(
               "access-control-allow-headers",
               "range, authorization"
             );
@@ -1467,7 +1449,7 @@ describe("S3rver CORS Policy Tests", function() {
         (err, response) => {
           s3rver.close(() => {
             if (err) return done(err);
-            response.statusCode.should.equal(403);
+            expect(response.statusCode).to.equal(403);
             done();
           });
         }
@@ -1499,7 +1481,7 @@ describe("S3rver CORS Policy Tests", function() {
         (err, response) => {
           s3rver.close(() => {
             if (err) return done(err);
-            response.statusCode.should.equal(403);
+            expect(response.statusCode).to.equal(403);
             done();
           });
         }
@@ -1549,7 +1531,7 @@ describe("S3rver Tests with Static Web Hosting", function() {
       };
       s3Client.putObject(params, (err, data) => {
         if (err) return done(err);
-        /[a-fA-F0-9]{32}/.test(data.ETag).should.equal(true);
+        expect(data.ETag).to.match(/[a-fA-F0-9]{32}/);
         done();
       });
     });
@@ -1566,7 +1548,7 @@ describe("S3rver Tests with Static Web Hosting", function() {
       };
       s3Client.putObject(params, (err, data) => {
         if (err) return done(err);
-        /[a-fA-F0-9]{32}/.test(data.ETag).should.equal(true);
+        expect(data.ETag).to.match(/[a-fA-F0-9]{32}/);
         done();
       });
     });
@@ -1583,8 +1565,8 @@ describe("S3rver Tests with Static Web Hosting", function() {
         request(s3Client.endpoint.href + "site/", (error, response, body) => {
           if (error) return done(error);
 
-          response.statusCode.should.equal(200);
-          body.should.equal(expectedBody);
+          expect(response.statusCode).to.equal(200);
+          expect(body).to.equal(expectedBody);
           done();
         });
       });
@@ -1608,8 +1590,8 @@ describe("S3rver Tests with Static Web Hosting", function() {
           (err, response, body) => {
             if (err) return done(err);
 
-            response.statusCode.should.equal(200);
-            body.should.equal(expectedBody);
+            expect(response.statusCode).to.equal(200);
+            expect(body).to.equal(expectedBody);
             done();
           }
         );
@@ -1626,8 +1608,8 @@ describe("S3rver Tests with Static Web Hosting", function() {
         (err, response) => {
           if (err) return done(err);
 
-          response.statusCode.should.equal(404);
-          response.headers["content-type"].should.equal("text/html");
+          expect(response.statusCode).to.equal(404);
+          expect(response.headers).to.have.property("content-type", "text/html");
           done();
         }
       );
@@ -1647,17 +1629,17 @@ describe("S3rver Class Tests", function() {
       removeBucketsOnClose: true
     });
 
-    s3rver.options.should.have.property("hostname", "testhost");
-    s3rver.options.should.have.property("port", 4578);
-    s3rver.options.should.have.property("silent", false);
-    s3rver.options.should.have.property("indexDocument", "index.html");
-    s3rver.options.should.have.property("errorDocument", "");
-    s3rver.options.should.have.property("directory", "./testdir");
-    s3rver.options.should.have.property("key");
-    s3rver.options.should.have.property("cert");
-    s3rver.options.key.should.be.an.instanceOf(Buffer);
-    s3rver.options.cert.should.be.an.instanceOf(Buffer);
-    s3rver.options.should.have.property("removeBucketsOnClose", true);
+    expect(s3rver.options).to.have.property("hostname", "testhost");
+    expect(s3rver.options).to.have.property("port", 4578);
+    expect(s3rver.options).to.have.property("silent", false);
+    expect(s3rver.options).to.have.property("indexDocument", "index.html");
+    expect(s3rver.options).to.have.property("errorDocument", "");
+    expect(s3rver.options).to.have.property("directory", "./testdir");
+    expect(s3rver.options).to.have.property("key");
+    expect(s3rver.options).to.have.property("cert");
+    expect(s3rver.options.key).to.be.an.instanceOf(Buffer);
+    expect(s3rver.options.cert).to.be.an.instanceOf(Buffer);
+    expect(s3rver.options).to.have.property("removeBucketsOnClose", true);
   });
   it("should support running on port 0", function(done) {
     const s3rver = new S3rver({
@@ -1666,7 +1648,7 @@ describe("S3rver Class Tests", function() {
       silent: true
     }).run((err, hostname, port) => {
       if (err) return done(err);
-      should(port).be.above(0);
+      expect(port).to.be.above(0);
       s3rver.close(done);
     });
   });
@@ -1700,9 +1682,9 @@ describe("Data directory cleanup", function() {
           s3rver.close(err => {
             if (err) return done(err);
             const exists = fs.existsSync(directory);
-            should(exists).equal(true);
+            expect(exists).to.be.true;
             const files = fs.readdirSync(directory);
-            should(files.length).equal(0);
+            expect(files).to.have.lengthOf(0);
             done();
           });
         });
@@ -1735,9 +1717,9 @@ describe("Data directory cleanup", function() {
           s3rver.close(err => {
             if (err) return done(err);
             const exists = fs.existsSync(directory);
-            should(exists).equal(true);
+            expect(exists).to.be.true;
             const files = fs.readdirSync(directory);
-            should(files.length).equal(1);
+            expect(files).to.have.lengthOf(1);
             done();
           });
         });
@@ -1768,9 +1750,9 @@ describe("Data directory cleanup", function() {
           s3rver.close(err => {
             if (err) return done(err);
             const exists = fs.existsSync(directory);
-            should(exists).equal(true);
+            expect(exists).to.be.true;
             const files = fs.readdirSync(directory);
-            should(files.length).equal(1);
+            expect(files).to.have.lengthOf(1);
             done();
           });
         });
