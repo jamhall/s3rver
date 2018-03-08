@@ -194,6 +194,27 @@ describe("S3rver Tests", function() {
     });
   });
 
+  it("should store a text object with no content type and retrieve it", function(done) {
+    request(
+      {
+        method: "PUT",
+        baseUrl: s3Client.config.endpoint,
+        url: `/${buckets[0]}/text`,
+        body: "Hello!"
+      },
+      (err, res) => {
+        if (err) return done(err);
+        should(res.statusCode).equal(200);
+        const params = { Bucket: buckets[0], Key: "text" };
+        s3Client.getObject(params, (err, data) => {
+          if (err) return done(err);
+          should(data.ContentType).equal("binary/octet-stream");
+          done();
+        });
+      }
+    );
+  });
+
   it("should trigger a Put event", function(done) {
     const params = { Bucket: buckets[0], Key: "testPutKey", Body: "Hello!" };
     const putSubs = s3rver.s3Event.subscribe(event => {
