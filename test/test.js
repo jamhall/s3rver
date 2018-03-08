@@ -902,7 +902,7 @@ describe("S3rver Tests", function() {
     const testObjects = [
       "akey1",
       "akey2",
-      "akey3",
+      "akey32",
       "key/key1",
       "key1",
       "key2",
