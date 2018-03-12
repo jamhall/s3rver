@@ -51,7 +51,7 @@
     "moment": "2.21.0",
     "prettier": "1.11.1",
     "prettier-check": "2.0.0",
-    "request": "2.83.0"
+    "request": "2.85.0"
   },
   "engines": {
     "node": ">=6.0.0"
