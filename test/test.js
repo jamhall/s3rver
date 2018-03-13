@@ -1,18 +1,22 @@
 "use strict";
 
-const async = require("async");
 const AWS = require("aws-sdk");
-const { expect } = require("chai");
+const chai = require("chai");
+const chaiAsPromised = require("chai-as-promised");
 const fs = require("fs-extra");
 const { find, times } = require("lodash");
 const md5 = require("md5");
 const moment = require("moment");
 const os = require("os");
 const path = require("path");
-const request = require("request");
-const util = require("util");
+const promiseLimit = require("promise-limit");
+const request = require("request-promise-native");
+const { thunkToPromise } = require("../lib/utils");
 
 const S3rver = require("..");
+
+const { expect } = chai;
+chai.use(chaiAsPromised);
 
 const tmpDir = path.join(os.tmpdir(), "s3rver_test");
 S3rver.defaultOptions.directory = tmpDir;
@@ -31,18 +35,15 @@ function resetTmpDir() {
   fs.ensureDirSync(tmpDir);
 }
 
-function generateTestObjects(s3Client, bucket, amount, callback) {
-  const testObjects = times(amount, i => ({
+function generateTestObjects(s3Client, bucket, amount) {
+  const objects = times(amount, i => ({
     Bucket: bucket,
     Key: "key" + i,
     Body: "Hello!"
   }));
-  async.eachSeries(
-    testObjects,
-    (testObject, callback) => {
-      s3Client.putObject(testObject, callback);
-    },
-    callback
+
+  return promiseLimit(100).map(objects, object =>
+    s3Client.putObject(object).promise()
   );
 }
 
@@ -55,1157 +56,913 @@ describe("S3rver Tests", function() {
     "bucket5",
     "bucket6"
   ];
-  let s3rver;
+  let server;
   let s3Client;
 
   beforeEach("Reset buckets", resetTmpDir);
-  beforeEach("Start s3rver and create buckets", function(done) {
-    s3rver = new S3rver({
-      port: 4569,
-      hostname: "localhost",
-      silent: true
-    }).run((err, hostname, port) => {
-      if (err) return done("Error starting server", err);
-
-      s3Client = new AWS.S3({
-        accessKeyId: "123",
-        secretAccessKey: "abc",
-        endpoint: util.format("http://%s:%d", hostname, port),
-        sslEnabled: false,
-        s3ForcePathStyle: true
-      });
-      // Create 6 buckets
-      async.eachSeries(
-        buckets,
-        (bucket, callback) => {
-          s3Client.createBucket({ Bucket: bucket }, err => {
-            if (err && err.code !== "BucketAlreadyExists") {
-              return callback(err);
-            }
-            callback();
-          });
-        },
-        done
-      );
+  beforeEach("Start server and create buckets", function*() {
+    const [, port] = yield thunkToPromise(done => {
+      server = new S3rver({
+        port: 4569,
+        silent: true
+      }).run(done);
     });
-  });
 
-  afterEach("Close s3rver", function(done) {
-    s3rver.close(done);
-  });
-
-  it("should fetch fetch six buckets", function(done) {
-    s3Client.listBuckets((err, buckets) => {
-      if (err) return done(err);
-      expect(buckets.Buckets).to.have.lengthOf(6);
-      for (const bucket of buckets.Buckets) {
-        expect(bucket.Name).to.exist;
-        expect(moment(bucket.CreationDate).isValid()).to.be.true;
-      }
-      done();
+    s3Client = new AWS.S3({
+      accessKeyId: "123",
+      secretAccessKey: "abc",
+      endpoint: `http://localhost:${port}`,
+      sslEnabled: false,
+      s3ForcePathStyle: true
     });
-  });
-
-  it("should create a bucket with valid domain-style name", function(done) {
-    s3Client.createBucket({ Bucket: "a-test.example.com" }, done);
-  });
-
-  it("should fail to create a bucket because of invalid name", function(done) {
-    s3Client.createBucket({ Bucket: "-$%!nvalid" }, err => {
-      expect(err).to.exist;
-      expect(err.statusCode).to.equal(400);
-      expect(err.code).to.equal("InvalidBucketName");
-      done();
-    });
-  });
-
-  it("should fail to create a bucket because of invalid domain-style name", function(done) {
-    s3Client.createBucket({ Bucket: ".example.com" }, err => {
-      expect(err).to.exist;
-      expect(err.statusCode).to.equal(400);
-      expect(err.code).to.equal("InvalidBucketName");
-      done();
-    });
-  });
-
-  it("should fail to create a bucket because name is too long", function(done) {
-    s3Client.createBucket({ Bucket: "abcd".repeat(16) }, err => {
-      expect(err).to.exist;
-      expect(err.statusCode).to.equal(400);
-      expect(err.code).to.equal("InvalidBucketName");
-      done();
-    });
-  });
-
-  it("should fail to create a bucket because name is too short", function(done) {
-    s3Client.createBucket({ Bucket: "ab" }, err => {
-      expect(err).to.exist;
-      expect(err.statusCode).to.equal(400);
-      expect(err.code).to.equal("InvalidBucketName");
-      done();
-    });
-  });
-
-  it("should delete a bucket", function(done) {
-    s3Client.deleteBucket({ Bucket: buckets[4] }, done);
-  });
-
-  it("should not fetch the deleted bucket", function(done) {
-    s3Client.deleteBucket({ Bucket: buckets[4] }, err => {
-      if (err) return done(err);
-      s3Client.listObjects({ Bucket: buckets[4] }, err => {
-        expect(err).to.exist;
-        expect(err.code).to.equal("NoSuchBucket");
-        expect(err.statusCode).to.equal(404);
-        done();
-      });
-    });
-  });
-
-  it("should list no objects for a bucket", function(done) {
-    s3Client.listObjects({ Bucket: buckets[3] }, (err, objects) => {
-      if (err) return done(err);
-      expect(objects.Contents).to.have.lengthOf(0);
-      done();
-    });
-  });
-
-  it("should store a text object in a bucket", function(done) {
-    const params = { Bucket: buckets[0], Key: "text", Body: "Hello!" };
-    s3Client.putObject(params, (err, data) => {
-      if (err) return done(err);
-      expect(data.ETag).to.match(/"[a-fA-F0-9]{32}"/);
-      done();
-    });
-  });
-
-  it("should store a text object with no content type and retrieve it", function(done) {
-    request(
-      {
-        method: "PUT",
-        baseUrl: s3Client.config.endpoint,
-        url: `/${buckets[0]}/text`,
-        body: "Hello!"
-      },
-      (err, res) => {
-        if (err) return done(err);
-        expect(res.statusCode).to.equal(200);
-        const params = { Bucket: buckets[0], Key: "text" };
-        s3Client.getObject(params, (err, data) => {
-          if (err) return done(err);
-          expect(data.ContentType).to.equal("binary/octet-stream");
-          done();
-        });
-      }
+    // Create 6 buckets
+    yield Promise.all(
+      buckets.map(bucket =>
+        s3Client
+          .createBucket({ Bucket: bucket })
+          .promise()
+          .catch(err => {
+            if (err.code !== "BucketAlreadyExists") throw err;
+          })
+      )
     );
   });
 
-  it("should trigger a Put event", function(done) {
-    const params = { Bucket: buckets[0], Key: "testPutKey", Body: "Hello!" };
-    const putSubs = s3rver.s3Event.subscribe(event => {
-      expect(event.Records[0].eventName).to.equal("ObjectCreated:Put");
-      expect(event.Records[0].s3.bucket.name).to.equal(buckets[0]);
-      expect(event.Records[0].s3.object.key).to.equal("testPutKey");
-      putSubs.unsubscribe();
-      done();
-    });
-    s3Client.putObject(params, err => {
-      if (err) return done(err);
-    });
+  afterEach("Close server", function(done) {
+    server.close(done);
   });
 
-  it("should trigger a Copy event", function(done) {
-    const copySubs = s3rver.s3Event
-      .filter(
-        eventType => eventType.Records[0].eventName == "ObjectCreated:Copy"
-      )
-      .subscribe(event => {
-        expect(event.Records[0].eventName).to.equal("ObjectCreated:Copy");
-        expect(event.Records[0].s3.bucket.name).to.equal(buckets[4]);
-        expect(event.Records[0].s3.object.key).to.equal("testCopy");
-        copySubs.unsubscribe();
-        done();
-      });
+  it("should fetch fetch six buckets", function*() {
+    const buckets = yield s3Client.listBuckets().promise();
+    expect(buckets.Buckets).to.have.lengthOf(6);
+    for (const bucket of buckets.Buckets) {
+      expect(bucket.Name).to.exist;
+      expect(moment(bucket.CreationDate).isValid()).to.be.true;
+    }
+  });
 
-    const putParams = { Bucket: buckets[0], Key: "testPut", Body: "Hello!" };
-    s3Client.putObject(putParams, err => {
-      if (err) return done(err);
-      const params = {
+  it("should create a bucket with valid domain-style name", function*() {
+    yield s3Client.createBucket({ Bucket: "a-test.example.com" }).promise();
+  });
+
+  it("should fail to create a bucket because of invalid name", function*() {
+    let error;
+    try {
+      yield s3Client.createBucket({ Bucket: "-$%!nvalid" }).promise();
+    } catch (err) {
+      error = err;
+      expect(err.statusCode).to.equal(400);
+      expect(err.code).to.equal("InvalidBucketName");
+    }
+    expect(error).to.exist;
+  });
+
+  it("should fail to create a bucket because of invalid domain-style name", function*() {
+    let error;
+    try {
+      yield s3Client.createBucket({ Bucket: ".example.com" }).promise();
+    } catch (err) {
+      error = err;
+      expect(err.statusCode).to.equal(400);
+      expect(err.code).to.equal("InvalidBucketName");
+    }
+    expect(error).to.exist;
+  });
+
+  it("should fail to create a bucket because name is too long", function*() {
+    let error;
+    try {
+      yield s3Client.createBucket({ Bucket: "abcd".repeat(16) }).promise();
+    } catch (err) {
+      error = err;
+      expect(err.statusCode).to.equal(400);
+      expect(err.code).to.equal("InvalidBucketName");
+    }
+    expect(error).to.exist;
+  });
+
+  it("should fail to create a bucket because name is too short", function*() {
+    let error;
+    try {
+      yield s3Client.createBucket({ Bucket: "ab" }).promise();
+    } catch (err) {
+      error = err;
+      expect(err.statusCode).to.equal(400);
+      expect(err.code).to.equal("InvalidBucketName");
+    }
+    expect(error).to.exist;
+  });
+
+  it("should delete a bucket", function*() {
+    yield s3Client.deleteBucket({ Bucket: buckets[4] }).promise();
+  });
+
+  it("should not fetch the deleted bucket", function*() {
+    let error;
+    yield s3Client.deleteBucket({ Bucket: buckets[4] }).promise();
+    try {
+      yield s3Client.listObjects({ Bucket: buckets[4] }).promise();
+    } catch (err) {
+      error = err;
+      expect(err.code).to.equal("NoSuchBucket");
+      expect(err.statusCode).to.equal(404);
+    }
+    expect(error).to.exist;
+  });
+
+  it("should list no objects for a bucket", function*() {
+    yield s3Client.listObjects({ Bucket: buckets[3] }).promise();
+    const objects = yield s3Client
+      .listObjects({ Bucket: buckets[3] })
+      .promise();
+    expect(objects.Contents).to.have.lengthOf(0);
+  });
+
+  it("should store a text object in a bucket", function*() {
+    const data = yield s3Client
+      .putObject({ Bucket: buckets[0], Key: "text", Body: "Hello!" })
+      .promise();
+    expect(data.ETag).to.match(/"[a-fA-F0-9]{32}"/);
+  });
+
+  it("should store a text object with no content type and retrieve it", function*() {
+    const res = yield request({
+      method: "PUT",
+      baseUrl: s3Client.config.endpoint,
+      url: `/${buckets[0]}/text`,
+      body: "Hello!",
+      resolveWithFullResponse: true
+    });
+    expect(res.statusCode).to.equal(200);
+    const data = yield s3Client
+      .getObject({ Bucket: buckets[0], Key: "text" })
+      .promise();
+    expect(data.ContentType).to.equal("binary/octet-stream");
+  });
+
+  it("should trigger a Put event", function*() {
+    const eventPromise = server.s3Event.take(1).toPromise();
+    yield s3Client
+      .putObject({ Bucket: buckets[0], Key: "testPutKey", Body: "Hello!" })
+      .promise();
+    const event = yield eventPromise;
+    expect(event.Records[0].eventName).to.equal("ObjectCreated:Put");
+    expect(event.Records[0].s3.bucket.name).to.equal(buckets[0]);
+    expect(event.Records[0].s3.object.key).to.equal("testPutKey");
+  });
+
+  it("should trigger a Copy event", function*() {
+    yield s3Client
+      .putObject({ Bucket: buckets[0], Key: "testPut", Body: "Hello!" })
+      .promise();
+    const eventPromise = server.s3Event.take(1).toPromise();
+    yield s3Client
+      .copyObject({
         Bucket: buckets[4],
         Key: "testCopy",
         CopySource: "/" + buckets[0] + "/testPut"
-      };
-      s3Client.copyObject(params, err => {
-        if (err) return done(err);
-      });
-    });
+      })
+      .promise();
+    const event = yield eventPromise;
+    expect(event.Records[0].eventName).to.equal("ObjectCreated:Copy");
+    expect(event.Records[0].s3.bucket.name).to.equal(buckets[4]);
+    expect(event.Records[0].s3.object.key).to.equal("testCopy");
   });
 
-  it("should trigger a Delete event", function(done) {
-    const delSubs = s3rver.s3Event
-      .filter(
-        eventType => eventType.Records[0].eventName == "ObjectRemoved:Delete"
-      )
-      .subscribe(event => {
-        expect(event.Records[0].eventName).to.equal("ObjectRemoved:Delete");
-        expect(event.Records[0].s3.bucket.name).to.equal(buckets[0]);
-        expect(event.Records[0].s3.object.key).to.equal("testDelete");
-        delSubs.unsubscribe();
-        done();
-      });
-
-    const putParams = { Bucket: buckets[0], Key: "testDelete", Body: "Hello!" };
-    s3Client.putObject(putParams, err => {
-      if (err) return done(err);
-      s3Client.deleteObject({ Bucket: buckets[0], Key: "testDelete" }, err => {
-        if (err) return done(err);
-      });
-    });
+  it("should trigger a Delete event", function*() {
+    yield s3Client
+      .putObject({
+        Bucket: buckets[0],
+        Key: "testDelete",
+        Body: "Hello!"
+      })
+      .promise();
+    const eventPromise = server.s3Event.take(1).toPromise();
+    yield s3Client
+      .deleteObject({ Bucket: buckets[0], Key: "testDelete" })
+      .promise();
+    const event = yield eventPromise;
+    expect(event.Records[0].eventName).to.equal("ObjectRemoved:Delete");
+    expect(event.Records[0].s3.bucket.name).to.equal(buckets[0]);
+    expect(event.Records[0].s3.object.key).to.equal("testDelete");
   });
 
-  it("should store a text object with some custom metadata", function(done) {
-    const params = {
-      Bucket: buckets[0],
-      Key: "textmetadata",
-      Body: "Hello!",
-      Metadata: {
-        someKey: "value"
-      }
-    };
-    s3Client.putObject(params, (err, data) => {
-      if (err) return done(err);
-      expect(data.ETag).to.match(/"[a-fA-F0-9]{32}"/);
-      done();
-    });
-  });
-
-  it("should return a text object with some custom metadata", function(done) {
-    const params = {
-      Bucket: buckets[0],
-      Key: "textmetadata",
-      Body: "Hello!",
-      Metadata: {
-        someKey: "value"
-      }
-    };
-    s3Client.putObject(params, (err, data) => {
-      if (err) return done(err);
-      expect(data.ETag).to.match(/"[a-fA-F0-9]{32}"/);
-      s3Client.getObject(
-        { Bucket: buckets[0], Key: "textmetadata" },
-        (err, object) => {
-          if (err) return done(err);
-          expect(object.Metadata.somekey).to.equal("value");
-          done();
+  it("should store a text object with some custom metadata", function*() {
+    const data = yield s3Client
+      .putObject({
+        Bucket: buckets[0],
+        Key: "textmetadata",
+        Body: "Hello!",
+        Metadata: {
+          someKey: "value"
         }
-      );
-    });
+      })
+      .promise();
+    expect(data.ETag).to.match(/"[a-fA-F0-9]{32}"/);
   });
 
-  it("should store an image in a bucket", function(done) {
-    const file = path.join(__dirname, "resources/image.jpg");
-    fs.readFile(file, (err, data) => {
-      if (err) return done(err);
-      const params = {
+  it("should return a text object with some custom metadata", function*() {
+    const data = yield s3Client
+      .putObject({
+        Bucket: buckets[0],
+        Key: "textmetadata",
+        Body: "Hello!",
+        Metadata: {
+          someKey: "value"
+        }
+      })
+      .promise();
+    expect(data.ETag).to.match(/"[a-fA-F0-9]{32}"/);
+    const object = yield s3Client
+      .getObject({ Bucket: buckets[0], Key: "textmetadata" })
+      .promise();
+    expect(object.Metadata.somekey).to.equal("value");
+  });
+
+  it("should store an image in a bucket", function*() {
+    const file = path.join(__dirname, "resources/image0.jpg");
+    const data = yield s3Client
+      .putObject({
         Bucket: buckets[0],
         Key: "image",
-        Body: new Buffer(data),
-        ContentType: "image/jpeg",
-        ContentLength: data.length
-      };
-      s3Client.putObject(params, (err, data) => {
-        if (err) return done(err);
-        expect(data.ETag).to.match(/"[a-fA-F0-9]{32}"/);
-        done();
-      });
-    });
+        Body: yield fs.readFile(file),
+        ContentType: "image/jpeg"
+      })
+      .promise();
+    expect(data.ETag).to.match(/"[a-fA-F0-9]{32}"/);
   });
 
-  it("should store a gzip encoded file in bucket", function(done) {
+  it("should store a gzip encoded file in bucket", function*() {
     const file = path.join(__dirname, "resources/jquery.js.gz");
-    const stats = fs.statSync(file);
 
     const params = {
       Bucket: buckets[0],
       Key: "jquery",
-      Body: fs.createReadStream(file), // new Buffer(data),
+      Body: yield fs.readFile(file),
       ContentType: "application/javascript",
-      ContentEncoding: "gzip",
-      ContentLength: stats.size
+      ContentEncoding: "gzip"
     };
 
-    s3Client.putObject(params, err => {
-      if (err) return done(err);
-
-      s3Client.getObject(
-        { Bucket: buckets[0], Key: "jquery" },
-        (err, object) => {
-          if (err) return done(err);
-          expect(object.ContentLength).to.equal(stats.size);
-          expect(object.ContentEncoding).to.equal("gzip");
-          expect(object.ContentType).to.equal("application/javascript");
-          done();
-        }
-      );
-    });
+    yield s3Client.putObject(params).promise();
+    const object = yield s3Client
+      .getObject({ Bucket: buckets[0], Key: "jquery" })
+      .promise();
+    expect(object.ContentEncoding).to.equal("gzip");
+    expect(object.ContentType).to.equal("application/javascript");
   });
 
-  it("should copy an image object into another bucket", function(done) {
+  it("should copy an image object into another bucket", function*() {
     const srcKey = "image";
     const destKey = "image/jamie";
 
-    const file = path.join(__dirname, "resources/image.jpg");
-    fs.readFile(file, (err, data) => {
-      if (err) {
-        return done(err);
-      }
-      const params = {
+    const file = path.join(__dirname, "resources/image0.jpg");
+    const data = yield s3Client
+      .putObject({
         Bucket: buckets[0],
         Key: srcKey,
-        Body: new Buffer(data),
-        ContentType: "image/jpeg",
-        ContentLength: data.length
-      };
-      s3Client.putObject(params, (err, data) => {
-        if (err) return done(err);
-        expect(data.ETag).to.match(/"[a-fA-F0-9]{32}"/);
-        const params = {
-          Bucket: buckets[3],
-          Key: destKey,
-          CopySource: "/" + buckets[0] + "/" + srcKey
-        };
-        s3Client.copyObject(params, (err, data) => {
-          if (err) return done(err);
-          expect(data.ETag).to.match(/"[a-fA-F0-9]{32}"/);
-          expect(moment(data.LastModified).isValid()).to.be.true;
-          done();
-        });
-      });
-    });
+        Body: yield fs.readFile(file),
+        ContentType: "image/jpeg"
+      })
+      .promise();
+    expect(data.ETag).to.match(/"[a-fA-F0-9]{32}"/);
+    const copyResult = yield s3Client
+      .copyObject({
+        Bucket: buckets[3],
+        Key: destKey,
+        CopySource: "/" + buckets[0] + "/" + srcKey
+      })
+      .promise();
+    expect(copyResult.ETag).to.equal(data.ETag);
+    expect(moment(copyResult.LastModified).isValid()).to.be.true;
   });
 
-  it("should copy an image object into another bucket including its metadata", function(done) {
+  it("should copy an image object into another bucket including its metadata", function*() {
     const srcKey = "image";
     const destKey = "image/jamie";
 
-    const file = path.join(__dirname, "resources/image.jpg");
-    fs.readFile(file, (err, data) => {
-      if (err) return done(err);
-      const params = {
+    const file = path.join(__dirname, "resources/image0.jpg");
+    const data = yield s3Client
+      .putObject({
         Bucket: buckets[0],
         Key: srcKey,
-        Body: new Buffer(data),
+        Body: yield fs.readFile(file),
         ContentType: "image/jpeg",
-        ContentLength: data.length,
         Metadata: {
           someKey: "value"
         }
-      };
-      s3Client.putObject(params, (err, data) => {
-        if (err) return done(err);
-        expect(data.ETag).to.match(/"[a-fA-F0-9]{32}"/);
-        const params = {
-          Bucket: buckets[3],
-          Key: destKey,
-          // MetadataDirective is implied to be COPY
-          CopySource: "/" + buckets[0] + "/" + srcKey
-        };
-        s3Client.copyObject(params, err => {
-          if (err) return done(err);
-          s3Client.getObject(
-            { Bucket: buckets[3], Key: destKey },
-            (err, object) => {
-              if (err) return done(err);
-              expect(object.Metadata).to.have.property("somekey", "value");
-              expect(object.ContentType).to.equal("image/jpeg");
-              done();
-            }
-          );
-        });
-      });
-    });
+      })
+      .promise();
+    expect(data.ETag).to.match(/"[a-fA-F0-9]{32}"/);
+    yield s3Client
+      .copyObject({
+        Bucket: buckets[3],
+        Key: destKey,
+        // MetadataDirective is implied to be COPY
+        CopySource: "/" + buckets[0] + "/" + srcKey
+      })
+      .promise();
+    const object = yield s3Client
+      .getObject({ Bucket: buckets[3], Key: destKey })
+      .promise();
+    expect(object.Metadata).to.have.property("somekey", "value");
+    expect(object.ContentType).to.equal("image/jpeg");
   });
 
-  it("should update the metadata of an image object", function(done) {
+  it("should update the metadata of an image object", function*() {
     const srcKey = "image";
     const destKey = "image/jamie";
 
-    const file = path.join(__dirname, "resources/image.jpg");
-    fs.readFile(file, (err, data) => {
-      if (err) return done(err);
-      const params = {
+    const file = path.join(__dirname, "resources/image0.jpg");
+    const data = yield s3Client
+      .putObject({
         Bucket: buckets[0],
         Key: srcKey,
-        Body: new Buffer(data),
-        ContentType: "image/jpeg",
-        ContentLength: data.length
-      };
-      s3Client.putObject(params, (err, data) => {
-        if (err) return done(err);
-        expect(data.ETag).to.match(/"[a-fA-F0-9]{32}"/);
-        const params = {
-          Bucket: buckets[3],
-          Key: destKey,
-          CopySource: "/" + buckets[0] + "/" + srcKey,
-          MetadataDirective: "REPLACE",
-          Metadata: {
-            someKey: "value"
-          }
-        };
-        s3Client.copyObject(params, err => {
-          if (err) return done(err);
-          s3Client.getObject(
-            { Bucket: buckets[3], Key: destKey },
-            (err, object) => {
-              if (err) done(err);
-              expect(object.Metadata).to.have.property("somekey", "value");
-              expect(object.ContentType).to.equal("application/octet-stream");
-              done();
-            }
-          );
-        });
-      });
-    });
+        Body: yield fs.readFile(file),
+        ContentType: "image/jpeg"
+      })
+      .promise();
+    expect(data.ETag).to.match(/"[a-fA-F0-9]{32}"/);
+    yield s3Client
+      .copyObject({
+        Bucket: buckets[3],
+        Key: destKey,
+        CopySource: "/" + buckets[0] + "/" + srcKey,
+        MetadataDirective: "REPLACE",
+        Metadata: {
+          someKey: "value"
+        }
+      })
+      .promise();
+    const object = yield s3Client
+      .getObject({ Bucket: buckets[3], Key: destKey })
+      .promise();
+    expect(object.Metadata).to.have.property("somekey", "value");
+    expect(object.ContentType).to.equal("application/octet-stream");
   });
 
-  it("should copy an image object into another bucket and update its metadata", function(done) {
+  it("should copy an image object into another bucket and update its metadata", function*() {
     const srcKey = "image";
     const destKey = "image/jamie";
 
-    const file = path.join(__dirname, "resources/image.jpg");
-    fs.readFile(file, (err, data) => {
-      if (err) return done(err);
-      const params = {
+    const file = path.join(__dirname, "resources/image0.jpg");
+    yield s3Client
+      .putObject({
         Bucket: buckets[0],
         Key: srcKey,
-        Body: new Buffer(data),
-        ContentType: "image/jpeg",
-        ContentLength: data.length
-      };
-      s3Client.putObject(params, err => {
-        if (err) return done(err);
-        const params = {
-          Bucket: buckets[3],
-          Key: destKey,
-          CopySource: "/" + buckets[0] + "/" + srcKey,
-          MetadataDirective: "REPLACE",
-          Metadata: {
-            someKey: "value"
-          }
-        };
-        s3Client.copyObject(params, err => {
-          if (err) return done(err);
-          s3Client.getObject(
-            { Bucket: buckets[3], Key: destKey },
-            (err, object) => {
-              if (err) return done(err);
-              expect(object.Metadata.somekey).to.equal("value");
-              expect(object.ContentType).to.equal("application/octet-stream");
-              done();
-            }
-          );
-        });
-      });
-    });
+        Body: yield fs.readFile(file),
+        ContentType: "image/jpeg"
+      })
+      .promise();
+    yield s3Client
+      .copyObject({
+        Bucket: buckets[3],
+        Key: destKey,
+        CopySource: "/" + buckets[0] + "/" + srcKey,
+        MetadataDirective: "REPLACE",
+        Metadata: {
+          someKey: "value"
+        }
+      })
+      .promise();
+    const object = yield s3Client
+      .getObject({ Bucket: buckets[3], Key: destKey })
+      .promise();
+    expect(object.Metadata.somekey).to.equal("value");
+    expect(object.ContentType).to.equal("application/octet-stream");
   });
 
-  it("should fail to copy an image object because the object does not exist", function(done) {
-    const params = {
-      Bucket: buckets[3],
-      Key: "image/jamie",
-      CopySource: "/" + buckets[0] + "/doesnotexist"
-    };
-    s3Client.copyObject(params, err => {
-      expect(err).to.exist;
+  it("should fail to copy an image object because the object does not exist", function*() {
+    let error;
+    try {
+      yield s3Client
+        .copyObject({
+          Bucket: buckets[3],
+          Key: "image/jamie",
+          CopySource: "/" + buckets[0] + "/doesnotexist"
+        })
+        .promise();
+    } catch (err) {
+      error = err;
       expect(err.code).to.equal("NoSuchKey");
       expect(err.statusCode).to.equal(404);
-      done();
-    });
+    }
+    expect(error).to.exist;
   });
 
-  it("should fail to copy an image object because the source bucket does not exist", function(done) {
-    const params = {
-      Bucket: buckets[3],
-      Key: "image/jamie",
-      CopySource: "/falsebucket/doesnotexist"
-    };
-    s3Client.copyObject(params, err => {
-      expect(err).to.exist;
+  it("should fail to copy an image object because the source bucket does not exist", function*() {
+    let error;
+    try {
+      yield s3Client
+        .copyObject({
+          Bucket: buckets[3],
+          Key: "image/jamie",
+          CopySource: "/falsebucket/doesnotexist"
+        })
+        .promise();
+    } catch (err) {
+      error = err;
       expect(err.code).to.equal("NoSuchBucket");
       expect(err.statusCode).to.equal(404);
-      done();
-    });
+    }
+    expect(error).to.exist;
   });
 
-  it("should fail to update the metadata of an image object when no REPLACE MetadataDirective is specified", function(done) {
+  it("should fail to update the metadata of an image object when no REPLACE MetadataDirective is specified", function*() {
     const key = "image";
 
-    const file = path.join(__dirname, "resources/image.jpg");
-    fs.readFile(file, (err, data) => {
-      if (err) return done(err);
-      const params = {
+    const file = path.join(__dirname, "resources/image0.jpg");
+    const data = yield s3Client
+      .putObject({
         Bucket: buckets[0],
         Key: key,
-        Body: new Buffer(data),
-        ContentType: "image/jpeg",
-        ContentLength: data.length
-      };
-      s3Client.putObject(params, (err, data) => {
-        if (err) return done(err);
-        expect(data.ETag).to.match(/"[a-fA-F0-9]{32}"/);
-        const params = {
+        Body: yield fs.readFile(file),
+        ContentType: "image/jpeg"
+      })
+      .promise();
+    expect(data.ETag).to.match(/"[a-fA-F0-9]{32}"/);
+    let error;
+    try {
+      yield s3Client
+        .copyObject({
           Bucket: buckets[0],
           Key: key,
           CopySource: "/" + buckets[0] + "/" + key,
           Metadata: {
             someKey: "value"
           }
-        };
-        s3Client.copyObject(params, err => {
-          expect(err).to.exist;
-          expect(err.statusCode).to.equal(400);
-          done();
-        });
-      });
-    });
+        })
+        .promise();
+    } catch (err) {
+      error = err;
+      expect(err.statusCode).to.equal(400);
+    }
+    expect(error).to.exist;
   });
 
-  it("should store a large buffer in a bucket", function(done) {
-    // 20M
-    const b = new Buffer(20000000);
-    const params = { Bucket: buckets[0], Key: "large", Body: b };
-    s3Client.putObject(params, (err, data) => {
-      if (err) return done(err);
-      expect(data.ETag).to.match(/"[a-fA-F0-9]{32}"/);
-      done();
-    });
+  it("should store a large buffer in a bucket", function*() {
+    const data = yield s3Client
+      .putObject({
+        Bucket: buckets[0],
+        Key: "large",
+        Body: Buffer.alloc(20 * Math.pow(1024, 2))
+      })
+      .promise();
+    expect(data.ETag).to.match(/"[a-fA-F0-9]{32}"/);
   });
 
-  it("should get an image from a bucket", function(done) {
-    const file = path.join(__dirname, "resources/image.jpg");
-    fs.readFile(file, (err, data) => {
-      if (err) return done(err);
-      const params = {
+  it("should get an image from a bucket", function*() {
+    const file = path.join(__dirname, "resources/image0.jpg");
+    const data = yield fs.readFile(file);
+    yield s3Client
+      .putObject({
         Bucket: buckets[0],
         Key: "image",
         Body: data,
-        ContentType: "image/jpeg",
-        ContentLength: data.length
-      };
-      s3Client.putObject(params, err => {
-        if (err) return done(err);
-        s3Client.getObject(
-          { Bucket: buckets[0], Key: "image" },
-          (err, object) => {
-            if (err) return done(err);
-            expect(object.ETag).to.equal(JSON.stringify(md5(data)));
-            expect(object.ContentLength).to.equal(data.length);
-            expect(object.ContentType).to.equal("image/jpeg");
-            done();
-          }
-        );
-      });
-    });
+        ContentType: "image/jpeg"
+      })
+      .promise();
+    const object = yield s3Client
+      .getObject({ Bucket: buckets[0], Key: "image" })
+      .promise();
+    expect(object.ETag).to.equal(JSON.stringify(md5(data)));
+    expect(object.ContentLength).to.equal(data.length);
+    expect(object.ContentType).to.equal("image/jpeg");
   });
 
-  it("should get partial image from a bucket with a range request", function(done) {
-    const file = path.join(__dirname, "resources/image.jpg");
-    fs.readFile(file, (err, data) => {
-      if (err) return done(err);
-      const params = {
+  it("should get partial image from a bucket with a range request", function*() {
+    const file = path.join(__dirname, "resources/image0.jpg");
+    yield s3Client
+      .putObject({
         Bucket: buckets[0],
         Key: "image",
-        Body: data,
-        ContentType: "image/jpeg",
-        ContentLength: data.length
-      };
-      s3Client.putObject(params, err => {
-        if (err) return done(err);
-        const url = s3Client.getSignedUrl("getObject", {
-          Bucket: buckets[0],
-          Key: "image"
-        });
-        request({ url, headers: { range: "bytes=0-99" } }, (err, response) => {
-          if (err) return done(err);
-
-          expect(response.statusCode).to.equal(206);
-          expect(response.headers).to.have.property("content-range");
-          expect(response.headers).to.have.property("accept-ranges");
-          expect(response.headers).to.have.property("content-length", "100");
-          done();
-        });
-      });
+        Body: yield fs.readFile(file),
+        ContentType: "image/jpeg"
+      })
+      .promise();
+    const url = s3Client.getSignedUrl("getObject", {
+      Bucket: buckets[0],
+      Key: "image"
     });
+    const res = yield request({
+      url,
+      headers: { range: "bytes=0-99" },
+      resolveWithFullResponse: true
+    });
+    expect(res.statusCode).to.equal(206);
+    expect(res.headers).to.have.property("content-range");
+    expect(res.headers).to.have.property("accept-ranges");
+    expect(res.headers).to.have.property("content-length", "100");
   });
 
-  it("should get image metadata from a bucket using HEAD method", function(done) {
-    const file = path.join(__dirname, "resources/image.jpg");
-    fs.readFile(file, (err, data) => {
-      if (err) return done(err);
-      const params = {
+  it("should get image metadata from a bucket using HEAD method", function*() {
+    const file = path.join(__dirname, "resources/image0.jpg");
+    const fileContent = yield fs.readFile(file);
+    yield s3Client
+      .putObject({
         Bucket: buckets[0],
         Key: "image",
-        Body: data,
+        Body: fileContent,
         ContentType: "image/jpeg",
-        ContentLength: data.length
-      };
-      s3Client.putObject(params, err => {
-        if (err) return done(err);
-        s3Client.headObject(
-          { Bucket: buckets[0], Key: "image" },
-          (err, object) => {
-            if (err) return done(err);
-            expect(object.ETag).to.equal(JSON.stringify(md5(data)));
-            expect(object.ContentLength).to.equal(data.length);
-            expect(object.ContentType).to.equal("image/jpeg");
-            done();
-          }
-        );
-      });
-    });
+        ContentLength: fileContent.length
+      })
+      .promise();
+    const object = yield s3Client
+      .headObject({ Bucket: buckets[0], Key: "image" })
+      .promise();
+    expect(object.ETag).to.equal(JSON.stringify(md5(fileContent)));
+    expect(object.ContentLength).to.equal(fileContent.length);
+    expect(object.ContentType).to.equal("image/jpeg");
   });
 
-  it("should store a different image and update the previous image", function(done) {
-    async.waterfall(
-      [
-        /**
-         * Get object from store
-         */
-        callback => {
-          const file = path.join(__dirname, "resources/image.jpg");
-          fs.readFile(file, (err, data) => {
-            const params = {
-              Bucket: buckets[0],
-              Key: "image",
-              Body: data,
-              ContentType: "image/jpeg",
-              ContentLength: data.length
-            };
-            s3Client.putObject(params, err => {
-              if (err) return callback(err);
-              s3Client.getObject(
-                { Bucket: buckets[0], Key: "image" },
-                callback
-              );
-            });
-          });
-        },
-        /**
-         * Store different object
-         */
-        (object, callback) => {
-          const file = path.join(__dirname, "resources/image1.jpg");
-          fs.readFile(file, (err, data) => {
-            if (err) return callback(err);
-            const params = {
-              Bucket: buckets[0],
-              Key: "image",
-              Body: new Buffer(data),
-              ContentType: "image/jpeg",
-              ContentLength: data.length
-            };
-            s3Client.putObject(params, (err, storedObject) => {
-              expect(storedObject.ETag).to.not.equal(object.ETag);
-              callback(err, object);
-            });
-          });
-        },
-        /**
-         * Get object again and do some comparisons
-         */
-        (object, callback) => {
-          s3Client.getObject(
-            { Bucket: buckets[0], Key: "image" },
-            (err, newObject) => {
-              if (err) return callback(err);
-              expect(newObject.LastModified).to.not.equal(object.LastModified);
-              expect(newObject.ContentLength).to.not.equal(
-                object.ContentLength
-              );
-              callback();
-            }
-          );
-        }
-      ],
-      done
-    );
+  it("should store a different image and update the previous image", function*() {
+    const files = [
+      path.join(__dirname, "resources/image0.jpg"),
+      path.join(__dirname, "resources/image1.jpg")
+    ];
+
+    // Get object from store
+    yield s3Client
+      .putObject({
+        Bucket: buckets[0],
+        Key: "image",
+        Body: yield fs.readFile(files[0]),
+        ContentType: "image/jpeg"
+      })
+      .promise();
+    const object = yield s3Client
+      .getObject({ Bucket: buckets[0], Key: "image" })
+      .promise();
+
+    // Store different object
+    const storedObject = yield s3Client
+      .putObject({
+        Bucket: buckets[0],
+        Key: "image",
+        Body: yield fs.readFile(files[1]),
+        ContentType: "image/jpeg"
+      })
+      .promise();
+    expect(storedObject.ETag).to.not.equal(object.ETag);
+
+    // Get object again and do some comparisons
+    const newObject = yield s3Client
+      .getObject({ Bucket: buckets[0], Key: "image" })
+      .promise();
+    expect(newObject.LastModified).to.not.equal(object.LastModified);
+    expect(newObject.ContentLength).to.not.equal(object.ContentLength);
   });
 
-  it("should get an objects acl from a bucket", function(done) {
-    s3Client.getObjectAcl(
-      { Bucket: buckets[0], Key: "image" },
-      (err, object) => {
-        if (err) return done(err);
-        expect(object.Owner.DisplayName).to.equal("S3rver");
-        done();
-      }
-    );
+  it("should get an objects acl from a bucket", function*() {
+    const object = yield s3Client
+      .getObjectAcl({ Bucket: buckets[0], Key: "image0" })
+      .promise();
+    expect(object.Owner.DisplayName).to.equal("S3rver");
   });
 
-  it("should delete an image from a bucket", function(done) {
-    const b = new Buffer(10);
-    const params = { Bucket: buckets[0], Key: "large", Body: b };
-    s3Client.putObject(params, err => {
-      if (err) return done(err);
-      s3Client.deleteObject({ Bucket: buckets[0], Key: "image" }, done);
-    });
+  it("should delete an image from a bucket", function*() {
+    yield s3Client
+      .putObject({ Bucket: buckets[0], Key: "large", Body: Buffer.alloc(10) })
+      .promise();
+    yield s3Client.deleteObject({ Bucket: buckets[0], Key: "large" }).promise();
   });
 
-  it("should not find an image from a bucket", function(done) {
-    s3Client.getObject({ Bucket: buckets[0], Key: "image" }, err => {
-      expect(err).to.exist;
+  it("should not find an image from a bucket", function*() {
+    let error;
+    try {
+      yield s3Client.getObject({ Bucket: buckets[0], Key: "image" }).promise();
+    } catch (err) {
+      error = err;
       expect(err.code).to.equal("NoSuchKey");
       expect(err.statusCode).to.equal(404);
-      done();
-    });
-  });
-
-  it("should not fail to delete a nonexistent object from a bucket", function(done) {
-    s3Client.deleteObject({ Bucket: buckets[0], Key: "doesnotexist" }, done);
-  });
-
-  it("should fail to delete a bucket because it is not empty", function(done) {
-    generateTestObjects(s3Client, buckets[0], 20, err => {
-      if (err) return done(err);
-      s3Client.deleteBucket({ Bucket: buckets[0] }, err => {
-        expect(err).to.exist;
-        expect(err.code).to.equal("BucketNotEmpty");
-        expect(err.statusCode).to.equal(409);
-        done();
-      });
-    });
-  });
-
-  it("should upload a text file to a multi directory path", function(done) {
-    const params = {
-      Bucket: buckets[0],
-      Key: "multi/directory/path/text",
-      Body: "Hello!"
-    };
-    s3Client.putObject(params, (err, data) => {
-      if (err) return done(err);
-      expect(data.ETag).to.match(/"[a-fA-F0-9]{32}"/);
-      done();
-    });
-  });
-
-  it("should upload a managed upload <=5MB", function(done) {
-    const params = {
-      Bucket: buckets[0],
-      Key: "multi/directory/path/multipart",
-      Body: Buffer.alloc(5e6)
-    }; // 5MB
-    s3Client.upload(params, (err, data) => {
-      if (err) return done(err);
-      expect(data.ETag).to.match(/"[a-fA-F0-9]{32}"/);
-      done();
-    });
-  });
-
-  it("should upload a managed upload >5MB (multipart upload)", function(done) {
-    const params = {
-      Bucket: buckets[0],
-      Key: "multi/directory/path/multipart",
-      Body: Buffer.alloc(2e7)
-    }; // 20MB
-    s3Client.upload(params, (err, data) => {
-      if (err) return done(err);
-      expect(data.ETag).to.match(/"[a-fA-F0-9]{32}"/);
-      done();
-    });
-  });
-
-  it("should find a text file in a multi directory path", function(done) {
-    const params = {
-      Bucket: buckets[0],
-      Key: "multi/directory/path/text",
-      Body: "Hello!"
-    };
-    s3Client.putObject(params, err => {
-      if (err) return done(err);
-      s3Client.getObject(
-        { Bucket: buckets[0], Key: "multi/directory/path/text" },
-        (err, object) => {
-          if (err) return done(err);
-          expect(object.ETag).to.equal(JSON.stringify(md5("Hello!")));
-          expect(object.ContentLength).to.equal(6);
-          expect(object.ContentType).to.equal("application/octet-stream");
-          done();
-        }
-      );
-    });
-  });
-
-  it("should list objects in a bucket", function(done) {
-    // Create some test objects
-    const testObjects = [
-      "akey1",
-      "akey2",
-      "akey3",
-      "key/key1",
-      "key1",
-      "key2",
-      "key3"
-    ];
-    async.eachSeries(
-      testObjects,
-      (testObject, callback) => {
-        const params = { Bucket: buckets[1], Key: testObject, Body: "Hello!" };
-        s3Client.putObject(params, (err, object) => {
-          if (err) return callback(err);
-          expect(object.ETag).to.match(/[a-fA-F0-9]{32}/);
-          callback();
-        });
-      },
-      err => {
-        if (err) return done(err);
-        s3Client.listObjects({ Bucket: buckets[1] }, (err, objects) => {
-          if (err) return done(err);
-          expect(objects.Contents).to.have.lengthOf(testObjects.length);
-          done();
-        });
-      }
-    );
-  });
-
-  it("should list objects in a bucket filtered by a prefix", function(done) {
-    const testObjects = [
-      "akey1",
-      "akey2",
-      "akey3",
-      "key/key1",
-      "key1",
-      "key2",
-      "key3"
-    ];
-    async.eachSeries(
-      testObjects,
-      (testObject, callback) => {
-        const params = { Bucket: buckets[1], Key: testObject, Body: "Hello!" };
-        s3Client.putObject(params, callback);
-      },
-      err => {
-        if (err) return done(err);
-        // Create some test objects
-        s3Client.listObjects(
-          { Bucket: buckets[1], Prefix: "key" },
-          (err, objects) => {
-            if (err) return done(err);
-            expect(objects.Contents).to.have.lengthOf(4);
-            expect(find(objects.Contents, { Key: "akey1" })).to.not.exist;
-            expect(find(objects.Contents, { Key: "akey2" })).to.not.exist;
-            expect(find(objects.Contents, { Key: "akey3" })).to.not.exist;
-            done();
-          }
-        );
-      }
-    );
-  });
-
-  it("should list objects in a bucket filtered by a prefix 2", function(done) {
-    const testObjects = [
-      "akey1",
-      "akey2",
-      "akey3",
-      "key/key1",
-      "key1",
-      "key2",
-      "key3"
-    ];
-    async.eachSeries(
-      testObjects,
-      (testObject, callback) => {
-        const params = { Bucket: buckets[1], Key: testObject, Body: "Hello!" };
-        s3Client.putObject(params, callback);
-      },
-      err => {
-        if (err) return done(err);
-        s3Client.listObjectsV2(
-          { Bucket: buckets[1], Prefix: "key" },
-          (err, objects) => {
-            if (err) return done(err);
-            expect(objects.Contents).to.have.lengthOf(4);
-            expect(find(objects.Contents, { Key: "akey1" })).to.not.exist;
-            expect(find(objects.Contents, { Key: "akey2" })).to.not.exist;
-            expect(find(objects.Contents, { Key: "akey3" })).to.not.exist;
-            done();
-          }
-        );
-      }
-    );
-  });
-
-  it("should list objects in a bucket filtered by a marker", function(done) {
-    const testObjects = [
-      "akey1",
-      "akey2",
-      "akey3",
-      "key/key1",
-      "key1",
-      "key2",
-      "key3"
-    ];
-    async.eachSeries(
-      testObjects,
-      (testObject, callback) => {
-        const params = { Bucket: buckets[1], Key: testObject, Body: "Hello!" };
-        s3Client.putObject(params, callback);
-      },
-      err => {
-        if (err) return done(err);
-        s3Client.listObjects(
-          { Bucket: buckets[1], Marker: "akey3" },
-          (err, objects) => {
-            if (err) return done(err);
-            expect(objects.Contents).to.have.lengthOf(4);
-            done();
-          }
-        );
-      }
-    );
-  });
-
-  it("should list objects in a bucket filtered by a marker and prefix", function(done) {
-    const testObjects = [
-      "akey1",
-      "akey2",
-      "akey3",
-      "key/key1",
-      "key1",
-      "key2",
-      "key3"
-    ];
-    async.eachSeries(
-      testObjects,
-      (testObject, callback) => {
-        const params = { Bucket: buckets[1], Key: testObject, Body: "Hello!" };
-        s3Client.putObject(params, callback);
-      },
-      err => {
-        if (err) return done(err);
-        s3Client.listObjects(
-          { Bucket: buckets[1], Prefix: "akey", Marker: "akey2" },
-          (err, objects) => {
-            if (err) return done(err);
-            expect(objects.Contents).to.have.lengthOf(1);
-            done();
-          }
-        );
-      }
-    );
-  });
-
-  it("should list objects in a bucket filtered by a delimiter", function(done) {
-    const testObjects = [
-      "akey1",
-      "akey2",
-      "akey3",
-      "key/key1",
-      "key1",
-      "key2",
-      "key3"
-    ];
-    async.eachSeries(
-      testObjects,
-      (testObject, callback) => {
-        const params = { Bucket: buckets[1], Key: testObject, Body: "Hello!" };
-        s3Client.putObject(params, callback);
-      },
-      err => {
-        if (err) return done(err);
-        s3Client.listObjects(
-          { Bucket: buckets[1], Delimiter: "/" },
-          (err, objects) => {
-            if (err) return done(err);
-            expect(objects.Contents).to.have.lengthOf(6);
-            expect(find(objects.CommonPrefixes, { Prefix: "key/" })).to.exist;
-            done();
-          }
-        );
-      }
-    );
-  });
-
-  it("should list folders in a bucket filtered by a prefix and a delimiter", function(done) {
-    const testObjects = [
-      { Bucket: buckets[5], Key: "folder1/file1.txt", Body: "Hello!" },
-      { Bucket: buckets[5], Key: "folder1/file2.txt", Body: "Hello!" },
-      { Bucket: buckets[5], Key: "folder1/folder2/file3.txt", Body: "Hello!" },
-      { Bucket: buckets[5], Key: "folder1/folder2/file4.txt", Body: "Hello!" },
-      { Bucket: buckets[5], Key: "folder1/folder2/file5.txt", Body: "Hello!" },
-      { Bucket: buckets[5], Key: "folder1/folder2/file6.txt", Body: "Hello!" },
-      { Bucket: buckets[5], Key: "folder1/folder4/file7.txt", Body: "Hello!" },
-      { Bucket: buckets[5], Key: "folder1/folder4/file8.txt", Body: "Hello!" },
-      {
-        Bucket: buckets[5],
-        Key: "folder1/folder4/folder5/file9.txt",
-        Body: "Hello!"
-      },
-      { Bucket: buckets[5], Key: "folder1/folder3/file10.txt", Body: "Hello!" }
-    ];
-
-    async.eachSeries(
-      testObjects,
-      (testObject, callback) => {
-        s3Client.putObject(testObject, callback);
-      },
-      err => {
-        if (err) return done(err);
-        s3Client.listObjects(
-          { Bucket: buckets[5], Prefix: "folder1/", Delimiter: "/" },
-          (err, objects) => {
-            if (err) return done(err);
-            expect(objects.CommonPrefixes).to.have.lengthOf(3);
-            expect(find(objects.CommonPrefixes, { Prefix: "folder1/folder2/" }))
-              .to.exist;
-            expect(find(objects.CommonPrefixes, { Prefix: "folder1/folder3/" }))
-              .to.exist;
-            expect(find(objects.CommonPrefixes, { Prefix: "folder1/folder4/" }))
-              .to.exist;
-            done();
-          }
-        );
-      }
-    );
-  });
-
-  it("should list no objects because of invalid prefix", function(done) {
-    // Create some test objects
-    s3Client.listObjects(
-      { Bucket: buckets[1], Prefix: "myinvalidprefix" },
-      (err, objects) => {
-        if (err) return done(err);
-        expect(objects.Contents).to.have.lengthOf(0);
-        done();
-      }
-    );
-  });
-
-  it("should list no objects because of invalid marker", function(done) {
-    // Create some test objects
-    s3Client.listObjects(
-      { Bucket: buckets[1], Marker: "myinvalidmarker" },
-      (err, objects) => {
-        if (err) return done(err);
-        expect(objects.Contents).to.have.lengthOf(0);
-        done();
-      }
-    );
-  });
-
-  it("should generate a few thousand small objects", function(done) {
-    this.timeout(0);
-    const testObjects = [];
-    for (let i = 1; i <= 2000; i++) {
-      testObjects.push({ Bucket: buckets[2], Key: "key" + i, Body: "Hello!" });
     }
-    async.eachSeries(
-      testObjects,
-      (testObject, callback) => {
-        s3Client.putObject(testObject, (err, object) => {
-          if (err) return callback(err);
-          expect(object.ETag).to.match(/[a-fA-F0-9]{32}/);
-          callback();
-        });
-      },
-      done
+    expect(error).to.exist;
+  });
+
+  it("should not fail to delete a nonexistent object from a bucket", function*() {
+    yield s3Client
+      .deleteObject({ Bucket: buckets[0], Key: "doesnotexist" })
+      .promise();
+  });
+
+  it("should fail to delete a bucket because it is not empty", function*() {
+    let error;
+    yield generateTestObjects(s3Client, buckets[0], 20);
+    try {
+      yield s3Client.deleteBucket({ Bucket: buckets[0] }).promise();
+    } catch (err) {
+      error = err;
+      expect(err.code).to.equal("BucketNotEmpty");
+      expect(err.statusCode).to.equal(409);
+    }
+    expect(error).to.exist;
+  });
+
+  it("should upload a text file to a multi directory path", function*() {
+    const data = yield s3Client
+      .putObject({
+        Bucket: buckets[0],
+        Key: "multi/directory/path/text",
+        Body: "Hello!"
+      })
+      .promise();
+    expect(data.ETag).to.match(/"[a-fA-F0-9]{32}"/);
+  });
+
+  it("should upload a managed upload <=5MB", function*() {
+    const data = yield s3Client
+      .upload({
+        Bucket: buckets[0],
+        Key: "multi/directory/path/multipart",
+        Body: Buffer.alloc(2 * Math.pow(1024, 2)) // 2MB
+      })
+      .promise();
+    expect(data.ETag).to.match(/"[a-fA-F0-9]{32}"/);
+  });
+
+  it("should upload a managed upload >5MB (multipart upload)", function*() {
+    const data = yield s3Client
+      .upload({
+        Bucket: buckets[0],
+        Key: "multi/directory/path/multipart",
+        Body: Buffer.alloc(20 * Math.pow(1024, 2)) // 20MB
+      })
+      .promise();
+    expect(data.ETag).to.match(/"[a-fA-F0-9]{32}"/);
+  });
+
+  it("should find a text file in a multi directory path", function*() {
+    yield s3Client
+      .putObject({
+        Bucket: buckets[0],
+        Key: "multi/directory/path/text",
+        Body: "Hello!"
+      })
+      .promise();
+    const object = yield s3Client
+      .getObject({ Bucket: buckets[0], Key: "multi/directory/path/text" })
+      .promise();
+    expect(object.ETag).to.equal(JSON.stringify(md5("Hello!")));
+    expect(object.ContentLength).to.equal(6);
+    expect(object.ContentType).to.equal("application/octet-stream");
+  });
+
+  it("should list objects in a bucket", function*() {
+    const testObjects = [
+      "akey1",
+      "akey2",
+      "akey3",
+      "key/key1",
+      "key1",
+      "key2",
+      "key3"
+    ];
+    // Create some test objects
+    yield Promise.all(
+      testObjects.map(key =>
+        s3Client
+          .putObject({ Bucket: buckets[1], Key: key, Body: "Hello!" })
+          .promise()
+      )
+    );
+    const data = yield s3Client.listObjects({ Bucket: buckets[1] }).promise();
+    expect(data.Contents).to.have.lengthOf(testObjects.length);
+  });
+
+  it("should list objects in a bucket filtered by a prefix", function*() {
+    const testObjects = [
+      "akey1",
+      "akey2",
+      "akey3",
+      "key/key1",
+      "key1",
+      "key2",
+      "key3"
+    ];
+    // Create some test objects
+    yield Promise.all(
+      testObjects.map(key =>
+        s3Client
+          .putObject({ Bucket: buckets[1], Key: key, Body: "Hello!" })
+          .promise()
+      )
+    );
+
+    const data = yield s3Client
+      .listObjects({ Bucket: buckets[1], Prefix: "key" })
+      .promise();
+    expect(data.Contents).to.have.lengthOf(4);
+    expect(find(data.Contents, { Key: "akey1" })).to.not.exist;
+    expect(find(data.Contents, { Key: "akey2" })).to.not.exist;
+    expect(find(data.Contents, { Key: "akey3" })).to.not.exist;
+  });
+
+  it("should list objects in a bucket filtered by a prefix [v2]", function*() {
+    const testObjects = [
+      "akey1",
+      "akey2",
+      "akey3",
+      "key/key1",
+      "key1",
+      "key2",
+      "key3"
+    ];
+    yield Promise.all(
+      testObjects.map(key =>
+        s3Client
+          .putObject({ Bucket: buckets[1], Key: key, Body: "Hello!" })
+          .promise()
+      )
+    );
+    const data = yield s3Client
+      .listObjectsV2({ Bucket: buckets[1], Prefix: "key" })
+      .promise();
+    expect(data.Contents).to.have.lengthOf(4);
+    expect(find(data.Contents, { Key: "akey1" })).to.not.exist;
+    expect(find(data.Contents, { Key: "akey2" })).to.not.exist;
+    expect(find(data.Contents, { Key: "akey3" })).to.not.exist;
+  });
+
+  it("should list objects in a bucket filtered by a marker", function*() {
+    const testObjects = [
+      "akey1",
+      "akey2",
+      "akey3",
+      "key/key1",
+      "key1",
+      "key2",
+      "key3"
+    ];
+    yield Promise.all(
+      testObjects.map(key =>
+        s3Client
+          .putObject({ Bucket: buckets[1], Key: key, Body: "Hello!" })
+          .promise()
+      )
+    );
+    const data = yield s3Client
+      .listObjects({
+        Bucket: buckets[1],
+        Marker: "akey3"
+      })
+      .promise();
+    expect(data.Contents).to.have.lengthOf(4);
+  });
+
+  it("should list objects in a bucket filtered by a marker and prefix", function*() {
+    const testObjects = [
+      "akey1",
+      "akey2",
+      "akey3",
+      "key/key1",
+      "key1",
+      "key2",
+      "key3"
+    ];
+    yield Promise.all(
+      testObjects.map(key =>
+        s3Client
+          .putObject({ Bucket: buckets[1], Key: key, Body: "Hello!" })
+          .promise()
+      )
+    );
+    const data = yield s3Client
+      .listObjects({ Bucket: buckets[1], Prefix: "akey", Marker: "akey2" })
+      .promise();
+    expect(data.Contents).to.have.lengthOf(1);
+  });
+
+  it("should list objects in a bucket filtered by a delimiter", function*() {
+    const testObjects = [
+      "akey1",
+      "akey2",
+      "akey3",
+      "key/key1",
+      "key1",
+      "key2",
+      "key3"
+    ];
+    yield Promise.all(
+      testObjects.map(key =>
+        s3Client
+          .putObject({ Bucket: buckets[1], Key: key, Body: "Hello!" })
+          .promise()
+      )
+    );
+    const data = yield s3Client
+      .listObjects({ Bucket: buckets[1], Delimiter: "/" })
+      .promise();
+    expect(data.Contents).to.have.lengthOf(6);
+    expect(find(data.CommonPrefixes, { Prefix: "key/" })).to.exist;
+  });
+
+  it("should list folders in a bucket filtered by a prefix and a delimiter", function*() {
+    const testObjects = [
+      "folder1/file1.txt",
+      "folder1/file2.txt",
+      "folder1/folder2/file3.txt",
+      "folder1/folder2/file4.txt",
+      "folder1/folder2/file5.txt",
+      "folder1/folder2/file6.txt",
+      "folder1/folder4/file7.txt",
+      "folder1/folder4/file8.txt",
+      "folder1/folder4/folder5/file9.txt",
+      "folder1/folder3/file10.txt"
+    ];
+
+    yield Promise.all(
+      testObjects.map(key =>
+        s3Client
+          .putObject({ Bucket: buckets[5], Key: key, Body: "Hello!" })
+          .promise()
+      )
+    );
+
+    const data = yield s3Client
+      .listObjects({ Bucket: buckets[5], Prefix: "folder1/", Delimiter: "/" })
+      .promise();
+    expect(data.CommonPrefixes).to.have.lengthOf(3);
+    expect(find(data.CommonPrefixes, { Prefix: "folder1/folder2/" })).to.exist;
+    expect(find(data.CommonPrefixes, { Prefix: "folder1/folder3/" })).to.exist;
+    expect(find(data.CommonPrefixes, { Prefix: "folder1/folder4/" })).to.exist;
+  });
+
+  it("should list no objects because of invalid prefix", function*() {
+    const data = yield s3Client
+      .listObjects({ Bucket: buckets[1], Prefix: "myinvalidprefix" })
+      .promise();
+    expect(data.Contents).to.have.lengthOf(0);
+  });
+
+  it("should list no objects because of invalid marker", function*() {
+    const data = yield s3Client
+      .listObjects({
+        Bucket: buckets[1],
+        Marker: "myinvalidmarker"
+      })
+      .promise();
+    expect(data.Contents).to.have.lengthOf(0);
+  });
+
+  it("should generate a few thousand small objects", function*() {
+    const data = yield generateTestObjects(s3Client, buckets[2], 2000);
+    for (const object of data) {
+      expect(object.ETag).to.match(/[a-fA-F0-9]{32}/);
+    }
+  });
+
+  it("should return one thousand small objects", function*() {
+    yield generateTestObjects(s3Client, buckets[2], 2000);
+    const objects = yield s3Client
+      .listObjects({ Bucket: buckets[2] })
+      .promise();
+    expect(objects.Contents).to.have.lengthOf(1000);
+  });
+
+  it("should return 500 small objects", function*() {
+    yield generateTestObjects(s3Client, buckets[2], 1000);
+    const objects = yield s3Client
+      .listObjects({ Bucket: buckets[2], MaxKeys: 500 })
+      .promise();
+    expect(objects.Contents).to.have.lengthOf(500);
+  });
+
+  it("should delete 500 small objects", function*() {
+    yield generateTestObjects(s3Client, buckets[2], 500);
+    yield Promise.all(
+      times(500, i =>
+        s3Client.deleteObject({ Bucket: buckets[2], Key: "key" + i }).promise()
+      )
     );
   });
 
-  it("should return one thousand small objects", function(done) {
-    this.timeout(0);
-    generateTestObjects(s3Client, buckets[2], 2000, err => {
-      if (err) return done(err);
-      s3Client.listObjects({ Bucket: buckets[2] }, (err, objects) => {
-        if (err) return done(err);
-        expect(objects.Contents).to.have.lengthOf(1000);
-        done();
-      });
-    });
+  it("should delete 500 small objects with deleteObjects", function*() {
+    yield generateTestObjects(s3Client, buckets[2], 500);
+    const deleteObj = { Objects: times(500, i => ({ Key: "key" + i })) };
+    const data = yield s3Client
+      .deleteObjects({ Bucket: buckets[2], Delete: deleteObj })
+      .promise();
+    expect(data.Deleted).to.exist;
+    expect(data.Deleted).to.have.lengthOf(500);
+    expect(find(data.Deleted, { Key: "key67" })).to.exist;
   });
 
-  it("should return 500 small objects", function(done) {
-    this.timeout(0);
-    generateTestObjects(s3Client, buckets[2], 1000, err => {
-      if (err) return done(err);
-      s3Client.listObjects(
-        { Bucket: buckets[2], MaxKeys: 500 },
-        (err, objects) => {
-          if (err) return done(err);
-          expect(objects.Contents).to.have.lengthOf(500);
-          done();
-        }
-      );
-    });
-  });
-
-  it("should delete 500 small objects", function(done) {
-    this.timeout(0);
-    generateTestObjects(s3Client, buckets[2], 500, err => {
-      if (err) return done(err);
-      const testObjects = [];
-      for (let i = 1; i <= 500; i++) {
-        testObjects.push({ Bucket: buckets[2], Key: "key" + i });
-      }
-      async.eachSeries(
-        testObjects,
-        (testObject, callback) => {
-          s3Client.deleteObject(testObject, callback);
-        },
-        done
-      );
-    });
-  });
-
-  it("should delete 500 small objects with deleteObjects", function(done) {
-    this.timeout(0);
-    generateTestObjects(s3Client, buckets[2], 500, err => {
-      if (err) return done(err);
-      const deleteObj = { Objects: [] };
-      for (let i = 501; i <= 1000; i++) {
-        deleteObj.Objects.push({ Key: "key" + i });
-      }
-      s3Client.deleteObjects(
-        { Bucket: buckets[2], Delete: deleteObj },
-        (err, resp) => {
-          if (err) return done(err);
-          expect(resp.Deleted).to.exist;
-          expect(resp.Deleted).to.have.lengthOf(500);
-          expect(find(resp.Deleted, { Key: "key567" })).to.exist;
-          done();
-        }
-      );
-    });
-  });
-
-  it("should return nonexistent objects as deleted with deleteObjects", function(done) {
+  it("should return nonexistent objects as deleted with deleteObjects", function*() {
     const deleteObj = { Objects: [{ Key: "doesnotexist" }] };
-    s3Client.deleteObjects(
-      { Bucket: buckets[2], Delete: deleteObj },
-      (err, resp) => {
-        if (err) return done(err);
-        expect(resp.Deleted).to.exist;
-        expect(resp.Deleted).to.have.lengthOf(1);
-        expect(find(resp.Deleted, { Key: "doesnotexist" })).to.exist;
-        done();
-      }
-    );
+    const data = yield s3Client
+      .deleteObjects({ Bucket: buckets[2], Delete: deleteObj })
+      .promise();
+    expect(data.Deleted).to.exist;
+    expect(data.Deleted).to.have.lengthOf(1);
+    expect(find(data.Deleted, { Key: "doesnotexist" })).to.exist;
   });
 
-  it("should reach the server with a bucket vhost", function(done) {
-    request(
-      {
-        url: s3Client.endpoint.href,
-        headers: { host: buckets[0] + ".s3.amazonaws.com" }
-      },
-      (err, response, body) => {
-        if (err) return done(err);
-
-        expect(response.statusCode).to.equal(200);
-        expect(body).to.include("ListBucketResult");
-        done();
-      }
-    );
+  it("should reach the server with a bucket vhost", function*() {
+    const body = yield request({
+      url: s3Client.endpoint.href,
+      headers: { host: buckets[0] + ".s3.amazonaws.com" },
+      json: true
+    });
+    expect(body).to.include("ListBucketResult");
   });
 });
 
@@ -1213,408 +970,376 @@ describe("S3rver CORS Policy Tests", function() {
   const bucket = "foobars";
   let s3Client;
 
-  before("Initialize bucket", function(done) {
-    const s3rver = new S3rver({
-      port: 4569,
-      hostname: "localhost",
-      silent: true
-    }).run(err => {
-      if (err) return done(err);
-
+  before("Initialize bucket", function*() {
+    let server;
+    const [, port] = yield thunkToPromise(done => {
+      server = new S3rver({
+        port: 4569,
+        silent: true
+      }).run(done);
+    });
+    try {
       s3Client = new AWS.S3({
         accessKeyId: "123",
         secretAccessKey: "abc",
-        endpoint: util.format("http://%s:%d", "localhost", 4569),
+        endpoint: `http://localhost:${port}`,
         sslEnabled: false,
         s3ForcePathStyle: true
       });
-      const file = fs.readFileSync("./test/resources/image.jpg");
       const params = {
         Bucket: bucket,
         Key: "image",
-        Body: new Buffer(file),
-        ContentType: "image/jpeg",
-        ContentLength: file.length
+        Body: yield fs.readFile("./test/resources/image0.jpg"),
+        ContentType: "image/jpeg"
       };
-      s3Client
-        .createBucket({ Bucket: bucket })
-        .promise()
-        .then(() => s3Client.putObject(params).promise())
-        .then(() => s3rver.close(done))
-        .catch(err => s3rver.close(() => done(err)));
-    });
+      yield s3Client.createBucket({ Bucket: bucket }).promise();
+      yield s3Client.putObject(params).promise();
+    } catch (err) {
+      throw err;
+    } finally {
+      yield thunkToPromise(done => server.close(done));
+    }
   });
 
-  it("should add the Access-Control-Allow-Origin header for default (wildcard) configurations", function(done) {
+  it("should add the Access-Control-Allow-Origin header for default (wildcard) configurations", function*() {
     const origin = "http://a-test.example.com";
     const params = { Bucket: bucket, Key: "image" };
     const url = s3Client.getSignedUrl("getObject", params);
-    const s3rver = new S3rver({
-      port: 4569,
-      hostname: "localhost",
-      silent: true
-    }).run(err => {
-      if (err) return done(err);
-
-      request({ url, headers: { origin } }, (err, response) => {
-        s3rver.close(() => {
-          if (err) return done(err);
-
-          expect(response.statusCode).to.equal(200);
-          expect(response.headers).to.have.property(
-            "access-control-allow-origin",
-            "*"
-          );
-          done();
-        });
-      });
+    let server;
+    yield thunkToPromise(done => {
+      server = new S3rver({
+        port: 4569,
+        silent: true
+      }).run(done);
     });
+    try {
+      const res = yield request({
+        url,
+        headers: { origin },
+        resolveWithFullResponse: true
+      });
+      expect(res.statusCode).to.equal(200);
+      expect(res.headers).to.have.property("access-control-allow-origin", "*");
+    } catch (err) {
+      throw err;
+    } finally {
+      yield thunkToPromise(done => server.close(done));
+    }
   });
 
-  it("should add the Access-Control-Allow-Origin header for a matching origin", function(done) {
+  it("should add the Access-Control-Allow-Origin header for a matching origin", function*() {
     const origin = "http://a-test.example.com";
     const params = { Bucket: bucket, Key: "image" };
     const url = s3Client.getSignedUrl("getObject", params);
-    const s3rver = new S3rver({
-      port: 4569,
-      hostname: "localhost",
-      silent: true,
-      cors: fs.readFileSync("./test/resources/cors_test1.xml")
-    }).run(err => {
-      if (err) return done(err);
-
-      request({ url, headers: { origin } }, (err, response) => {
-        s3rver.close(() => {
-          if (err) return done(err);
-
-          expect(response.statusCode).to.equal(200);
-          expect(response.headers).to.have.property(
-            "access-control-allow-origin",
-            origin
-          );
-          done();
-        });
-      });
+    let server;
+    yield thunkToPromise(done => {
+      server = new S3rver({
+        port: 4569,
+        silent: true,
+        cors: fs.readFileSync("./test/resources/cors_test1.xml")
+      }).run(done);
     });
+    try {
+      const res = yield request({
+        url,
+        headers: { origin },
+        resolveWithFullResponse: true
+      });
+      expect(res.statusCode).to.equal(200);
+      expect(res.headers).to.have.property(
+        "access-control-allow-origin",
+        origin
+      );
+    } catch (err) {
+      throw err;
+    } finally {
+      yield thunkToPromise(done => server.close(done));
+    }
   });
 
-  it("should match an origin to a CORSRule with a wildcard character", function(done) {
+  it("should match an origin to a CORSRule with a wildcard character", function*() {
     const origin = "http://foo.bar.com";
     const params = { Bucket: bucket, Key: "image" };
     const url = s3Client.getSignedUrl("getObject", params);
-    const s3rver = new S3rver({
-      port: 4569,
-      hostname: "localhost",
-      silent: true,
-      cors: fs.readFileSync("./test/resources/cors_test1.xml")
-    }).run(err => {
-      if (err) return done(err);
-
-      request({ url, headers: { origin } }, (err, response) => {
-        s3rver.close(() => {
-          if (err) return done(err);
-
-          expect(response.statusCode).to.equal(200);
-          expect(response.headers).to.have.property(
-            "access-control-allow-origin",
-            origin
-          );
-          done();
-        });
-      });
+    let server;
+    yield thunkToPromise(done => {
+      server = new S3rver({
+        port: 4569,
+        silent: true,
+        cors: fs.readFileSync("./test/resources/cors_test1.xml")
+      }).run(done);
     });
+    try {
+      const res = yield request({
+        url,
+        headers: { origin },
+        resolveWithFullResponse: true
+      });
+      expect(res.statusCode).to.equal(200);
+      expect(res.headers).to.have.property(
+        "access-control-allow-origin",
+        origin
+      );
+    } catch (err) {
+      throw err;
+    } finally {
+      yield thunkToPromise(done => server.close(done));
+    }
   });
 
-  it("should not add the Access-Control-Allow-Origin header for a non-matching origin", function(done) {
+  it("should not add the Access-Control-Allow-Origin header for a non-matching origin", function*() {
     const origin = "http://b-test.example.com";
     const params = { Bucket: bucket, Key: "image" };
     const url = s3Client.getSignedUrl("getObject", params);
-    const s3rver = new S3rver({
-      port: 4569,
-      hostname: "localhost",
-      silent: true,
-      cors: fs.readFileSync("./test/resources/cors_test1.xml")
-    }).run(err => {
-      if (err) return done(err);
-
-      request({ url, headers: { origin } }, (err, response) => {
-        s3rver.close(() => {
-          if (err) return done(err);
-
-          expect(response.statusCode).to.equal(200);
-          expect(response.headers).to.not.have.property(
-            "access-control-allow-origin"
-          );
-          done();
-        });
+    let server;
+    yield thunkToPromise(done => {
+      server = new S3rver({
+        port: 4569,
+        silent: true,
+        cors: fs.readFileSync("./test/resources/cors_test1.xml")
+      }).run(done);
+    });
+    try {
+      const res = yield request({
+        url,
+        headers: { origin },
+        resolveWithFullResponse: true
       });
-    });
+      expect(res.statusCode).to.equal(200);
+      expect(res.headers).to.not.have.property("access-control-allow-origin");
+    } catch (err) {
+      throw err;
+    } finally {
+      yield thunkToPromise(done => server.close(done));
+    }
   });
 
-  it("should expose appropriate headers for a range request", function(done) {
+  it("should expose appropriate headers for a range request", function*() {
     const origin = "http://a-test.example.com";
     const params = { Bucket: bucket, Key: "image" };
     const url = s3Client.getSignedUrl("getObject", params);
-    const s3rver = new S3rver({
-      port: 4569,
-      hostname: "localhost",
-      silent: true,
-      cors: fs.readFileSync("./test/resources/cors_test1.xml")
-    }).run(err => {
-      if (err) return done(err);
-
-      request(
-        { url, headers: { origin, range: "bytes=0-99" } },
-        (err, response) => {
-          s3rver.close(() => {
-            if (err) return done(err);
-
-            expect(response.statusCode).to.equal(206);
-            expect(response.headers).to.have.property(
-              "access-control-expose-headers",
-              "Accept-Ranges, Content-Range"
-            );
-            done();
-          });
-        }
-      );
+    let server;
+    yield thunkToPromise(done => {
+      server = new S3rver({
+        port: 4569,
+        silent: true,
+        cors: fs.readFileSync("./test/resources/cors_test1.xml")
+      }).run(done);
     });
+    try {
+      const res = yield request({
+        url,
+        headers: { origin, range: "bytes=0-99" },
+        resolveWithFullResponse: true
+      });
+      expect(res.statusCode).to.equal(206);
+      expect(res.headers).to.have.property(
+        "access-control-expose-headers",
+        "Accept-Ranges, Content-Range"
+      );
+    } catch (err) {
+      throw err;
+    } finally {
+      yield thunkToPromise(done => server.close(done));
+    }
   });
 
-  it("should respond to OPTIONS requests with allowed headers", function(done) {
+  it("should respond to OPTIONS requests with allowed headers", function*() {
     const origin = "http://foo.bar.com";
     const params = { Bucket: bucket, Key: "image" };
     const url = s3Client.getSignedUrl("getObject", params);
-    const s3rver = new S3rver({
-      port: 4569,
-      hostname: "localhost",
-      silent: true,
-      cors: fs.readFileSync("./test/resources/cors_test1.xml")
-    }).run(err => {
-      if (err) return done(err);
-
-      request(
-        {
-          method: "OPTIONS",
-          url,
-          headers: {
-            origin,
-            "Access-Control-Request-Method": "GET",
-            "Access-Control-Request-Headers": "Range, Authorization"
-          }
-        },
-        (err, response) => {
-          s3rver.close(() => {
-            if (err) return done(err);
-            expect(response.statusCode).to.equal(200);
-            expect(response.headers).to.have.property(
-              "access-control-allow-origin",
-              "*"
-            );
-            expect(response.headers).to.have.property(
-              "access-control-allow-headers",
-              "range, authorization"
-            );
-            done();
-          });
-        }
-      );
+    let server;
+    yield thunkToPromise(done => {
+      server = new S3rver({
+        port: 4569,
+        silent: true,
+        cors: fs.readFileSync("./test/resources/cors_test1.xml")
+      }).run(done);
     });
+    try {
+      const res = yield request({
+        method: "OPTIONS",
+        url,
+        headers: {
+          origin,
+          "Access-Control-Request-Method": "GET",
+          "Access-Control-Request-Headers": "Range, Authorization"
+        },
+        resolveWithFullResponse: true
+      });
+      expect(res.statusCode).to.equal(200);
+      expect(res.headers).to.have.property("access-control-allow-origin", "*");
+      expect(res.headers).to.have.property(
+        "access-control-allow-headers",
+        "range, authorization"
+      );
+    } catch (err) {
+      throw err;
+    } finally {
+      yield thunkToPromise(done => server.close(done));
+    }
   });
 
-  it("should respond to OPTIONS requests with a Forbidden response", function(done) {
+  it("should respond to OPTIONS requests with a Forbidden response", function*() {
     const origin = "http://a-test.example.com";
     const params = { Bucket: bucket, Key: "image" };
     const url = s3Client.getSignedUrl("getObject", params);
-    const s3rver = new S3rver({
-      port: 4569,
-      hostname: "localhost",
-      silent: true,
-      cors: fs.readFileSync("./test/resources/cors_test1.xml")
-    }).run(err => {
-      if (err) return done(err);
-
-      request(
-        {
-          method: "OPTIONS",
-          url,
-          headers: {
-            origin,
-            "Access-Control-Request-Method": "GET",
-            "Access-Control-Request-Headers": "Range, Authorization"
-          }
-        },
-        (err, response) => {
-          s3rver.close(() => {
-            if (err) return done(err);
-            expect(response.statusCode).to.equal(403);
-            done();
-          });
-        }
-      );
+    let server;
+    yield thunkToPromise(done => {
+      server = new S3rver({
+        port: 4569,
+        silent: true,
+        cors: fs.readFileSync("./test/resources/cors_test1.xml")
+      }).run(done);
     });
+    let error;
+    try {
+      yield request({
+        method: "OPTIONS",
+        url,
+        headers: {
+          origin,
+          "Access-Control-Request-Method": "GET",
+          "Access-Control-Request-Headers": "Range, Authorization"
+        }
+      });
+    } catch (err) {
+      error = err;
+      expect(err.statusCode).to.equal(403);
+    } finally {
+      yield thunkToPromise(done => server.close(done));
+      expect(error).to.exist;
+    }
   });
 
-  it("should respond to OPTIONS requests with a Forbidden response when CORS is disabled", function(done) {
+  it("should respond to OPTIONS requests with a Forbidden response when CORS is disabled", function*() {
     const origin = "http://foo.bar.com";
     const params = { Bucket: bucket, Key: "image" };
     const url = s3Client.getSignedUrl("getObject", params);
-    const s3rver = new S3rver({
-      port: 4569,
-      hostname: "localhost",
-      silent: true,
-      cors: false
-    }).run(err => {
-      if (err) return done(err);
-
-      request(
-        {
-          method: "OPTIONS",
-          url,
-          headers: {
-            origin,
-            "Access-Control-Request-Method": "GET"
-          }
-        },
-        (err, response) => {
-          s3rver.close(() => {
-            if (err) return done(err);
-            expect(response.statusCode).to.equal(403);
-            done();
-          });
-        }
-      );
+    let server;
+    yield thunkToPromise(done => {
+      server = new S3rver({
+        port: 4569,
+        silent: true,
+        cors: false
+      }).run(done);
     });
+    let error;
+    try {
+      yield request({
+        method: "OPTIONS",
+        url,
+        headers: {
+          origin,
+          "Access-Control-Request-Method": "GET"
+        },
+        resolveWithFullResponse: true
+      });
+    } catch (err) {
+      error = err;
+      expect(err.statusCode).to.equal(403);
+    } finally {
+      yield thunkToPromise(done => server.close(done));
+      expect(error).to.exist;
+    }
   });
 });
 
 describe("S3rver Tests with Static Web Hosting", function() {
   let s3Client;
-  let s3rver;
+  let server;
 
   beforeEach("Reset site bucket", resetTmpDir);
-  beforeEach("Start s3rver", function(done) {
-    s3rver = new S3rver({
-      port: 5694,
-      hostname: "localhost",
-      silent: true,
-      indexDocument: "index.html",
-      errorDocument: "",
-      directory: tmpDir
-    }).run((err, hostname, port) => {
-      if (err) return done(err);
-      s3Client = new AWS.S3({
-        accessKeyId: "123",
-        secretAccessKey: "abc",
-        endpoint: util.format("http://%s:%d", hostname, port),
-        sslEnabled: false,
-        s3ForcePathStyle: true
-      });
-      done();
+  beforeEach("Start server", function*() {
+    yield thunkToPromise(done => {
+      server = new S3rver({
+        port: 5694,
+        silent: true,
+        indexDocument: "index.html",
+        errorDocument: "",
+        directory: tmpDir
+      }).run(done);
+    });
+    s3Client = new AWS.S3({
+      accessKeyId: "123",
+      secretAccessKey: "abc",
+      endpoint: `http://localhost:${server.address().port}`,
+      sslEnabled: false,
+      s3ForcePathStyle: true
     });
   });
 
-  afterEach(function(done) {
-    s3rver.close(done);
+  afterEach("Close server", function(done) {
+    server.close(done);
   });
 
-  it("should upload a html page to / path", function(done) {
+  it("should upload a html page to / path", function*() {
     const bucket = "site";
-    s3Client.createBucket({ Bucket: bucket }, err => {
-      if (err) return done(err);
-      const params = {
+    yield s3Client.createBucket({ Bucket: bucket }).promise();
+    const data = yield s3Client
+      .putObject({
         Bucket: bucket,
         Key: "index.html",
         Body: "<html><body>Hello</body></html>"
-      };
-      s3Client.putObject(params, (err, data) => {
-        if (err) return done(err);
-        expect(data.ETag).to.match(/[a-fA-F0-9]{32}/);
-        done();
-      });
-    });
+      })
+      .promise();
+    expect(data.ETag).to.match(/[a-fA-F0-9]{32}/);
   });
 
-  it("should upload a html page to a directory path", function(done) {
+  it("should upload a html page to a directory path", function*() {
     const bucket = "site";
-    s3Client.createBucket({ Bucket: bucket }, err => {
-      if (err) return done(err);
-      const params = {
+    yield s3Client.createBucket({ Bucket: bucket }).promise();
+    const data = yield s3Client
+      .putObject({
         Bucket: bucket,
         Key: "page/index.html",
         Body: "<html><body>Hello</body></html>"
-      };
-      s3Client.putObject(params, (err, data) => {
-        if (err) return done(err);
-        expect(data.ETag).to.match(/[a-fA-F0-9]{32}/);
-        done();
-      });
-    });
+      })
+      .promise();
+    expect(data.ETag).to.match(/[a-fA-F0-9]{32}/);
   });
 
-  it("should get an index page at / path", function(done) {
+  it("should get an index page at / path", function*() {
     const bucket = "site";
-    s3Client.createBucket({ Bucket: bucket }, err => {
-      if (err) return done(err);
-      const expectedBody = "<html><body>Hello</body></html>";
-      const params = { Bucket: bucket, Key: "index.html", Body: expectedBody };
-      s3Client.putObject(params, err => {
-        if (err) return done(err);
-        request(s3Client.endpoint.href + "site/", (error, response, body) => {
-          if (error) return done(error);
-
-          expect(response.statusCode).to.equal(200);
-          expect(body).to.equal(expectedBody);
-          done();
-        });
-      });
-    });
+    yield s3Client.createBucket({ Bucket: bucket }).promise();
+    const expectedBody = "<html><body>Hello</body></html>";
+    yield s3Client
+      .putObject({ Bucket: bucket, Key: "index.html", Body: expectedBody })
+      .promise();
+    const body = yield request(s3Client.endpoint.href + "site/");
+    expect(body).to.equal(expectedBody);
   });
 
-  it("should get an index page at /page/ path", function(done) {
+  it("should get an index page at /page/ path", function*() {
     const bucket = "site";
-    s3Client.createBucket({ Bucket: bucket }, err => {
-      if (err) return done(err);
-      const expectedBody = "<html><body>Hello</body></html>";
-      const params = {
+    yield s3Client.createBucket({ Bucket: bucket }).promise();
+    const expectedBody = "<html><body>Hello</body></html>";
+    yield s3Client
+      .putObject({
         Bucket: bucket,
         Key: "page/index.html",
         Body: expectedBody
-      };
-      s3Client.putObject(params, err => {
-        if (err) return done(err);
-        request(
-          s3Client.endpoint.href + "site/page/",
-          (err, response, body) => {
-            if (err) return done(err);
-
-            expect(response.statusCode).to.equal(200);
-            expect(body).to.equal(expectedBody);
-            done();
-          }
-        );
-      });
-    });
+      })
+      .promise();
+    const body = yield request(s3Client.endpoint.href + "site/page/");
+    expect(body).to.equal(expectedBody);
   });
 
-  it("should get a 404 error page", function(done) {
+  it("should get a 404 error page", function*() {
     const bucket = "site";
-    s3Client.createBucket({ Bucket: bucket }, err => {
-      if (err) return done(err);
-      request(
-        s3Client.endpoint.href + "site/page/not-exists",
-        (err, response) => {
-          if (err) return done(err);
-
-          expect(response.statusCode).to.equal(404);
-          expect(response.headers).to.have.property(
-            "content-type",
-            "text/html"
-          );
-          done();
-        }
+    yield s3Client.createBucket({ Bucket: bucket }).promise();
+    let error;
+    try {
+      yield request(s3Client.endpoint.href + "site/page/not-exists");
+    } catch (err) {
+      error = err;
+      expect(err.statusCode).to.equal(404);
+      expect(err.response.headers).to.have.property(
+        "content-type",
+        "text/html"
       );
-    });
+    }
+    expect(error).to.exist;
   });
 });
 
@@ -1642,194 +1367,175 @@ describe("S3rver Class Tests", function() {
     expect(s3rver.options.cert).to.be.an.instanceOf(Buffer);
     expect(s3rver.options).to.have.property("removeBucketsOnClose", true);
   });
-  it("should support running on port 0", function(done) {
-    const s3rver = new S3rver({
-      port: 0,
-      hostname: "localhost",
-      silent: true
-    }).run((err, hostname, port) => {
-      if (err) return done(err);
-      expect(port).to.be.above(0);
-      s3rver.close(done);
+
+  it("should support running on port 0", function*() {
+    let server;
+    const [, port] = yield thunkToPromise(done => {
+      server = new S3rver({
+        port: 0,
+        silent: true
+      }).run(done);
     });
+    yield thunkToPromise(done => server.close(done));
+    expect(port).to.be.above(0);
   });
 });
 
 describe("Data directory cleanup", function() {
   beforeEach("Reset buckets", resetTmpDir);
 
-  it("Cleans up after close if the removeBucketsOnClose setting is true", function(done) {
+  it("Cleans up after close if the removeBucketsOnClose setting is true", function*() {
     const bucket = "foobars";
 
-    const s3rver = new S3rver({
-      port: 4569,
-      hostname: "localhost",
-      silent: true,
-      removeBucketsOnClose: true
-    }).run((err, hostname, port, directory) => {
-      if (err) return done(err);
-
-      const s3Client = new AWS.S3({
-        accessKeyId: "123",
-        secretAccessKey: "abc",
-        endpoint: util.format("http://%s:%d", hostname, port),
-        sslEnabled: false,
-        s3ForcePathStyle: true
-      });
-      s3Client.createBucket({ Bucket: bucket }, err => {
-        if (err) return done(err);
-        generateTestObjects(s3Client, bucket, 10, err => {
-          if (err) return done(err);
-          s3rver.close(err => {
-            if (err) return done(err);
-            const exists = fs.existsSync(directory);
-            expect(exists).to.be.true;
-            const files = fs.readdirSync(directory);
-            expect(files).to.have.lengthOf(0);
-            done();
-          });
-        });
-      });
+    let server;
+    const [, port, directory] = yield thunkToPromise(done => {
+      server = new S3rver({
+        port: 4569,
+        silent: true,
+        removeBucketsOnClose: true
+      }).run(done);
     });
+    const s3Client = new AWS.S3({
+      accessKeyId: "123",
+      secretAccessKey: "abc",
+      endpoint: `http://localhost:${port}`,
+      sslEnabled: false,
+      s3ForcePathStyle: true
+    });
+    try {
+      yield s3Client.createBucket({ Bucket: bucket }).promise();
+      yield generateTestObjects(s3Client, bucket, 10);
+    } catch (err) {
+      throw err;
+    } finally {
+      yield thunkToPromise(done => server.close(done));
+      yield expect(fs.exists(directory)).to.eventually.be.true;
+      yield expect(fs.readdir(directory)).to.eventually.have.lengthOf(0);
+    }
   });
 
-  it("Does not clean up after close if the removeBucketsOnClose setting is false", function(done) {
+  it("Does not clean up after close if the removeBucketsOnClose setting is false", function*() {
     const bucket = "foobars";
 
-    const s3rver = new S3rver({
-      port: 4569,
-      hostname: "localhost",
-      silent: true,
-      removeBucketsOnClose: false
-    }).run((err, hostname, port, directory) => {
-      if (err) return done(err);
-
-      const s3Client = new AWS.S3({
-        accessKeyId: "123",
-        secretAccessKey: "abc",
-        endpoint: util.format("http://%s:%d", hostname, port),
-        sslEnabled: false,
-        s3ForcePathStyle: true
-      });
-      s3Client.createBucket({ Bucket: bucket }, err => {
-        if (err) return done(err);
-        generateTestObjects(s3Client, bucket, 10, err => {
-          if (err) return done(err);
-          s3rver.close(err => {
-            if (err) return done(err);
-            const exists = fs.existsSync(directory);
-            expect(exists).to.be.true;
-            const files = fs.readdirSync(directory);
-            expect(files).to.have.lengthOf(1);
-            done();
-          });
-        });
-      });
+    let server;
+    const [, port, directory] = yield thunkToPromise(done => {
+      server = new S3rver({
+        port: 4569,
+        silent: true,
+        removeBucketsOnClose: false
+      }).run(done);
     });
+    const s3Client = new AWS.S3({
+      accessKeyId: "123",
+      secretAccessKey: "abc",
+      endpoint: `http://localhost:${port}`,
+      sslEnabled: false,
+      s3ForcePathStyle: true
+    });
+    try {
+      yield s3Client.createBucket({ Bucket: bucket }).promise();
+      yield generateTestObjects(s3Client, bucket, 10);
+    } catch (err) {
+      throw err;
+    } finally {
+      yield thunkToPromise(done => server.close(done));
+      yield expect(fs.exists(directory)).to.eventually.be.true;
+      yield expect(fs.readdir(directory)).to.eventually.have.lengthOf(1);
+    }
   });
 
-  it("Does not clean up after close if the removeBucketsOnClose setting is not set", function(done) {
+  it("Does not clean up after close if the removeBucketsOnClose setting is not set", function*() {
     const bucket = "foobars";
 
-    const s3rver = new S3rver({
-      port: 4569,
-      hostname: "localhost",
-      silent: true
-    }).run((err, hostname, port, directory) => {
-      if (err) return done(err);
-      const s3Client = new AWS.S3({
-        accessKeyId: "123",
-        secretAccessKey: "abc",
-        endpoint: util.format("http://%s:%d", hostname, port),
-        sslEnabled: false,
-        s3ForcePathStyle: true
-      });
-      s3Client.createBucket({ Bucket: bucket }, err => {
-        if (err) return done(err);
-        generateTestObjects(s3Client, bucket, 10, err => {
-          if (err) return done(err);
-          s3rver.close(err => {
-            if (err) return done(err);
-            const exists = fs.existsSync(directory);
-            expect(exists).to.be.true;
-            const files = fs.readdirSync(directory);
-            expect(files).to.have.lengthOf(1);
-            done();
-          });
-        });
-      });
+    let server;
+    const [, port, directory] = yield thunkToPromise(done => {
+      server = new S3rver({
+        port: 4569,
+        silent: true
+      }).run(done);
     });
+    const s3Client = new AWS.S3({
+      accessKeyId: "123",
+      secretAccessKey: "abc",
+      endpoint: `http://localhost:${port}`,
+      sslEnabled: false,
+      s3ForcePathStyle: true
+    });
+    try {
+      yield s3Client.createBucket({ Bucket: bucket }).promise();
+      yield generateTestObjects(s3Client, bucket, 10);
+    } catch (err) {
+      throw err;
+    } finally {
+      yield thunkToPromise(done => server.close(done));
+      yield expect(fs.exists(directory)).to.eventually.be.true;
+      yield expect(fs.readdir(directory)).to.eventually.have.lengthOf(1);
+    }
   });
 
-  it("Can delete a bucket that is empty after some key that includes a directory has been deleted", function(done) {
+  it("Can delete a bucket that is empty after some key that includes a directory has been deleted", function*() {
     const bucket = "foobars";
 
-    const s3rver = new S3rver({
-      port: 4569,
-      hostname: "localhost",
-      silent: true
-    }).run((err, hostname, port) => {
-      if (err) return done(err);
-      const s3Client = new AWS.S3({
-        accessKeyId: "123",
-        secretAccessKey: "abc",
-        endpoint: util.format("http://%s:%d", hostname, port),
-        sslEnabled: false,
-        s3ForcePathStyle: true
-      });
-      s3Client
-        .createBucket({ Bucket: bucket })
-        .promise()
-        .then(() =>
-          s3Client
-            .putObject({ Bucket: bucket, Key: "foo/foo.txt", Body: "Hello!" })
-            .promise()
-        )
-        .then(() =>
-          s3Client
-            .deleteObject({ Bucket: bucket, Key: "foo/foo.txt" })
-            .promise()
-        )
-        .then(() => s3Client.deleteBucket({ Bucket: bucket }).promise())
-        .then(() => s3rver.close(done))
-        .catch(err => s3rver.close(() => done(err)));
+    let server;
+    const [, port] = yield thunkToPromise(done => {
+      server = new S3rver({
+        port: 4569,
+        silent: true
+      }).run(done);
     });
+    const s3Client = new AWS.S3({
+      accessKeyId: "123",
+      secretAccessKey: "abc",
+      endpoint: `http://localhost:${port}`,
+      sslEnabled: false,
+      s3ForcePathStyle: true
+    });
+    try {
+      yield s3Client.createBucket({ Bucket: bucket }).promise();
+      yield s3Client
+        .putObject({ Bucket: bucket, Key: "foo/foo.txt", Body: "Hello!" })
+        .promise();
+      yield s3Client
+        .deleteObject({ Bucket: bucket, Key: "foo/foo.txt" })
+        .promise();
+      yield s3Client.deleteBucket({ Bucket: bucket }).promise();
+    } catch (err) {
+      throw err;
+    } finally {
+      yield thunkToPromise(done => server.close(done));
+    }
   });
 
-  it("Can put an object in a bucket that is empty after some key that does not include a directory has been deleted", function(done) {
+  it("Can put an object in a bucket that is empty after some key that does not include a directory has been deleted", function*() {
     const bucket = "foobars";
 
-    const s3rver = new S3rver({
-      port: 4569,
-      hostname: "localhost",
-      silent: true
-    }).run((err, hostname, port) => {
-      if (err) return done(err);
-      const s3Client = new AWS.S3({
-        accessKeyId: "123",
-        secretAccessKey: "abc",
-        endpoint: util.format("http://%s:%d", hostname, port),
-        sslEnabled: false,
-        s3ForcePathStyle: true
-      });
-      s3Client
-        .createBucket({ Bucket: bucket })
-        .promise()
-        .then(() =>
-          s3Client
-            .putObject({ Bucket: bucket, Key: "foo.txt", Body: "Hello!" })
-            .promise()
-        )
-        .then(() =>
-          s3Client.deleteObject({ Bucket: bucket, Key: "foo.txt" }).promise()
-        )
-        .then(() =>
-          s3Client
-            .putObject({ Bucket: bucket, Key: "foo2.txt", Body: "Hello2!" })
-            .promise()
-        )
-        .then(() => s3rver.close(done))
-        .catch(err => s3rver.close(() => done(err)));
+    let server;
+    const [, port] = yield thunkToPromise(done => {
+      server = new S3rver({
+        port: 4569,
+        silent: true
+      }).run(done);
     });
+    const s3Client = new AWS.S3({
+      accessKeyId: "123",
+      secretAccessKey: "abc",
+      endpoint: `http://localhost:${port}`,
+      sslEnabled: false,
+      s3ForcePathStyle: true
+    });
+    try {
+      yield s3Client.createBucket({ Bucket: bucket }).promise();
+      yield s3Client
+        .putObject({ Bucket: bucket, Key: "foo.txt", Body: "Hello!" })
+        .promise();
+      yield s3Client.deleteObject({ Bucket: bucket, Key: "foo.txt" }).promise();
+      yield s3Client
+        .putObject({ Bucket: bucket, Key: "foo2.txt", Body: "Hello2!" })
+        .promise();
+    } catch (err) {
+      throw err;
+    } finally {
+      yield thunkToPromise(done => server.close(done));
+    }
   });
 });
