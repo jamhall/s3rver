@@ -726,6 +726,7 @@ describe("S3rver Tests", function() {
     );
     const data = yield s3Client.listObjects({ Bucket: buckets[1] }).promise();
     expect(data.Contents).to.have.lengthOf(testObjects.length);
+    expect(data.IsTruncated).to.be.false;
   });
 
   it("should list objects in a bucket filtered by a prefix", function*() {
@@ -912,18 +913,18 @@ describe("S3rver Tests", function() {
 
   it("should return one thousand small objects", function*() {
     yield generateTestObjects(s3Client, buckets[2], 2000);
-    const objects = yield s3Client
-      .listObjects({ Bucket: buckets[2] })
-      .promise();
-    expect(objects.Contents).to.have.lengthOf(1000);
+    const data = yield s3Client.listObjects({ Bucket: buckets[2] }).promise();
+    expect(data.IsTruncated).to.be.true;
+    expect(data.Contents).to.have.lengthOf(1000);
   });
 
   it("should return 500 small objects", function*() {
     yield generateTestObjects(s3Client, buckets[2], 1000);
-    const objects = yield s3Client
+    const data = yield s3Client
       .listObjects({ Bucket: buckets[2], MaxKeys: 500 })
       .promise();
-    expect(objects.Contents).to.have.lengthOf(500);
+    expect(data.IsTruncated).to.be.true;
+    expect(data.Contents).to.have.lengthOf(500);
   });
 
   it("should delete 500 small objects", function*() {
