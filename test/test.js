@@ -202,18 +202,24 @@ describe("S3rver Tests", function() {
 
   it("should trigger a Put event", function*() {
     const eventPromise = server.s3Event.take(1).toPromise();
+    const body = "Hello!";
     yield s3Client
-      .putObject({ Bucket: buckets[0], Key: "testPutKey", Body: "Hello!" })
+      .putObject({ Bucket: buckets[0], Key: "testPutKey", Body: body })
       .promise();
     const event = yield eventPromise;
     expect(event.Records[0].eventName).to.equal("ObjectCreated:Put");
     expect(event.Records[0].s3.bucket.name).to.equal(buckets[0]);
-    expect(event.Records[0].s3.object.key).to.equal("testPutKey");
+    expect(event.Records[0].s3.object).to.contain({
+      key: "testPutKey",
+      size: body.length,
+      eTag: md5(body)
+    });
   });
 
   it("should trigger a Copy event", function*() {
+    const body = "Hello!";
     yield s3Client
-      .putObject({ Bucket: buckets[0], Key: "testPut", Body: "Hello!" })
+      .putObject({ Bucket: buckets[0], Key: "testPut", Body: body })
       .promise();
     const eventPromise = server.s3Event.take(1).toPromise();
     yield s3Client
@@ -226,15 +232,19 @@ describe("S3rver Tests", function() {
     const event = yield eventPromise;
     expect(event.Records[0].eventName).to.equal("ObjectCreated:Copy");
     expect(event.Records[0].s3.bucket.name).to.equal(buckets[4]);
-    expect(event.Records[0].s3.object.key).to.equal("testCopy");
+    expect(event.Records[0].s3.object).to.contain({
+      key: "testCopy",
+      size: body.length
+    });
   });
 
   it("should trigger a Delete event", function*() {
+    const body = "Hello!";
     yield s3Client
       .putObject({
         Bucket: buckets[0],
         Key: "testDelete",
-        Body: "Hello!"
+        Body: body
       })
       .promise();
     const eventPromise = server.s3Event.take(1).toPromise();
@@ -244,7 +254,9 @@ describe("S3rver Tests", function() {
     const event = yield eventPromise;
     expect(event.Records[0].eventName).to.equal("ObjectRemoved:Delete");
     expect(event.Records[0].s3.bucket.name).to.equal(buckets[0]);
-    expect(event.Records[0].s3.object.key).to.equal("testDelete");
+    expect(event.Records[0].s3.object).to.contain({
+      key: "testDelete"
+    });
   });
 
   it("should store a text object with some custom metadata", function*() {
