@@ -725,6 +725,7 @@ describe("S3rver Tests", function() {
       )
     );
     const data = yield s3Client.listObjects({ Bucket: buckets[1] }).promise();
+    expect(data.Name).to.equal(buckets[1]);
     expect(data.Contents).to.have.lengthOf(testObjects.length);
   });
 
