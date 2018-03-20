@@ -43,7 +43,7 @@
     "xmlbuilder": "^9.0.0"
   },
   "devDependencies": {
-    "aws-sdk": "2.211.1",
+    "aws-sdk": "2.212.1",
     "chai": "4.1.2",
     "chai-as-promised": "7.1.1",
     "co-mocha": "1.2.2",
