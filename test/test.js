@@ -380,6 +380,31 @@ describe("S3rver Tests", function() {
     expect(object.ContentType).to.equal("image/jpeg");
   });
 
+  it("should copy an object using spaces/unicode chars in keys", function*() {
+    const srcKey = "awesome 驚くばかり.jpg";
+    const destKey = "new 新しい.jpg";
+
+    const file = path.join(__dirname, "resources/image0.jpg");
+    const data = yield s3Client
+      .putObject({
+        Bucket: buckets[0],
+        Key: srcKey,
+        Body: yield fs.readFile(file),
+        ContentType: "image/jpeg"
+      })
+      .promise();
+    expect(data.ETag).to.match(/"[a-fA-F0-9]{32}"/);
+    const copyResult = yield s3Client
+      .copyObject({
+        Bucket: buckets[0],
+        Key: destKey,
+        CopySource: "/" + buckets[0] + "/" + encodeURI(srcKey)
+      })
+      .promise();
+    expect(copyResult.ETag).to.equal(data.ETag);
+    expect(moment(copyResult.LastModified).isValid()).to.be.true;
+  });
+
   it("should update the metadata of an image object", function*() {
     const srcKey = "image";
     const destKey = "image/jamie";
