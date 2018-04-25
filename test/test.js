@@ -11,6 +11,8 @@ const os = require("os");
 const path = require("path");
 const promiseLimit = require("promise-limit");
 const request = require("request-promise-native");
+const { take } = require("rxjs/operators");
+
 const { thunkToPromise } = require("../lib/utils");
 
 const S3rver = require("..");
@@ -201,7 +203,7 @@ describe("S3rver Tests", function() {
   });
 
   it("should trigger a Put event", function*() {
-    const eventPromise = server.s3Event.take(1).toPromise();
+    const eventPromise = server.s3Event.pipe(take(1)).toPromise();
     const body = "Hello!";
     yield s3Client
       .putObject({ Bucket: buckets[0], Key: "testPutKey", Body: body })
@@ -221,7 +223,7 @@ describe("S3rver Tests", function() {
     yield s3Client
       .putObject({ Bucket: buckets[0], Key: "testPut", Body: body })
       .promise();
-    const eventPromise = server.s3Event.take(1).toPromise();
+    const eventPromise = server.s3Event.pipe(take(1)).toPromise();
     yield s3Client
       .copyObject({
         Bucket: buckets[4],
@@ -247,7 +249,7 @@ describe("S3rver Tests", function() {
         Body: body
       })
       .promise();
-    const eventPromise = server.s3Event.take(1).toPromise();
+    const eventPromise = server.s3Event.pipe(take(1)).toPromise();
     yield s3Client
       .deleteObject({ Bucket: buckets[0], Key: "testDelete" })
       .promise();
