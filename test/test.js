@@ -985,6 +985,12 @@ describe("S3rver Tests", function() {
     expect(find(data.Deleted, { Key: "key67" })).to.exist;
   });
 
+  it("should not throw when using deleteObjects with zero objects", function*() {
+    yield s3Client
+      .deleteObjects({ Bucket: buckets[2], Delete: { Objects: [] } })
+      .promise();
+  });
+
   it("should return nonexistent objects as deleted with deleteObjects", function*() {
     const deleteObj = { Objects: [{ Key: "doesnotexist" }] };
     const data = yield s3Client
