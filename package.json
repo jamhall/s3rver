@@ -40,7 +40,7 @@
     "rxjs": "^5.4.0",
     "winston": "^2.1.0",
     "xml2js": "^0.4.4",
-    "xmlbuilder": "^9.0.0"
+    "xmlbuilder": "^10.0.0"
   },
   "devDependencies": {
     "aws-sdk": "2.230.1",
