@@ -32,7 +32,7 @@
     "commander": "^2.6.0",
     "concat-stream": "^1.4.7",
     "express": "^4.10.6",
-    "fs-extra": "^5.0.0",
+    "fs-extra": "^6.0.0",
     "jstoxml": "^1.0.0",
     "lodash": "^4.0.0",
     "morgan": "^1.5.1",
