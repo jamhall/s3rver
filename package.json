@@ -54,7 +54,7 @@
     "moment": "2.22.1",
     "prettier": "1.12.1",
     "prettier-check": "2.0.0",
-    "request": "2.86.0",
+    "request": "2.87.0",
     "request-promise-native": "1.0.5"
   },
   "engines": {
