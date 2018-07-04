@@ -8,6 +8,12 @@
       "pinVersions": false
     }
   ],
+  "packageRules": [
+    {
+      "packageNames": ["aws-sdk"],
+      "schedule": ["on monday"]
+    }
+  ],
   "rebaseStalePrs": true,
   "automerge": "minor",
   "labels": [
