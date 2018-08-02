@@ -202,6 +202,18 @@ describe("S3rver Tests", function() {
     expect(data.ContentType).to.equal("binary/octet-stream");
   });
 
+  it("should trigger an event with a valid message structure", function*() {
+    const eventPromise = server.s3Event.pipe(take(1)).toPromise();
+    const body = "Hello!";
+    yield s3Client
+      .putObject({ Bucket: buckets[0], Key: "testPutKey", Body: body })
+      .promise();
+    const event = yield eventPromise;
+    const iso8601 = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z$/;
+    expect(event.Records[0].eventTime).to.match(iso8601);
+    expect(new Date(event.Records[0].eventTime)).to.not.satisfy(isNaN);
+  });
+
   it("should trigger a Put event", function*() {
     const eventPromise = server.s3Event.pipe(take(1)).toPromise();
     const body = "Hello!";
