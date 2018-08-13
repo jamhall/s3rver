@@ -48,7 +48,7 @@
     "chai-as-promised": "7.1.1",
     "co-mocha": "1.2.2",
     "eslint": "5.3.0",
-    "eslint-config-prettier": "2.9.0",
+    "eslint-config-prettier": "2.10.0",
     "md5": "2.2.1",
     "mocha": "5.2.0",
     "moment": "2.22.2",
