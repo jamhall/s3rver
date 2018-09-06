@@ -904,8 +904,8 @@ describe("S3rver Tests", function() {
     const data = yield s3Client
       .listObjects({ Bucket: buckets[1], Delimiter: "/" })
       .promise();
-    expect(data.Contents).to.have.lengthOf(6);
-    expect(find(data.CommonPrefixes, { Prefix: "key/" })).to.exist;
+    expect(data.Contents).to.have.lengthOf(1);
+    expect(find(data.CommonPrefixes, { Prefix: "key" })).to.exist;
   });
 
   it("should list folders in a bucket filtered by a prefix and a delimiter", function*() {
@@ -934,9 +934,9 @@ describe("S3rver Tests", function() {
       .listObjects({ Bucket: buckets[5], Prefix: "folder1/", Delimiter: "/" })
       .promise();
     expect(data.CommonPrefixes).to.have.lengthOf(3);
-    expect(find(data.CommonPrefixes, { Prefix: "folder1/folder2/" })).to.exist;
-    expect(find(data.CommonPrefixes, { Prefix: "folder1/folder3/" })).to.exist;
-    expect(find(data.CommonPrefixes, { Prefix: "folder1/folder4/" })).to.exist;
+    expect(find(data.CommonPrefixes, { Prefix: "folder1/folder2" })).to.exist;
+    expect(find(data.CommonPrefixes, { Prefix: "folder1/folder3" })).to.exist;
+    expect(find(data.CommonPrefixes, { Prefix: "folder1/folder4" })).to.exist;
   });
 
   it("should list no objects because of invalid prefix", function*() {
