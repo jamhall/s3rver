@@ -1,6 +1,6 @@
 {
   "name": "s3rver",
-  "version": "2.2.5",
+  "version": "2.2.6",
   "description": "Fake S3 server for node",
   "main": "lib/index.js",
   "scripts": {
