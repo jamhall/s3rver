@@ -44,7 +44,7 @@
   },
   "devDependencies": {
     "aws-sdk": "2.321.0",
-    "chai": "4.1.2",
+    "chai": "4.2.0",
     "chai-as-promised": "7.1.1",
     "co-mocha": "1.2.2",
     "eslint": "5.6.0",
