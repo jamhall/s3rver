@@ -40,7 +40,7 @@ try {
 } catch (e) {
   // eslint-disable-next-line no-console
   console.error(
-    "Directory does not exist. Please create it and then run the command again"
+    "Data directory does not exist. Please create it and then run the command again."
   );
   process.exit(1);
 }
@@ -61,5 +61,5 @@ new S3rver(program).run((err, host, port) => {
     process.exit(1);
   }
   // eslint-disable-next-line no-console
-  console.log("now listening on host %s and port %d", host, port);
+  console.log("S3rver listening on %s:%d", host, port);
 });
