@@ -187,6 +187,71 @@ describe("S3rver Tests", function() {
     expect(data.ETag).to.match(/"[a-fA-F0-9]{32}"/);
   });
 
+  it("should store the text object directly to the bucket via a POST", function*() {
+    const key = "mytestimage.jpg";
+    const res = yield request({
+      method: "POST",
+      baseUrl: s3Client.config.endpoint,
+      url: `/${buckets[0]}`,
+      formData: {
+        key,
+        file: fs.createReadStream(path.join(__dirname, "resources/image0.jpg"))
+      },
+      resolveWithFullResponse: true
+    });
+    expect(res.statusCode).to.equal(204);
+    const data = yield s3Client
+      .getObject({ Bucket: buckets[0], Key: key })
+      .promise();
+    expect(data.ContentType).to.equal("binary/octet-stream");
+  });
+
+  it("should return error xml when key is not provided", function*() {
+    let error;
+    try {
+      yield request({
+        method: "POST",
+        baseUrl: s3Client.config.endpoint,
+        url: `/${buckets[0]}`,
+        formData: {
+          file: fs.createReadStream(
+            path.join(__dirname, "resources/image0.jpg")
+          )
+        },
+        resolveWithFullResponse: true
+      });
+    } catch (err) {
+      error = err;
+      expect(err.response.statusCode).to.equal(400);
+      expect(err.response.body).to.contain(
+        "POST must contain a field named 'key'"
+      );
+    }
+    expect(error).to.exist;
+  });
+
+  it("should return error xml when the file is not provided", function*() {
+    let error;
+    try {
+      yield request({
+        method: "POST",
+        baseUrl: s3Client.config.endpoint,
+        url: `/${buckets[0]}`,
+        formData: {
+          key: "abc"
+        },
+        resolveWithFullResponse: true
+      });
+    } catch (err) {
+      error = err;
+      expect(err.response.statusCode).to.equal(400);
+      expect(err.response.body).to.contain(
+        "POST requires exactly one file upload per request."
+      );
+    }
+    expect(error).to.exist;
+  });
+
   it("should store a text object with no content type and retrieve it", function*() {
     const res = yield request({
       method: "PUT",
