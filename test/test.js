@@ -1322,7 +1322,7 @@ describe("S3rver CORS Policy Tests", function() {
         url,
         headers: {
           origin,
-          "Access-Control-Request-Method": "GET",
+          "Access-Control-Request-Method": "GET"
           // No Access-Control-Request-Headers specified...
         }
       });
@@ -1332,7 +1332,7 @@ describe("S3rver CORS Policy Tests", function() {
       yield thunkToPromise(done => server.close(done));
       expect(error).to.not.exist;
     }
-  })
+  });
 });
 
 describe("S3rver Tests with Static Web Hosting", function() {
