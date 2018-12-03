@@ -28,21 +28,21 @@ program
 
 if (program.directory === undefined) {
   // eslint-disable-next-line no-console
-  console.error("Data directory is required");
-  process.exit();
+  console.error("Data directory -d is required");
+  process.exit(64);
 }
 
 try {
   const stats = fs.lstatSync(program.directory);
-  if (stats.isDirectory() === false) {
-    throw Error();
+  if (!stats.isDirectory()) {
+    throw new Error();
   }
 } catch (e) {
   // eslint-disable-next-line no-console
   console.error(
-    "Directory does not exist. Please create it and then run the command again"
+    "Data directory does not exist. Please create it and then run the command again."
   );
-  process.exit();
+  process.exit(1);
 }
 
 if (program.cors) {
@@ -54,12 +54,12 @@ if (program.key && program.cert) {
   program.cert = fs.readFileSync(program.cert);
 }
 
-new S3rver(program).run(function(err, host, port) {
+new S3rver(program).run((err, host, port) => {
   if (err) {
     // eslint-disable-next-line no-console
     console.error(err);
-  } else {
-    // eslint-disable-next-line no-console
-    console.log("now listening on host %s and port %d", host, port);
+    process.exit(1);
   }
+  // eslint-disable-next-line no-console
+  console.log("S3rver listening on %s:%d", host, port);
 });
