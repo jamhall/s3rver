@@ -1302,6 +1302,37 @@ describe("S3rver CORS Policy Tests", function() {
       expect(error).to.exist;
     }
   });
+
+  it("should respond correctly to OPTIONS requests that dont specify access-control-request-headers", function*() {
+    const origin = "http://a-test.example.com";
+    const params = { Bucket: bucket, Key: "image" };
+    const url = s3Client.getSignedUrl("getObject", params);
+    let server;
+    yield thunkToPromise(done => {
+      server = new S3rver({
+        port: 4569,
+        silent: true,
+        cors: fs.readFileSync("./test/resources/cors_test1.xml")
+      }).run(done);
+    });
+    let error;
+    try {
+      yield request({
+        method: "OPTIONS",
+        url,
+        headers: {
+          origin,
+          "Access-Control-Request-Method": "GET"
+          // No Access-Control-Request-Headers specified...
+        }
+      });
+    } catch (err) {
+      error = err;
+    } finally {
+      yield thunkToPromise(done => server.close(done));
+      expect(error).to.not.exist;
+    }
+  });
 });
 
 describe("S3rver Tests with Static Web Hosting", function() {
