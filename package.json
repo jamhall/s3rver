@@ -51,7 +51,7 @@
     "eslint-config-prettier": "3.3.0",
     "md5": "2.2.1",
     "mocha": "5.2.0",
-    "moment": "2.22.2",
+    "moment": "2.23.0",
     "prettier": "1.15.3",
     "prettier-check": "2.0.0",
     "request": "2.88.0",
