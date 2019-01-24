@@ -605,6 +605,58 @@ describe("S3rver Tests", function() {
     expect(res.headers).to.have.property("content-length", "100");
   });
 
+  it("out of bounds range requests should return 416", function*() {
+    const file = path.join(__dirname, "resources/image0.jpg");
+    yield s3Client
+      .putObject({
+        Bucket: buckets[0],
+        Key: "image",
+        Body: yield fs.readFile(file),
+        ContentType: "image/jpeg"
+      })
+      .promise();
+    const url = s3Client.getSignedUrl("getObject", {
+      Bucket: buckets[0],
+      Key: "image"
+    });
+
+    try {
+      yield request({
+        url,
+        headers: { range: "bytes=65536-66000" },
+        resolveWithFullResponse: true
+      });
+    } catch (err) {
+      expect(err.statusCode).to.equal(416);
+    }
+  });
+
+  it("partial out of bounds range requests should return actual length of returned data", function*() {
+    const file = path.join(__dirname, "resources/image0.jpg");
+    const filesize = fs.statSync(file).size;
+    yield s3Client
+      .putObject({
+        Bucket: buckets[0],
+        Key: "image",
+        Body: yield fs.readFile(file),
+        ContentType: "image/jpeg"
+      })
+      .promise();
+    const url = s3Client.getSignedUrl("getObject", {
+      Bucket: buckets[0],
+      Key: "image"
+    });
+    const res = yield request({
+      url,
+      headers: { range: "bytes=0-100000" },
+      resolveWithFullResponse: true
+    });
+    expect(res.statusCode).to.equal(206);
+    expect(res.headers).to.have.property("content-range");
+    expect(res.headers).to.have.property("accept-ranges");
+    expect(res.headers).to.have.property("content-length", filesize.toString());
+  });
+
   it("should get image metadata from a bucket using HEAD method", function*() {
     const file = path.join(__dirname, "resources/image0.jpg");
     const fileContent = yield fs.readFile(file);
