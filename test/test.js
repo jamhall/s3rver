@@ -607,6 +607,7 @@ describe("S3rver Tests", function() {
 
   it("out of bounds range requests should return 416", function*() {
     const file = path.join(__dirname, "resources/image0.jpg");
+    const filesize = fs.statSync(file).size;
     yield s3Client
       .putObject({
         Bucket: buckets[0],
@@ -628,6 +629,10 @@ describe("S3rver Tests", function() {
       });
     } catch (err) {
       expect(err.statusCode).to.equal(416);
+      expect(err.response.headers).to.have.property(
+        "content-range",
+        `bytes */${filesize}`
+      );
     }
   });
 
