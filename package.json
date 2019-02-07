@@ -30,7 +30,7 @@
   "dependencies": {
     "async": "^2.0.0",
     "commander": "^2.6.0",
-    "concat-stream": "^1.5.2",
+    "concat-stream": "^2.0.0",
     "express": "^4.10.6",
     "fs-extra": "^7.0.0",
     "jstoxml": "^1.0.0",
