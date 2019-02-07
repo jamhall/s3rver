@@ -605,7 +605,7 @@ describe("S3rver Tests", function() {
     expect(res.headers).to.have.property("content-length", "100");
   });
 
-  it("out of bounds range requests should return 416", function*() {
+  it("should return 416 error for out of bounds range requests", function*() {
     const file = path.join(__dirname, "resources/image0.jpg");
     const filesize = fs.statSync(file).size;
     yield s3Client
@@ -1059,10 +1059,17 @@ describe("S3rver Tests", function() {
     expect(find(data.Deleted, { Key: "key67" })).to.exist;
   });
 
-  it("should not throw when using deleteObjects with zero objects", function*() {
-    yield s3Client
-      .deleteObjects({ Bucket: buckets[2], Delete: { Objects: [] } })
-      .promise();
+  it("should report invalid XML when using deleteObjects with zero objects", function*() {
+    let error;
+    try {
+      yield s3Client
+        .deleteObjects({ Bucket: buckets[2], Delete: { Objects: [] } })
+        .promise();
+    } catch (err) {
+      error = err;
+    }
+    expect(error).to.exist;
+    expect(error.code).to.equal("MalformedXML");
   });
 
   it("should return nonexistent objects as deleted with deleteObjects", function*() {
