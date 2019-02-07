@@ -1623,7 +1623,7 @@ describe("Data directory cleanup", function() {
     }
   });
 
-  it("Can delete a bucket that is empty after some key that includes a directory has been deleted", function*() {
+  it("Can delete a bucket that is empty after some key nested in a directory has been deleted", function*() {
     const bucket = "foobars";
 
     let server;
@@ -1643,20 +1643,18 @@ describe("Data directory cleanup", function() {
     try {
       yield s3Client.createBucket({ Bucket: bucket }).promise();
       yield s3Client
-        .putObject({ Bucket: bucket, Key: "foo/foo.txt", Body: "Hello!" })
+        .putObject({ Bucket: bucket, Key: "foo/bar/foo.txt", Body: "Hello!" })
         .promise();
       yield s3Client
-        .deleteObject({ Bucket: bucket, Key: "foo/foo.txt" })
+        .deleteObject({ Bucket: bucket, Key: "foo/bar/foo.txt" })
         .promise();
       yield s3Client.deleteBucket({ Bucket: bucket }).promise();
-    } catch (err) {
-      throw err;
     } finally {
       yield thunkToPromise(done => server.close(done));
     }
   });
 
-  it("Can put an object in a bucket that is empty after some key that does not include a directory has been deleted", function*() {
+  it("Can put an object in a bucket after all objects are deleted", function*() {
     const bucket = "foobars";
 
     let server;
@@ -1682,8 +1680,6 @@ describe("Data directory cleanup", function() {
       yield s3Client
         .putObject({ Bucket: bucket, Key: "foo2.txt", Body: "Hello2!" })
         .promise();
-    } catch (err) {
-      throw err;
     } finally {
       yield thunkToPromise(done => server.close(done));
     }
