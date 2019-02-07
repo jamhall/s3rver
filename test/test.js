@@ -1120,6 +1120,70 @@ describe("S3rver CORS Policy Tests", function() {
     }
   });
 
+  it("should fail to initialize a configuration with multiple wildcard characters", function*() {
+    let error;
+    try {
+      let server;
+      yield thunkToPromise(done => {
+        server = new S3rver({
+          port: 4569,
+          hostname: "localhost",
+          silent: true,
+          cors: fs.readFileSync("./test/resources/cors_invalid1.xml")
+        }).run(done);
+      });
+      yield thunkToPromise(done => server.close(done));
+    } catch (err) {
+      error = err;
+    }
+    expect(error).to.exist;
+    expect(error.message).to.include(" can not have more than one wildcard.");
+  });
+
+  it("should fail to initialize a configuration with an illegal AllowedMethod", function*() {
+    let error;
+    try {
+      let server;
+      yield thunkToPromise(done => {
+        server = new S3rver({
+          port: 4569,
+          hostname: "localhost",
+          silent: true,
+          cors: fs.readFileSync("./test/resources/cors_invalid2.xml")
+        }).run(done);
+      });
+      yield thunkToPromise(done => server.close(done));
+    } catch (err) {
+      error = err;
+    }
+    expect(error).to.exist;
+    expect(error.message).to.include(
+      "Found unsupported HTTP method in CORS config."
+    );
+  });
+
+  it("should fail to initialize a configuration with missing required fields", function*() {
+    let error;
+    try {
+      let server;
+      yield thunkToPromise(done => {
+        server = new S3rver({
+          port: 4569,
+          hostname: "localhost",
+          silent: true,
+          cors: fs.readFileSync("./test/resources/cors_invalid3.xml")
+        }).run(done);
+      });
+      yield thunkToPromise(done => server.close(done));
+    } catch (err) {
+      error = err;
+    }
+    expect(error).to.exist;
+    expect(error.message).to.include(
+      "CORSRule must have at least one AllowedOrigin and AllowedMethod"
+    );
+  });
+
   it("should add the Access-Control-Allow-Origin header for default (wildcard) configurations", function*() {
     const origin = "http://a-test.example.com";
     const params = { Bucket: bucket, Key: "image" };

@@ -1,0 +1,7 @@
+<CORSConfiguration>
+    <CORSRule>
+        <!-- At least one AllowedOrigin or AllowedMethod must be specified -->
+        <MaxAgeSeconds>3000</MaxAgeSeconds>
+        <AllowedHeader>*</AllowedHeader>
+    </CORSRule>
+</CORSConfiguration>
