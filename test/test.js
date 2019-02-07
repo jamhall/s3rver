@@ -621,19 +621,22 @@ describe("S3rver Tests", function() {
       Key: "image"
     });
 
+    let error;
     try {
       yield request({
         url,
-        headers: { range: "bytes=65536-66000" },
+        headers: { range: `bytes=${filesize + 100}-${filesize + 200}` },
         resolveWithFullResponse: true
       });
     } catch (err) {
-      expect(err.statusCode).to.equal(416);
-      expect(err.response.headers).to.have.property(
-        "content-range",
-        `bytes */${filesize}`
-      );
+      error = err;
     }
+    expect(error).to.exist;
+    expect(error.statusCode).to.equal(416);
+    expect(error.response.headers).to.have.property(
+      "content-range",
+      `bytes */${filesize}`
+    );
   });
 
   it("partial out of bounds range requests should return actual length of returned data", function*() {

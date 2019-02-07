@@ -58,7 +58,7 @@
     "request-promise-native": "1.0.5"
   },
   "engines": {
-    "node": ">=6.4.0"
+    "node": ">=6.0.0"
   },
   "bugs": {
     "url": "https://github.com/jamhall/s3rver/issues"
