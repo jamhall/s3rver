@@ -1,12 +1,11 @@
-S3rver
-==================
+# S3rver
 
 [![NPM](https://nodei.co/npm/s3rver.png)](https://nodei.co/npm/s3rver/)
 
 [![Build Status](https://api.travis-ci.org/jamhall/s3rver.png)](https://travis-ci.org/jamhall/s3rver)
 [![Dependency Status](https://david-dm.org/jamhall/s3rver/status.svg)](https://david-dm.org/jamhall/s3rver)
 [![Devdependency Status](https://david-dm.org/jamhall/s3rver/dev-status.svg)](https://david-dm.org/jamhall/s3rver?type=dev)
- 
+
 S3rver is a lightweight server that responds to **some** of the same calls [Amazon S3](http://docs.aws.amazon.com/AWSJavaScriptSDK/latest/AWS/S3.html) responds to. It is extremely useful for testing S3 in a sandbox environment without actually making calls to Amazon.
 
 The goal of S3rver is to minimise runtime dependencies and be more of a development tool to test S3 calls in your code rather than a production server looking to duplicate S3 functionality.
@@ -33,11 +32,12 @@ The goal of S3rver is to minimise runtime dependencies and be more of a developm
 ## Quick Start
 
 Install s3rver:
-  
+
 ```bash
 $ npm install s3rver -g
 ```
-You will now have a command on your path called *s3rver*
+
+You will now have a command on your path called _s3rver_
 
 Executing this command for the various options:
 
@@ -54,17 +54,19 @@ Please test, if you encounter any problems please do not hesitate to open an iss
 
 ## Static Website Hosting
 
-If you specify an *indexDocument* then `GET` requests will serve the *indexDocument* if it is found, simulating the static website mode of AWS S3. An *errorDocument* can also be set, to serve a custom 404 page.
+If you specify an _indexDocument_ then `GET` requests will serve the _indexDocument_ if it is found, simulating the static website mode of AWS S3. An _errorDocument_ can also be set, to serve a custom 404 page.
 
 ### Hostname Resolution
 
 By default a bucket name needs to be given. So for a bucket called `mysite.local`, with an indexDocument of `index.html`. Visiting `http://localhost:4568/mysite.local/` in your browser will display the `index.html` file uploaded to the bucket.
 
 However you can also setup a local hostname in your /etc/hosts file pointing at 127.0.0.1
+
 ```
 localhost 127.0.0.1
 mysite.local 127.0.0.1
 ```
+
 Now you can access the served content at `http://mysite.local:4568/`
 
 ## Tests
@@ -80,7 +82,7 @@ $ npm test
 
 ## Programmatically running s3rver
 
-You can also run s3rver programmatically. 
+You can also run s3rver programmatically.
 
 > This is particularly useful if you want to integrate s3rver into another projects tests that depends on access to an s3 environment
 
@@ -88,82 +90,85 @@ You can also run s3rver programmatically.
 
 Creates a S3rver instance
 
-| Option | Type | Default | Description |
-| ------ | ---- | ------- | ----------- |
-| port | `number` | `4578` | Port of the mock S3 server |
-| hostname | `string` | `localhost` | Host/IP to bind to |
-| key | `string` \| `Buffer` |  | Private key for running with TLS |
-| cert | `string` \| `Buffer` |  | Certificate for running with TLS |
-| silent | `boolean` | `false` | Suppress log messages | 
-| directory | `string` |  | Data directory |
-| cors | `string` \| `Buffer` | [S3 Sample policy](cors_sample_policy.xml) | Raw XML string or Buffer of CORS policy |
-| indexDocument | `string` |  | Index document for static web hosting |
-| errorDocument | `string` |  | Error document for static web hosting |
-| removeBucketsOnClose | `boolean` | `false` | Remove all bucket data on server close |
+<!-- prettier-ignore start -->
+
+| Option               | Type                 | Default                                    | Description                             |
+| -------------------- | -------------------- | ------------------------------------------ | --------------------------------------- |
+| port                 | `number`             | `4578`                                     | Port of the mock S3 server              |
+| hostname             | `string`             | `localhost`                                | Host/IP to bind to                      |
+| key                  | `string` \| `Buffer` |                                            | Private key for running with TLS        |
+| cert                 | `string` \| `Buffer` |                                            | Certificate for running with TLS        |
+| silent               | `boolean`            | `false`                                    | Suppress log messages                   |
+| directory            | `string`             |                                            | Data directory                          |
+| cors                 | `string` \| `Buffer` | [S3 Sample policy](cors_sample_policy.xml) | Raw XML string or Buffer of CORS policy |
+| indexDocument        | `string`             |                                            | Index document for static web hosting   |
+| errorDocument        | `string`             |                                            | Error document for static web hosting   |
+| removeBucketsOnClose | `boolean`            | `false`                                    | Remove all bucket data on server close  |
+
+<!-- prettier-ignore end -->
 
 ### s3rver.run(callback)
-Starts the server on the configured port and host
+
+### s3rver.close(callback)
+
+Starts/stops the server on the configured port and host. Returns a Promise if no callback is specified.
 
 Example in mocha:
 
 ```javascript
-const S3rver = require('s3rver');
+const S3rver = require("s3rver");
 let instance;
 
-before(function (done) {
-    instance = new S3rver({
-        port: 4569,
-        hostname: 'localhost',
-        silent: false,
-        directory: '/tmp/s3rver_test_directory'
-    }).run((err, host, port) => {
-        if(err) {
-            return done(err);
-        }
-        done();
-    });
+before(function(done) {
+  instance = new S3rver({
+    port: 4569,
+    hostname: "localhost",
+    silent: false,
+    directory: "/tmp/s3rver_test_directory"
+  }).run(done);
 });
 
-after(function (done) {
-    instance.close(done);
+after(function(done) {
+  instance.close(done);
 });
 ```
-
-## Subscribing to S3 Event 
-
-You can subscribe to Put, Copy,Post and Delete object events in the bucket, when you run s3rver programmatically.
-Please have a look at [Aws page](http://docs.aws.amazon.com/AmazonS3/latest/dev/notification-content-structure.html) for details of event object. 
-Apply filter function to subscribe to specific events.
-
-```
-const S3rver = require('s3rver');
-const client = new S3rver({
-        port: 4569,
-        hostname: 'localhost',
-        silent: false,
-        directory: '/tmp/s3rver_test_directory'
-    }).run(function (err, host, port) {
-        if (err) {
-            console.error(err)
-        } else {
-            console.log('now listening on host %s and port %d', host, port);
-        }
-    });
-
-client.s3Event.subscribe(function (event) {
-    console.log(event);
-});
-
-client.s3Event.filter(function (event) { return event.Records[0].eventName == 'ObjectCreated:Copy' }).subscribe(function (event) {
-    console.log(event);
-});
-```
-
 
 ### s3rver.callback() ⇒ `function (req, res)`
-*Also aliased as* **s3rver.getMiddleware()**
+
+_Alias:_ **s3rver.getMiddleware()**
 
 Creates and returns a callback that can be passed into `http.createServer()` or mounted in an Express app.
+
+## Subscribing to S3 Event
+
+### s3rver.s3Event: `Observable<S3Event>`
+
+You can subscribe to Put, Copy, Post and Delete object events in the bucket, when you run s3rver programmatically.
+Please have a look at [AWS's documentation](http://docs.aws.amazon.com/AmazonS3/latest/dev/notification-content-structure.html) for details of event object.
+Apply filter function to subscribe to specific events.
+
+```javascript
+const S3rver = require("s3rver");
+const { filter } = require("rxjs/operators");
+const instance = new S3rver({
+  port: 4568,
+  hostname: "localhost",
+  silent: false,
+  directory: "/tmp/s3rver_test_directory"
+}).run((err, { address, port }) => {
+  if (err) {
+    console.error(err);
+  } else {
+    console.log("now listening on host %s and port %d", address, port);
+  }
+});
+
+instance.s3Event.subscribe(event => console.log(event));
+
+instance.s3Event
+  .pipe(filter(event => event.Records[0].eventName == "ObjectCreated:Copy"))
+  .subscribe(event => console.log(event));
+```
 
 ## Using [s3fs-fuse](https://github.com/s3fs-fuse/s3fs-fuse) with S3rver
 

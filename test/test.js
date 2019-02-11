@@ -13,8 +13,6 @@ const promiseLimit = require("promise-limit");
 const request = require("request-promise-native");
 const { take } = require("rxjs/operators");
 
-const { thunkToPromise } = require("../lib/utils");
-
 const S3rver = require("..");
 
 const { expect } = chai;
@@ -63,12 +61,11 @@ describe("S3rver Tests", function() {
 
   beforeEach("Reset buckets", resetTmpDir);
   beforeEach("Start server and create buckets", async function() {
-    const [, port] = await thunkToPromise(done => {
-      server = new S3rver({
-        port: 4569,
-        silent: true
-      }).run(done);
+    server = new S3rver({
+      port: 4569,
+      silent: true
     });
+    const { port } = await server.run();
 
     s3Client = new AWS.S3({
       accessKeyId: "123",
@@ -1017,6 +1014,7 @@ describe("S3rver Tests", function() {
   });
 
   it("should generate a few thousand small objects", async function() {
+    this.timeout(30000);
     const data = await generateTestObjects(s3Client, buckets[2], 2000);
     for (const object of data) {
       expect(object.ETag).to.match(/[a-fA-F0-9]{32}/);
@@ -1024,6 +1022,7 @@ describe("S3rver Tests", function() {
   });
 
   it("should return one thousand small objects", async function() {
+    this.timeout(30000);
     await generateTestObjects(s3Client, buckets[2], 2000);
     const data = await s3Client.listObjects({ Bucket: buckets[2] }).promise();
     expect(data.IsTruncated).to.be.true;
@@ -1031,6 +1030,7 @@ describe("S3rver Tests", function() {
   });
 
   it("should return 500 small objects", async function() {
+    this.timeout(30000);
     await generateTestObjects(s3Client, buckets[2], 1000);
     const data = await s3Client
       .listObjects({ Bucket: buckets[2], MaxKeys: 500 })
@@ -1040,15 +1040,15 @@ describe("S3rver Tests", function() {
   });
 
   it("should delete 500 small objects", async function() {
+    this.timeout(30000);
     await generateTestObjects(s3Client, buckets[2], 500);
-    await Promise.all(
-      times(500, i =>
-        s3Client.deleteObject({ Bucket: buckets[2], Key: "key" + i }).promise()
-      )
+    await promiseLimit(100).map(times(500), i =>
+      s3Client.deleteObject({ Bucket: buckets[2], Key: "key" + i }).promise()
     );
   });
 
   it("should delete 500 small objects with deleteObjects", async function() {
+    this.timeout(30000);
     await generateTestObjects(s3Client, buckets[2], 500);
     const deleteObj = { Objects: times(500, i => ({ Key: "key" + i })) };
     const data = await s3Client
@@ -1097,13 +1097,11 @@ describe("S3rver CORS Policy Tests", function() {
   let s3Client;
 
   before("Initialize bucket", async function() {
-    let server;
-    const [, port] = await thunkToPromise(done => {
-      server = new S3rver({
-        port: 4569,
-        silent: true
-      }).run(done);
+    const server = new S3rver({
+      port: 4569,
+      silent: true
     });
+    const { port } = await server.run();
     try {
       s3Client = new AWS.S3({
         accessKeyId: "123",
@@ -1120,26 +1118,21 @@ describe("S3rver CORS Policy Tests", function() {
       };
       await s3Client.createBucket({ Bucket: bucket }).promise();
       await s3Client.putObject(params).promise();
-    } catch (err) {
-      throw err;
     } finally {
-      await thunkToPromise(done => server.close(done));
+      await server.close();
     }
   });
 
   it("should fail to initialize a configuration with multiple wildcard characters", async function() {
     let error;
     try {
-      let server;
-      await thunkToPromise(done => {
-        server = new S3rver({
-          port: 4569,
-          hostname: "localhost",
-          silent: true,
-          cors: fs.readFileSync("./test/resources/cors_invalid1.xml")
-        }).run(done);
+      const server = new S3rver({
+        port: 4569,
+        silent: true,
+        cors: fs.readFileSync("./test/resources/cors_invalid1.xml")
       });
-      await thunkToPromise(done => server.close(done));
+      await server.run();
+      await server.close();
     } catch (err) {
       error = err;
     }
@@ -1150,16 +1143,13 @@ describe("S3rver CORS Policy Tests", function() {
   it("should fail to initialize a configuration with an illegal AllowedMethod", async function() {
     let error;
     try {
-      let server;
-      await thunkToPromise(done => {
-        server = new S3rver({
-          port: 4569,
-          hostname: "localhost",
-          silent: true,
-          cors: fs.readFileSync("./test/resources/cors_invalid2.xml")
-        }).run(done);
+      const server = new S3rver({
+        port: 4569,
+        silent: true,
+        cors: fs.readFileSync("./test/resources/cors_invalid2.xml")
       });
-      await thunkToPromise(done => server.close(done));
+      await server.run();
+      await server.close();
     } catch (err) {
       error = err;
     }
@@ -1172,16 +1162,13 @@ describe("S3rver CORS Policy Tests", function() {
   it("should fail to initialize a configuration with missing required fields", async function() {
     let error;
     try {
-      let server;
-      await thunkToPromise(done => {
-        server = new S3rver({
-          port: 4569,
-          hostname: "localhost",
-          silent: true,
-          cors: fs.readFileSync("./test/resources/cors_invalid3.xml")
-        }).run(done);
+      const server = new S3rver({
+        port: 4569,
+        silent: true,
+        cors: fs.readFileSync("./test/resources/cors_invalid3.xml")
       });
-      await thunkToPromise(done => server.close(done));
+      await server.run();
+      await server.close();
     } catch (err) {
       error = err;
     }
@@ -1195,13 +1182,11 @@ describe("S3rver CORS Policy Tests", function() {
     const origin = "http://a-test.example.com";
     const params = { Bucket: bucket, Key: "image" };
     const url = s3Client.getSignedUrl("getObject", params);
-    let server;
-    await thunkToPromise(done => {
-      server = new S3rver({
-        port: 4569,
-        silent: true
-      }).run(done);
+    const server = new S3rver({
+      port: 4569,
+      silent: true
     });
+    await server.run();
     try {
       const res = await request({
         url,
@@ -1210,10 +1195,8 @@ describe("S3rver CORS Policy Tests", function() {
       });
       expect(res.statusCode).to.equal(200);
       expect(res.headers).to.have.property("access-control-allow-origin", "*");
-    } catch (err) {
-      throw err;
     } finally {
-      await thunkToPromise(done => server.close(done));
+      await server.close();
     }
   });
 
@@ -1221,14 +1204,12 @@ describe("S3rver CORS Policy Tests", function() {
     const origin = "http://a-test.example.com";
     const params = { Bucket: bucket, Key: "image" };
     const url = s3Client.getSignedUrl("getObject", params);
-    let server;
-    await thunkToPromise(done => {
-      server = new S3rver({
-        port: 4569,
-        silent: true,
-        cors: fs.readFileSync("./test/resources/cors_test1.xml")
-      }).run(done);
+    const server = new S3rver({
+      port: 4569,
+      silent: true,
+      cors: fs.readFileSync("./test/resources/cors_test1.xml")
     });
+    await server.run();
     try {
       const res = await request({
         url,
@@ -1240,10 +1221,8 @@ describe("S3rver CORS Policy Tests", function() {
         "access-control-allow-origin",
         origin
       );
-    } catch (err) {
-      throw err;
     } finally {
-      await thunkToPromise(done => server.close(done));
+      await server.close();
     }
   });
 
@@ -1251,14 +1230,12 @@ describe("S3rver CORS Policy Tests", function() {
     const origin = "http://foo.bar.com";
     const params = { Bucket: bucket, Key: "image" };
     const url = s3Client.getSignedUrl("getObject", params);
-    let server;
-    await thunkToPromise(done => {
-      server = new S3rver({
-        port: 4569,
-        silent: true,
-        cors: fs.readFileSync("./test/resources/cors_test1.xml")
-      }).run(done);
+    const server = new S3rver({
+      port: 4569,
+      silent: true,
+      cors: fs.readFileSync("./test/resources/cors_test1.xml")
     });
+    await server.run();
     try {
       const res = await request({
         url,
@@ -1270,10 +1247,8 @@ describe("S3rver CORS Policy Tests", function() {
         "access-control-allow-origin",
         origin
       );
-    } catch (err) {
-      throw err;
     } finally {
-      await thunkToPromise(done => server.close(done));
+      await server.close();
     }
   });
 
@@ -1281,14 +1256,12 @@ describe("S3rver CORS Policy Tests", function() {
     const origin = "http://b-test.example.com";
     const params = { Bucket: bucket, Key: "image" };
     const url = s3Client.getSignedUrl("getObject", params);
-    let server;
-    await thunkToPromise(done => {
-      server = new S3rver({
-        port: 4569,
-        silent: true,
-        cors: fs.readFileSync("./test/resources/cors_test1.xml")
-      }).run(done);
+    const server = new S3rver({
+      port: 4569,
+      silent: true,
+      cors: fs.readFileSync("./test/resources/cors_test1.xml")
     });
+    await server.run();
     try {
       const res = await request({
         url,
@@ -1297,10 +1270,8 @@ describe("S3rver CORS Policy Tests", function() {
       });
       expect(res.statusCode).to.equal(200);
       expect(res.headers).to.not.have.property("access-control-allow-origin");
-    } catch (err) {
-      throw err;
     } finally {
-      await thunkToPromise(done => server.close(done));
+      await server.close();
     }
   });
 
@@ -1308,14 +1279,12 @@ describe("S3rver CORS Policy Tests", function() {
     const origin = "http://a-test.example.com";
     const params = { Bucket: bucket, Key: "image" };
     const url = s3Client.getSignedUrl("getObject", params);
-    let server;
-    await thunkToPromise(done => {
-      server = new S3rver({
-        port: 4569,
-        silent: true,
-        cors: fs.readFileSync("./test/resources/cors_test1.xml")
-      }).run(done);
+    const server = new S3rver({
+      port: 4569,
+      silent: true,
+      cors: fs.readFileSync("./test/resources/cors_test1.xml")
     });
+    await server.run();
     try {
       const res = await request({
         url,
@@ -1327,10 +1296,8 @@ describe("S3rver CORS Policy Tests", function() {
         "access-control-expose-headers",
         "Accept-Ranges, Content-Range"
       );
-    } catch (err) {
-      throw err;
     } finally {
-      await thunkToPromise(done => server.close(done));
+      await server.close();
     }
   });
 
@@ -1338,14 +1305,12 @@ describe("S3rver CORS Policy Tests", function() {
     const origin = "http://foo.bar.com";
     const params = { Bucket: bucket, Key: "image" };
     const url = s3Client.getSignedUrl("getObject", params);
-    let server;
-    await thunkToPromise(done => {
-      server = new S3rver({
-        port: 4569,
-        silent: true,
-        cors: fs.readFileSync("./test/resources/cors_test1.xml")
-      }).run(done);
+    const server = new S3rver({
+      port: 4569,
+      silent: true,
+      cors: fs.readFileSync("./test/resources/cors_test1.xml")
     });
+    await server.run();
     try {
       const res = await request({
         method: "OPTIONS",
@@ -1363,10 +1328,8 @@ describe("S3rver CORS Policy Tests", function() {
         "access-control-allow-headers",
         "range, authorization"
       );
-    } catch (err) {
-      throw err;
     } finally {
-      await thunkToPromise(done => server.close(done));
+      await server.close();
     }
   });
 
@@ -1374,14 +1337,12 @@ describe("S3rver CORS Policy Tests", function() {
     const origin = "http://a-test.example.com";
     const params = { Bucket: bucket, Key: "image" };
     const url = s3Client.getSignedUrl("getObject", params);
-    let server;
-    await thunkToPromise(done => {
-      server = new S3rver({
-        port: 4569,
-        silent: true,
-        cors: fs.readFileSync("./test/resources/cors_test1.xml")
-      }).run(done);
+    const server = new S3rver({
+      port: 4569,
+      silent: true,
+      cors: fs.readFileSync("./test/resources/cors_test1.xml")
     });
+    await server.run();
     let error;
     try {
       await request({
@@ -1395,10 +1356,10 @@ describe("S3rver CORS Policy Tests", function() {
       });
     } catch (err) {
       error = err;
-      expect(err.statusCode).to.equal(403);
     } finally {
-      await thunkToPromise(done => server.close(done));
+      await server.close();
       expect(error).to.exist;
+      expect(error.statusCode).to.equal(403);
     }
   });
 
@@ -1406,14 +1367,12 @@ describe("S3rver CORS Policy Tests", function() {
     const origin = "http://foo.bar.com";
     const params = { Bucket: bucket, Key: "image" };
     const url = s3Client.getSignedUrl("getObject", params);
-    let server;
-    await thunkToPromise(done => {
-      server = new S3rver({
-        port: 4569,
-        silent: true,
-        cors: false
-      }).run(done);
+    const server = new S3rver({
+      port: 4569,
+      silent: true,
+      cors: false
     });
+    await server.run();
     let error;
     try {
       await request({
@@ -1427,10 +1386,10 @@ describe("S3rver CORS Policy Tests", function() {
       });
     } catch (err) {
       error = err;
-      expect(err.statusCode).to.equal(403);
     } finally {
-      await thunkToPromise(done => server.close(done));
+      await server.close();
       expect(error).to.exist;
+      expect(error.statusCode).to.equal(403);
     }
   });
 
@@ -1438,15 +1397,12 @@ describe("S3rver CORS Policy Tests", function() {
     const origin = "http://a-test.example.com";
     const params = { Bucket: bucket, Key: "image" };
     const url = s3Client.getSignedUrl("getObject", params);
-    let server;
-    await thunkToPromise(done => {
-      server = new S3rver({
-        port: 4569,
-        silent: true,
-        cors: fs.readFileSync("./test/resources/cors_test1.xml")
-      }).run(done);
+    const server = new S3rver({
+      port: 4569,
+      silent: true,
+      cors: fs.readFileSync("./test/resources/cors_test1.xml")
     });
-    let error;
+    await server.run();
     try {
       await request({
         method: "OPTIONS",
@@ -1457,11 +1413,8 @@ describe("S3rver CORS Policy Tests", function() {
           // No Access-Control-Request-Headers specified...
         }
       });
-    } catch (err) {
-      error = err;
     } finally {
-      await thunkToPromise(done => server.close(done));
-      expect(error).to.not.exist;
+      await server.close();
     }
   });
 });
@@ -1472,19 +1425,18 @@ describe("S3rver Tests with Static Web Hosting", function() {
 
   beforeEach("Reset site bucket", resetTmpDir);
   beforeEach("Start server", async function() {
-    await thunkToPromise(done => {
-      server = new S3rver({
-        port: 5694,
-        silent: true,
-        indexDocument: "index.html",
-        errorDocument: "",
-        directory: tmpDir
-      }).run(done);
+    server = new S3rver({
+      port: 4569,
+      silent: true,
+      indexDocument: "index.html",
+      errorDocument: ""
     });
+    const { port } = await server.run();
+
     s3Client = new AWS.S3({
       accessKeyId: "123",
       secretAccessKey: "abc",
-      endpoint: `http://localhost:${server.address().port}`,
+      endpoint: `http://localhost:${port}`,
       sslEnabled: false,
       s3ForcePathStyle: true
     });
@@ -1590,14 +1542,12 @@ describe("S3rver Class Tests", function() {
   });
 
   it("should support running on port 0", async function() {
-    let server;
-    const [, port] = await thunkToPromise(done => {
-      server = new S3rver({
-        port: 0,
-        silent: true
-      }).run(done);
+    const server = new S3rver({
+      port: 0,
+      silent: true
     });
-    await thunkToPromise(done => server.close(done));
+    const { port } = await server.run();
+    await server.close();
     expect(port).to.be.above(0);
   });
 });
@@ -1608,14 +1558,13 @@ describe("Data directory cleanup", function() {
   it("Cleans up after close if the removeBucketsOnClose setting is true", async function() {
     const bucket = "foobars";
 
-    let server;
-    const [, port, directory] = await thunkToPromise(done => {
-      server = new S3rver({
-        port: 4569,
-        silent: true,
-        removeBucketsOnClose: true
-      }).run(done);
+    const server = new S3rver({
+      port: 4569,
+      silent: true,
+      removeBucketsOnClose: true,
+      directory: tmpDir
     });
+    const { port } = await server.run();
     const s3Client = new AWS.S3({
       accessKeyId: "123",
       secretAccessKey: "abc",
@@ -1626,26 +1575,23 @@ describe("Data directory cleanup", function() {
     try {
       await s3Client.createBucket({ Bucket: bucket }).promise();
       await generateTestObjects(s3Client, bucket, 10);
-    } catch (err) {
-      throw err;
     } finally {
-      await thunkToPromise(done => server.close(done));
-      await expect(fs.exists(directory)).to.eventually.be.true;
-      await expect(fs.readdir(directory)).to.eventually.have.lengthOf(0);
+      await server.close();
+      await expect(fs.exists(tmpDir)).to.eventually.be.true;
+      await expect(fs.readdir(tmpDir)).to.eventually.have.lengthOf(0);
     }
   });
 
   it("Does not clean up after close if the removeBucketsOnClose setting is false", async function() {
     const bucket = "foobars";
 
-    let server;
-    const [, port, directory] = await thunkToPromise(done => {
-      server = new S3rver({
-        port: 4569,
-        silent: true,
-        removeBucketsOnClose: false
-      }).run(done);
+    const server = new S3rver({
+      port: 4569,
+      silent: true,
+      removeBucketsOnClose: false,
+      directory: tmpDir
     });
+    const { port } = await server.run();
     const s3Client = new AWS.S3({
       accessKeyId: "123",
       secretAccessKey: "abc",
@@ -1659,22 +1605,21 @@ describe("Data directory cleanup", function() {
     } catch (err) {
       throw err;
     } finally {
-      await thunkToPromise(done => server.close(done));
-      await expect(fs.exists(directory)).to.eventually.be.true;
-      await expect(fs.readdir(directory)).to.eventually.have.lengthOf(1);
+      await server.close();
+      await expect(fs.exists(tmpDir)).to.eventually.be.true;
+      await expect(fs.readdir(tmpDir)).to.eventually.have.lengthOf(1);
     }
   });
 
   it("Does not clean up after close if the removeBucketsOnClose setting is not set", async function() {
     const bucket = "foobars";
 
-    let server;
-    const [, port, directory] = await thunkToPromise(done => {
-      server = new S3rver({
-        port: 4569,
-        silent: true
-      }).run(done);
+    const server = new S3rver({
+      port: 4569,
+      silent: true,
+      directory: tmpDir
     });
+    const { port } = await server.run();
     const s3Client = new AWS.S3({
       accessKeyId: "123",
       secretAccessKey: "abc",
@@ -1685,25 +1630,21 @@ describe("Data directory cleanup", function() {
     try {
       await s3Client.createBucket({ Bucket: bucket }).promise();
       await generateTestObjects(s3Client, bucket, 10);
-    } catch (err) {
-      throw err;
     } finally {
-      await thunkToPromise(done => server.close(done));
-      await expect(fs.exists(directory)).to.eventually.be.true;
-      await expect(fs.readdir(directory)).to.eventually.have.lengthOf(1);
+      await server.close();
+      await expect(fs.exists(tmpDir)).to.eventually.be.true;
+      await expect(fs.readdir(tmpDir)).to.eventually.have.lengthOf(1);
     }
   });
 
   it("Can delete a bucket that is empty after some key nested in a directory has been deleted", async function() {
     const bucket = "foobars";
 
-    let server;
-    const [, port] = await thunkToPromise(done => {
-      server = new S3rver({
-        port: 4569,
-        silent: true
-      }).run(done);
+    const server = new S3rver({
+      port: 4569,
+      silent: true
     });
+    const { port } = await server.run();
     const s3Client = new AWS.S3({
       accessKeyId: "123",
       secretAccessKey: "abc",
@@ -1721,20 +1662,18 @@ describe("Data directory cleanup", function() {
         .promise();
       await s3Client.deleteBucket({ Bucket: bucket }).promise();
     } finally {
-      await thunkToPromise(done => server.close(done));
+      await server.close();
     }
   });
 
   it("Can put an object in a bucket after all objects are deleted", async function() {
     const bucket = "foobars";
 
-    let server;
-    const [, port] = await thunkToPromise(done => {
-      server = new S3rver({
-        port: 4569,
-        silent: true
-      }).run(done);
+    const server = new S3rver({
+      port: 4569,
+      silent: true
     });
+    const { port } = await server.run();
     const s3Client = new AWS.S3({
       accessKeyId: "123",
       secretAccessKey: "abc",
@@ -1752,7 +1691,7 @@ describe("Data directory cleanup", function() {
         .putObject({ Bucket: bucket, Key: "foo2.txt", Body: "Hello2!" })
         .promise();
     } finally {
-      await thunkToPromise(done => server.close(done));
+      await server.close();
     }
   });
 });

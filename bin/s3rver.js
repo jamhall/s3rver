@@ -54,12 +54,12 @@ if (program.key && program.cert) {
   program.cert = fs.readFileSync(program.cert);
 }
 
-new S3rver(program).run((err, host, port) => {
+new S3rver(program).run((err, { address, port }) => {
   if (err) {
     // eslint-disable-next-line no-console
     console.error(err);
     process.exit(1);
   }
   // eslint-disable-next-line no-console
-  console.log("S3rver listening on %s:%d", host, port);
+  console.log("S3rver listening on %s:%d", address, port);
 });
