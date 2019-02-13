@@ -11,6 +11,7 @@ const os = require("os");
 const path = require("path");
 const promiseLimit = require("promise-limit");
 const request = require("request-promise-native");
+const { fromEvent } = require("rxjs");
 const { take } = require("rxjs/operators");
 
 const S3rver = require("..");
@@ -91,7 +92,7 @@ describe("S3rver Tests", function() {
     server.close(done);
   });
 
-  it("should fetch fetch six buckets", async function() {
+  it("should fetch six buckets", async function() {
     const buckets = await s3Client.listBuckets().promise();
     expect(buckets.Buckets).to.have.lengthOf(6);
     for (const bucket of buckets.Buckets) {
@@ -200,7 +201,9 @@ describe("S3rver Tests", function() {
   });
 
   it("should trigger an event with a valid message structure", async function() {
-    const eventPromise = server.s3Event.pipe(take(1)).toPromise();
+    const eventPromise = fromEvent(server, "event")
+      .pipe(take(1))
+      .toPromise();
     const body = "Hello!";
     await s3Client
       .putObject({ Bucket: buckets[0], Key: "testPutKey", Body: body })
@@ -212,7 +215,9 @@ describe("S3rver Tests", function() {
   });
 
   it("should trigger a Put event", async function() {
-    const eventPromise = server.s3Event.pipe(take(1)).toPromise();
+    const eventPromise = fromEvent(server, "event")
+      .pipe(take(1))
+      .toPromise();
     const body = "Hello!";
     await s3Client
       .putObject({ Bucket: buckets[0], Key: "testPutKey", Body: body })
@@ -232,7 +237,9 @@ describe("S3rver Tests", function() {
     await s3Client
       .putObject({ Bucket: buckets[0], Key: "testPut", Body: body })
       .promise();
-    const eventPromise = server.s3Event.pipe(take(1)).toPromise();
+    const eventPromise = fromEvent(server, "event")
+      .pipe(take(1))
+      .toPromise();
     await s3Client
       .copyObject({
         Bucket: buckets[4],
@@ -258,7 +265,9 @@ describe("S3rver Tests", function() {
         Body: body
       })
       .promise();
-    const eventPromise = server.s3Event.pipe(take(1)).toPromise();
+    const eventPromise = fromEvent(server, "event")
+      .pipe(take(1))
+      .toPromise();
     await s3Client
       .deleteObject({ Bucket: buckets[0], Key: "testDelete" })
       .promise();
@@ -630,10 +639,6 @@ describe("S3rver Tests", function() {
     }
     expect(error).to.exist;
     expect(error.statusCode).to.equal(416);
-    expect(error.response.headers).to.have.property(
-      "content-range",
-      `bytes */${filesize}`
-    );
   });
 
   it("partial out of bounds range requests should return actual length of returned data", async function() {
@@ -1096,6 +1101,7 @@ describe("S3rver CORS Policy Tests", function() {
   const bucket = "foobars";
   let s3Client;
 
+  before("Reset buckets", resetTmpDir);
   before("Initialize bucket", async function() {
     const server = new S3rver({
       port: 4569,
@@ -1479,7 +1485,11 @@ describe("S3rver Tests with Static Web Hosting", function() {
     await s3Client
       .putObject({ Bucket: bucket, Key: "index.html", Body: expectedBody })
       .promise();
-    const body = await request(s3Client.endpoint.href + "site/");
+    const body = await request({
+      baseUrl: s3Client.endpoint.href,
+      uri: `${bucket}/`,
+      headers: { accept: "text/html" }
+    });
     expect(body).to.equal(expectedBody);
   });
 
@@ -1494,7 +1504,11 @@ describe("S3rver Tests with Static Web Hosting", function() {
         Body: expectedBody
       })
       .promise();
-    const body = await request(s3Client.endpoint.href + "site/page/");
+    const body = await request({
+      baseUrl: s3Client.endpoint.href,
+      uri: `${bucket}/page/`,
+      headers: { accept: "text/html" }
+    });
     expect(body).to.equal(expectedBody);
   });
 
@@ -1503,13 +1517,17 @@ describe("S3rver Tests with Static Web Hosting", function() {
     await s3Client.createBucket({ Bucket: bucket }).promise();
     let error;
     try {
-      await request(s3Client.endpoint.href + "site/page/not-exists");
+      await request({
+        baseUrl: s3Client.endpoint.href,
+        uri: `${bucket}/page/not-exists`,
+        headers: { accept: "text/html" }
+      });
     } catch (err) {
       error = err;
       expect(err.statusCode).to.equal(404);
       expect(err.response.headers).to.have.property(
         "content-type",
-        "text/html"
+        "text/html; charset=utf-8"
       );
     }
     expect(error).to.exist;
@@ -1517,30 +1535,6 @@ describe("S3rver Tests with Static Web Hosting", function() {
 });
 
 describe("S3rver Class Tests", function() {
-  it("should merge default options with provided options", function() {
-    const s3rver = new S3rver({
-      hostname: "testhost",
-      indexDocument: "index.html",
-      errorDocument: "",
-      directory: "./testdir",
-      key: new Buffer([1, 2, 3]),
-      cert: new Buffer([1, 2, 3]),
-      removeBucketsOnClose: true
-    });
-
-    expect(s3rver.options).to.have.property("hostname", "testhost");
-    expect(s3rver.options).to.have.property("port", 4578);
-    expect(s3rver.options).to.have.property("silent", false);
-    expect(s3rver.options).to.have.property("indexDocument", "index.html");
-    expect(s3rver.options).to.have.property("errorDocument", "");
-    expect(s3rver.options).to.have.property("directory", "./testdir");
-    expect(s3rver.options).to.have.property("key");
-    expect(s3rver.options).to.have.property("cert");
-    expect(s3rver.options.key).to.be.an.instanceOf(Buffer);
-    expect(s3rver.options.cert).to.be.an.instanceOf(Buffer);
-    expect(s3rver.options).to.have.property("removeBucketsOnClose", true);
-  });
-
   it("should support running on port 0", async function() {
     const server = new S3rver({
       port: 0,

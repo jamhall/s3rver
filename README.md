@@ -47,7 +47,7 @@ $ s3rver --help
 
 ## Supported clients
 
-Please see [Fake S3s wiki page](https://github.com/jubos/fake-s3/wiki/Supported-Clients) for a list of supported clients.
+Please see [Fake S3's wiki page](https://github.com/jubos/fake-s3/wiki/Supported-Clients) for a list of supported clients.
 When listening on HTTPS with a self-signed certificate, the AWS SDK in a Node.js environment will need `httpOptions: { agent: new https.Agent({ rejectUnauthorized: false }) }` in order to allow interaction.
 
 Please test, if you encounter any problems please do not hesitate to open an issue :)
@@ -71,7 +71,7 @@ Now you can access the served content at `http://mysite.local:4568/`
 
 ## Tests
 
-The tests should be run by one of the active LTS versions. The CI Server runs the tests on the latest `6.x` and `8.x` releases.
+The tests should be run by one of the active LTS versions. The CI Server runs the tests on the latest active releases.
 
 To run the test suite, first install the dependencies, then run `npm test`:
 
@@ -86,26 +86,28 @@ You can also run s3rver programmatically.
 
 > This is particularly useful if you want to integrate s3rver into another projects tests that depends on access to an s3 environment
 
+## Class: `S3rver`
+
 ### new S3rver([options])
 
 Creates a S3rver instance
 
-<!-- prettier-ignore start -->
+<!-- prettier-ignore-start -->
 
-| Option               | Type                 | Default                                    | Description                             |
-| -------------------- | -------------------- | ------------------------------------------ | --------------------------------------- |
-| port                 | `number`             | `4578`                                     | Port of the mock S3 server              |
-| hostname             | `string`             | `localhost`                                | Host/IP to bind to                      |
-| key                  | `string` \| `Buffer` |                                            | Private key for running with TLS        |
-| cert                 | `string` \| `Buffer` |                                            | Certificate for running with TLS        |
-| silent               | `boolean`            | `false`                                    | Suppress log messages                   |
-| directory            | `string`             |                                            | Data directory                          |
-| cors                 | `string` \| `Buffer` | [S3 Sample policy](cors_sample_policy.xml) | Raw XML string or Buffer of CORS policy |
-| indexDocument        | `string`             |                                            | Index document for static web hosting   |
-| errorDocument        | `string`             |                                            | Error document for static web hosting   |
-| removeBucketsOnClose | `boolean`            | `false`                                    | Remove all bucket data on server close  |
+| Option               | Type                 | Default                                    | Description
+| -------------------- | -------------------- | ------------------------------------------ | -----------
+| port                 | `number`             | `4578`                                     | Port of the mock S3 server
+| hostname             | `string`             | `localhost`                                | Host/IP to bind to
+| key                  | `string` \| `Buffer` |                                            | Private key for running with TLS
+| cert                 | `string` \| `Buffer` |                                            | Certificate for running with TLS
+| silent               | `boolean`            | `false`                                    | Suppress log messages
+| directory            | `string`             |                                            | Data directory
+| cors                 | `string` \| `Buffer` | [S3 Sample policy](cors_sample_policy.xml) | Raw XML string or Buffer of CORS policy
+| indexDocument        | `string`             |                                            | Index document for static web hosting
+| errorDocument        | `string`             |                                            | Error document for static web hosting
+| removeBucketsOnClose | `boolean`            | `false`                                    | Remove all bucket data on server close 
 
-<!-- prettier-ignore end -->
+<!-- prettier-ignore-end -->
 
 ### s3rver.run(callback)
 
@@ -135,21 +137,22 @@ after(function(done) {
 
 ### s3rver.callback() ⇒ `function (req, res)`
 
-_Alias:_ **s3rver.getMiddleware()**
+_Alias:_ **s3rver.middleware()**
 
 Creates and returns a callback that can be passed into `http.createServer()` or mounted in an Express app.
 
 ## Subscribing to S3 Event
 
-### s3rver.s3Event: `Observable<S3Event>`
+### Event: `'event'`
 
-You can subscribe to Put, Copy, Post and Delete object events in the bucket, when you run s3rver programmatically.
-Please have a look at [AWS's documentation](http://docs.aws.amazon.com/AmazonS3/latest/dev/notification-content-structure.html) for details of event object.
-Apply filter function to subscribe to specific events.
+You can subscribe to notifications for PUT, POST, COPY and DELETE object events in the bucket when you run S3rver programmatically.
+Please refer to [AWS's documentation](http://docs.aws.amazon.com/AmazonS3/latest/dev/notification-content-structure.html) for details of event object.
 
 ```javascript
 const S3rver = require("s3rver");
+const { fromEvent } = require("rxjs");
 const { filter } = require("rxjs/operators");
+
 const instance = new S3rver({
   port: 4568,
   hostname: "localhost",
@@ -163,9 +166,9 @@ const instance = new S3rver({
   }
 });
 
-instance.s3Event.subscribe(event => console.log(event));
-
-instance.s3Event
+const s3Events = fromEvent(instance, "event");
+s3Events.subscribe(event => console.log(event));
+s3Events
   .pipe(filter(event => event.Records[0].eventName == "ObjectCreated:Copy"))
   .subscribe(event => console.log(event));
 ```
