@@ -55,7 +55,7 @@
     "prettier": "1.16.4",
     "prettier-check": "2.0.0",
     "request": "2.88.0",
-    "request-promise-native": "1.0.5"
+    "request-promise-native": "1.0.6"
   },
   "engines": {
     "node": ">=6.0.0"
