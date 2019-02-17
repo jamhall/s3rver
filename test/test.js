@@ -1524,13 +1524,10 @@ describe("S3rver Static Website Tests", function() {
     expect(error).to.exist;
     expect(error.statusCode).to.equal(404);
     expect(error.response.headers).to.have.property(
-      "x-amz-error-code",
-      "NoSuchWebsiteConfiguration"
-    );
-    expect(error.response.headers).to.have.property(
       "content-type",
       "text/html; charset=utf-8"
     );
+    expect(error.response.body).to.contain("Code: NoSuchWebsiteConfiguration");
   });
 
   it("should get an index page at / path", async function() {
