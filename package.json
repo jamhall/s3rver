@@ -26,8 +26,8 @@
   "homepage": "https://github.com/jamhall/s3rver",
   "scripts": {
     "test": "mocha --timeout 10000 --reporter spec --ui bdd",
-    "prettier-check": "prettier-check --ignore-path .gitignore \"**/*.js\"",
-    "prettier-fix": "prettier --ignore-path .gitignore --write \"**/*.js\"",
+    "prettier-check": "prettier-check --ignore-path .gitignore \"**/*.{js,md}\"",
+    "prettier-fix": "prettier --ignore-path .gitignore --write \"**/*.{js,md}\"",
     "eslint": "eslint --ignore-path .gitignore \"**/*.js\"",
     "eslint-fix": "eslint --ignore-path .gitignore --fix \"**/*.js\""
   },
@@ -35,13 +35,14 @@
   "files": [
     "bin/**/*",
     "lib/**/*",
-    "cors_sample_policy.xml"
+    "example/*.xml"
   ],
   "bin": {
-    "s3rver": "bin/s3rver.js"
+    "s3rver": "bin/s3rver"
   },
   "directories": {
     "lib": "./lib",
+    "example": "./example",
     "test": "./test"
   },
   "engines": {
