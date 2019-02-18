@@ -84,6 +84,35 @@ describe("S3rver Class Tests", function() {
     }
   });
 
+  it("should create a prefabricated bucket with configs on startup", async function() {
+    const bucket = {
+      name: "bucket1",
+      configs: [
+        fs.readFileSync("./example/cors.xml"),
+        fs.readFileSync("./example/website.xml")
+      ]
+    };
+    const server = new S3rver({
+      prefabBuckets: [bucket]
+    });
+    const { port } = await server.run();
+    const s3Client = new AWS.S3({
+      accessKeyId: "123",
+      secretAccessKey: "abc",
+      endpoint: `http://localhost:${port}`,
+      sslEnabled: false,
+      s3ForcePathStyle: true
+    });
+    try {
+      await s3Client.getBucketCors({ Bucket: bucket.name }).promise();
+      await s3Client.getBucketWebsite({ Bucket: bucket.name }).promise();
+    } catch (err) {
+      throw err;
+    } finally {
+      await server.close();
+    }
+  });
+
   it("cleans up after close if the resetOnClose setting is true", async function() {
     const bucket = { name: "foobars" };
 
@@ -1364,6 +1393,64 @@ describe("S3rver CORS Policy Tests", function() {
     expect(error.code).to.equal("MalformedXML");
   });
 
+  it("should put a CORS configuration in an unconfigured bucket", async function() {
+    const bucket = { name: "cors-put" };
+    const server = new S3rver({
+      prefabBuckets: [bucket]
+    });
+    const { port } = await server.run();
+    const s3Client = new AWS.S3({
+      accessKeyId: "123",
+      secretAccessKey: "abc",
+      endpoint: `http://localhost:${port}`,
+      sslEnabled: false,
+      s3ForcePathStyle: true
+    });
+    try {
+      await s3Client
+        .putBucketCors({
+          Bucket: bucket.name,
+          CORSConfiguration: {
+            CORSRules: [
+              {
+                AllowedOrigins: ["*"],
+                AllowedMethods: ["GET", "HEAD"]
+              }
+            ]
+          }
+        })
+        .promise();
+      await s3Client.getBucketCors({ Bucket: bucket.name }).promise();
+    } finally {
+      await server.close();
+    }
+  });
+
+  it("should delete a CORS configuration in an configured bucket", async function() {
+    const server = new S3rver({
+      prefabBuckets: [buckets[0]]
+    });
+    const { port } = await server.run();
+    const s3Client = new AWS.S3({
+      accessKeyId: "123",
+      secretAccessKey: "abc",
+      endpoint: `http://localhost:${port}`,
+      sslEnabled: false,
+      s3ForcePathStyle: true
+    });
+    let error;
+    try {
+      await s3Client.deleteBucketCors({ Bucket: buckets[0].name }).promise();
+      await s3Client.getBucketCors({ Bucket: buckets[0].name }).promise();
+    } catch (err) {
+      error = err;
+    } finally {
+      await server.close();
+    }
+    expect(error).to.exist;
+    expect(error.code).to.equal("NoSuchCORSConfiguration");
+  });
+
   it("should add the Access-Control-Allow-Origin header for a wildcard origin", async function() {
     const origin = "http://a-test.example.com";
     const bucket = {
@@ -1725,6 +1812,61 @@ describe("S3rver Static Website Tests", function() {
   ];
 
   beforeEach("Reset buckets", resetTmpDir);
+
+  it("should put a website configuration in an unconfigured bucket", async function() {
+    const bucket = { name: "website-put" };
+    const server = new S3rver({
+      prefabBuckets: [bucket]
+    });
+    const { port } = await server.run();
+    const s3Client = new AWS.S3({
+      accessKeyId: "123",
+      secretAccessKey: "abc",
+      endpoint: `http://localhost:${port}`,
+      sslEnabled: false,
+      s3ForcePathStyle: true
+    });
+    try {
+      await s3Client
+        .putBucketWebsite({
+          Bucket: bucket.name,
+          WebsiteConfiguration: {
+            IndexDocument: {
+              Suffix: "index.html"
+            }
+          }
+        })
+        .promise();
+      await s3Client.getBucketWebsite({ Bucket: bucket.name }).promise();
+    } finally {
+      await server.close();
+    }
+  });
+
+  it("should delete a website configuration in an configured bucket", async function() {
+    const server = new S3rver({
+      prefabBuckets: [buckets[0]]
+    });
+    const { port } = await server.run();
+    const s3Client = new AWS.S3({
+      accessKeyId: "123",
+      secretAccessKey: "abc",
+      endpoint: `http://localhost:${port}`,
+      sslEnabled: false,
+      s3ForcePathStyle: true
+    });
+    let error;
+    try {
+      await s3Client.deleteBucketWebsite({ Bucket: buckets[0].name }).promise();
+      await s3Client.getBucketWebsite({ Bucket: buckets[0].name }).promise();
+    } catch (err) {
+      error = err;
+    } finally {
+      await server.close();
+    }
+    expect(error).to.exist;
+    expect(error.code).to.equal("NoSuchWebsiteConfiguration");
+  });
 
   it("should fail to read an object at the website endpoint from a bucket with no website configuration", async function() {
     const bucket = { name: "bucket1" };
