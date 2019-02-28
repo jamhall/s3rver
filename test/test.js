@@ -336,6 +336,36 @@ describe("S3rver Tests", function() {
     await s3Client.deleteBucket({ Bucket: buckets[4].name }).promise();
   });
 
+  it("should delete a bucket configured with CORS", async function() {
+    await s3Client
+      .putBucketCors({
+        Bucket: buckets[0].name,
+        CORSConfiguration: {
+          CORSRules: [
+            {
+              AllowedOrigins: ["*"],
+              AllowedMethods: ["GET", "HEAD"]
+            }
+          ]
+        }
+      })
+      .promise();
+    await s3Client.deleteBucket({ Bucket: buckets[0].name }).promise();
+  });
+
+  it("should fail to delete a bucket because it is not empty", async function() {
+    let error;
+    await generateTestObjects(s3Client, buckets[0].name, 20);
+    try {
+      await s3Client.deleteBucket({ Bucket: buckets[0].name }).promise();
+    } catch (err) {
+      error = err;
+    }
+    expect(error).to.exist;
+    expect(error.code).to.equal("BucketNotEmpty");
+    expect(error.statusCode).to.equal(409);
+  });
+
   it("should not fetch the deleted bucket", async function() {
     let error;
     await s3Client.deleteBucket({ Bucket: buckets[4].name }).promise();
@@ -391,20 +421,6 @@ describe("S3rver Tests", function() {
       })
       .promise();
     expect(data.ETag).to.match(/"[a-fA-F0-9]{32}"/);
-  });
-
-  it("should return a text object with some custom metadata", async function() {
-    const data = await s3Client
-      .putObject({
-        Bucket: buckets[0].name,
-        Key: "textmetadata",
-        Body: "Hello!",
-        Metadata: {
-          someKey: "value"
-        }
-      })
-      .promise();
-    expect(data.ETag).to.match(/"[a-fA-F0-9]{32}"/);
     const object = await s3Client
       .getObject({ Bucket: buckets[0].name, Key: "textmetadata" })
       .promise();
@@ -441,6 +457,23 @@ describe("S3rver Tests", function() {
       .promise();
     expect(object.ContentEncoding).to.equal("gzip");
     expect(object.ContentType).to.equal("application/javascript");
+  });
+
+  it("should distinguish keys stored with and without a trailing /", async function() {
+    await s3Client
+      .putObject({ Bucket: buckets[0].name, Key: "text", Body: "Hello!" })
+      .promise();
+    await s3Client
+      .putObject({ Bucket: buckets[0].name, Key: "text/", Body: "Goodbye!" })
+      .promise();
+    const obj1 = await s3Client
+      .getObject({ Bucket: buckets[0].name, Key: "text" })
+      .promise();
+    const obj2 = await s3Client
+      .getObject({ Bucket: buckets[0].name, Key: "text/" })
+      .promise();
+    expect(obj1.Body.toString()).to.equal("Hello!");
+    expect(obj2.Body.toString()).to.equal("Goodbye!");
   });
 
   it("should copy an image object into another bucket", async function() {
@@ -865,19 +898,6 @@ describe("S3rver Tests", function() {
       .promise();
   });
 
-  it("should fail to delete a bucket because it is not empty", async function() {
-    let error;
-    await generateTestObjects(s3Client, buckets[0].name, 20);
-    try {
-      await s3Client.deleteBucket({ Bucket: buckets[0].name }).promise();
-    } catch (err) {
-      error = err;
-      expect(err.code).to.equal("BucketNotEmpty");
-      expect(err.statusCode).to.equal(409);
-    }
-    expect(error).to.exist;
-  });
-
   it("should upload a text file to a multi directory path", async function() {
     const data = await s3Client
       .putObject({
@@ -889,7 +909,7 @@ describe("S3rver Tests", function() {
     expect(data.ETag).to.match(/"[a-fA-F0-9]{32}"/);
   });
 
-  it("should upload a managed upload <=5MB", async function() {
+  it("should complete a managed upload <=5MB", async function() {
     const data = await s3Client
       .upload({
         Bucket: buckets[0].name,
@@ -900,7 +920,7 @@ describe("S3rver Tests", function() {
     expect(data.ETag).to.match(/"[a-fA-F0-9]{32}"/);
   });
 
-  it("should upload a managed upload >5MB (multipart upload)", async function() {
+  it("should complete a managed upload >5MB (multipart upload)", async function() {
     const data = await s3Client
       .upload({
         Bucket: buckets[0].name,
@@ -909,6 +929,27 @@ describe("S3rver Tests", function() {
       })
       .promise();
     expect(data.ETag).to.match(/"[a-fA-F0-9]{32}"/);
+  });
+
+  it("should complete a multipart upload with metadata", async function() {
+    const data = await s3Client
+      .upload({
+        Bucket: buckets[0].name,
+        Key: "multi/directory/path/multipart",
+        Body: Buffer.alloc(20 * Math.pow(1024, 2)), // 20MB
+        Metadata: {
+          someKey: "value"
+        }
+      })
+      .promise();
+    expect(data.ETag).to.match(/"[a-fA-F0-9]{32}"/);
+    const object = await s3Client
+      .getObject({
+        Bucket: buckets[0].name,
+        Key: "multi/directory/path/multipart"
+      })
+      .promise();
+    expect(object.Metadata.somekey).to.equal("value");
   });
 
   it("should find a text file in a multi directory path", async function() {
@@ -1962,6 +2003,47 @@ describe("S3rver Static Website Tests", function() {
           Body: expectedBody
         })
         .promise();
+      const body = await request({
+        baseUrl: s3Client.endpoint.href,
+        uri: `${buckets[0].name}/page/`,
+        headers: { accept: "text/html" }
+      });
+      expect(body).to.equal(expectedBody);
+    } finally {
+      await server.close();
+    }
+  });
+
+  it("should not get an index page at /page/ path if an object is stored there", async function() {
+    const server = new S3rver({
+      prefabBuckets: [buckets[0]]
+    });
+    const { port } = await server.run();
+    const s3Client = new AWS.S3({
+      accessKeyId: "123",
+      secretAccessKey: "abc",
+      endpoint: `http://localhost:${port}`,
+      sslEnabled: false,
+      s3ForcePathStyle: true
+    });
+    const indexBody = "<html><body>Hello</body></html>";
+    const expectedBody = "<html><body>Goodbye</body></html>";
+    try {
+      await s3Client
+        .putObject({
+          Bucket: buckets[0].name,
+          Key: "page/index.html",
+          Body: indexBody
+        })
+        .promise();
+      await s3Client
+        .putObject({
+          Bucket: buckets[0].name,
+          Key: "page/",
+          Body: expectedBody
+        })
+        .promise();
+
       const body = await request({
         baseUrl: s3Client.endpoint.href,
         uri: `${buckets[0].name}/page/`,
