@@ -11,6 +11,7 @@ const os = require("os");
 const path = require("path");
 const promiseLimit = require("promise-limit");
 const request = require("request-promise-native");
+const { fromEvent } = require("rxjs");
 const { take } = require("rxjs/operators");
 
 const S3rver = require("..");
@@ -91,7 +92,7 @@ describe("S3rver Tests", function() {
     server.close(done);
   });
 
-  it("should fetch fetch six buckets", async function() {
+  it("should fetch six buckets", async function() {
     const buckets = await s3Client.listBuckets().promise();
     expect(buckets.Buckets).to.have.lengthOf(6);
     for (const bucket of buckets.Buckets) {
@@ -200,7 +201,9 @@ describe("S3rver Tests", function() {
   });
 
   it("should trigger an event with a valid message structure", async function() {
-    const eventPromise = server.s3Event.pipe(take(1)).toPromise();
+    const eventPromise = fromEvent(server, "event")
+      .pipe(take(1))
+      .toPromise();
     const body = "Hello!";
     await s3Client
       .putObject({ Bucket: buckets[0], Key: "testPutKey", Body: body })
@@ -212,7 +215,9 @@ describe("S3rver Tests", function() {
   });
 
   it("should trigger a Put event", async function() {
-    const eventPromise = server.s3Event.pipe(take(1)).toPromise();
+    const eventPromise = fromEvent(server, "event")
+      .pipe(take(1))
+      .toPromise();
     const body = "Hello!";
     await s3Client
       .putObject({ Bucket: buckets[0], Key: "testPutKey", Body: body })
@@ -232,7 +237,9 @@ describe("S3rver Tests", function() {
     await s3Client
       .putObject({ Bucket: buckets[0], Key: "testPut", Body: body })
       .promise();
-    const eventPromise = server.s3Event.pipe(take(1)).toPromise();
+    const eventPromise = fromEvent(server, "event")
+      .pipe(take(1))
+      .toPromise();
     await s3Client
       .copyObject({
         Bucket: buckets[4],
@@ -258,7 +265,9 @@ describe("S3rver Tests", function() {
         Body: body
       })
       .promise();
-    const eventPromise = server.s3Event.pipe(take(1)).toPromise();
+    const eventPromise = fromEvent(server, "event")
+      .pipe(take(1))
+      .toPromise();
     await s3Client
       .deleteObject({ Bucket: buckets[0], Key: "testDelete" })
       .promise();
@@ -630,10 +639,6 @@ describe("S3rver Tests", function() {
     }
     expect(error).to.exist;
     expect(error.statusCode).to.equal(416);
-    expect(error.response.headers).to.have.property(
-      "content-range",
-      `bytes */${filesize}`
-    );
   });
 
   it("partial out of bounds range requests should return actual length of returned data", async function() {
@@ -1096,6 +1101,7 @@ describe("S3rver CORS Policy Tests", function() {
   const bucket = "foobars";
   let s3Client;
 
+  before("Reset buckets", resetTmpDir);
   before("Initialize bucket", async function() {
     const server = new S3rver({
       port: 4569,
@@ -1419,128 +1425,290 @@ describe("S3rver CORS Policy Tests", function() {
   });
 });
 
-describe("S3rver Tests with Static Web Hosting", function() {
+describe("S3rver Static Website Tests", function() {
+  const bucket = "site";
   let s3Client;
-  let server;
 
-  beforeEach("Reset site bucket", resetTmpDir);
-  beforeEach("Start server", async function() {
-    server = new S3rver({
+  beforeEach("Reset buckets", resetTmpDir);
+  beforeEach("Initialize site bucket", async function() {
+    const server = new S3rver({
+      port: 4569,
+      silent: true
+    });
+    const { port } = await server.run();
+    try {
+      s3Client = new AWS.S3({
+        accessKeyId: "123",
+        secretAccessKey: "abc",
+        endpoint: `http://localhost:${port}`,
+        sslEnabled: false,
+        s3ForcePathStyle: true
+      });
+      await s3Client.createBucket({ Bucket: bucket }).promise();
+    } finally {
+      await server.close();
+    }
+  });
+
+  it("should upload a html page to / path", async function() {
+    const server = new S3rver({
       port: 4569,
       silent: true,
       indexDocument: "index.html",
       errorDocument: ""
     });
-    const { port } = await server.run();
-
-    s3Client = new AWS.S3({
-      accessKeyId: "123",
-      secretAccessKey: "abc",
-      endpoint: `http://localhost:${port}`,
-      sslEnabled: false,
-      s3ForcePathStyle: true
-    });
-  });
-
-  afterEach("Close server", function(done) {
-    server.close(done);
-  });
-
-  it("should upload a html page to / path", async function() {
-    const bucket = "site";
-    await s3Client.createBucket({ Bucket: bucket }).promise();
-    const data = await s3Client
-      .putObject({
-        Bucket: bucket,
-        Key: "index.html",
-        Body: "<html><body>Hello</body></html>"
-      })
-      .promise();
-    expect(data.ETag).to.match(/[a-fA-F0-9]{32}/);
+    await server.run();
+    try {
+      const data = await s3Client
+        .putObject({
+          Bucket: bucket,
+          Key: "index.html",
+          Body: "<html><body>Hello</body></html>"
+        })
+        .promise();
+      expect(data.ETag).to.match(/[a-fA-F0-9]{32}/);
+    } finally {
+      await server.close();
+    }
   });
 
   it("should upload a html page to a directory path", async function() {
-    const bucket = "site";
-    await s3Client.createBucket({ Bucket: bucket }).promise();
-    const data = await s3Client
-      .putObject({
-        Bucket: bucket,
-        Key: "page/index.html",
-        Body: "<html><body>Hello</body></html>"
-      })
-      .promise();
-    expect(data.ETag).to.match(/[a-fA-F0-9]{32}/);
+    const server = new S3rver({
+      port: 4569,
+      silent: true,
+      indexDocument: "index.html",
+      errorDocument: ""
+    });
+    await server.run();
+    try {
+      const data = await s3Client
+        .putObject({
+          Bucket: bucket,
+          Key: "page/index.html",
+          Body: "<html><body>Hello</body></html>"
+        })
+        .promise();
+      expect(data.ETag).to.match(/[a-fA-F0-9]{32}/);
+    } finally {
+      await server.close();
+    }
+  });
+
+  it("should fail to read an object at the website endpoint from a bucket with no website configuration", async function() {
+    const bucket = "bucket1";
+    const server = new S3rver({
+      port: 4569,
+      silent: true
+    });
+    await server.run();
+    let error;
+    try {
+      await s3Client.createBucket({ Bucket: bucket }).promise();
+      await s3Client
+        .putObject({
+          Bucket: bucket,
+          Key: "page/index.html",
+          Body: "<html><body>Hello</body></html>"
+        })
+        .promise();
+      await request({
+        baseUrl: s3Client.endpoint.href,
+        uri: "page/",
+        headers: { host: `${bucket}.s3-website-us-east-1.amazonaws.com` }
+      });
+    } catch (err) {
+      error = err;
+    } finally {
+      await server.close();
+    }
+    expect(error).to.exist;
+    expect(error.statusCode).to.equal(404);
+    expect(error.response.headers).to.have.property(
+      "content-type",
+      "text/html; charset=utf-8"
+    );
+    expect(error.response.body).to.contain("Code: NoSuchWebsiteConfiguration");
   });
 
   it("should get an index page at / path", async function() {
-    const bucket = "site";
-    await s3Client.createBucket({ Bucket: bucket }).promise();
-    const expectedBody = "<html><body>Hello</body></html>";
-    await s3Client
-      .putObject({ Bucket: bucket, Key: "index.html", Body: expectedBody })
-      .promise();
-    const body = await request(s3Client.endpoint.href + "site/");
-    expect(body).to.equal(expectedBody);
+    const server = new S3rver({
+      port: 4569,
+      silent: true,
+      indexDocument: "index.html",
+      errorDocument: ""
+    });
+    await server.run();
+    try {
+      const expectedBody = "<html><body>Hello</body></html>";
+      await s3Client
+        .putObject({ Bucket: bucket, Key: "index.html", Body: expectedBody })
+        .promise();
+      const body = await request({
+        baseUrl: s3Client.endpoint.href,
+        uri: `${bucket}/`,
+        headers: { accept: "text/html" }
+      });
+      expect(body).to.equal(expectedBody);
+    } finally {
+      await server.close();
+    }
   });
 
   it("should get an index page at /page/ path", async function() {
-    const bucket = "site";
-    await s3Client.createBucket({ Bucket: bucket }).promise();
-    const expectedBody = "<html><body>Hello</body></html>";
-    await s3Client
-      .putObject({
-        Bucket: bucket,
-        Key: "page/index.html",
-        Body: expectedBody
-      })
-      .promise();
-    const body = await request(s3Client.endpoint.href + "site/page/");
-    expect(body).to.equal(expectedBody);
+    const server = new S3rver({
+      port: 4569,
+      silent: true,
+      indexDocument: "index.html",
+      errorDocument: ""
+    });
+    await server.run();
+    try {
+      const expectedBody = "<html><body>Hello</body></html>";
+      await s3Client
+        .putObject({
+          Bucket: bucket,
+          Key: "page/index.html",
+          Body: expectedBody
+        })
+        .promise();
+      const body = await request({
+        baseUrl: s3Client.endpoint.href,
+        uri: `${bucket}/page/`,
+        headers: { accept: "text/html" }
+      });
+      expect(body).to.equal(expectedBody);
+    } finally {
+      await server.close();
+    }
   });
 
-  it("should get a 404 error page", async function() {
-    const bucket = "site";
-    await s3Client.createBucket({ Bucket: bucket }).promise();
+  it("should get a 302 redirect at /page path", async function() {
+    const server = new S3rver({
+      port: 4569,
+      silent: true,
+      indexDocument: "index.html",
+      errorDocument: ""
+    });
+    await server.run();
     let error;
     try {
-      await request(s3Client.endpoint.href + "site/page/not-exists");
+      const body = "<html><body>Hello</body></html>";
+      await s3Client
+        .putObject({
+          Bucket: bucket,
+          Key: "page/index.html",
+          Body: body
+        })
+        .promise();
+      await request({
+        baseUrl: s3Client.endpoint.href,
+        uri: `${bucket}/page`,
+        headers: { accept: "text/html" },
+        followRedirect: false
+      });
     } catch (err) {
       error = err;
-      expect(err.statusCode).to.equal(404);
-      expect(err.response.headers).to.have.property(
-        "content-type",
-        "text/html"
-      );
+    } finally {
+      await server.close();
     }
     expect(error).to.exist;
+    expect(error.statusCode).to.equal(302);
+    expect(error.response.headers).to.have.property(
+      "location",
+      `/${bucket}/page/`
+    );
+  });
+
+  it("should get a 302 redirect at /page path for vhost-style bucket", async function() {
+    const server = new S3rver({
+      port: 4569,
+      silent: true,
+      indexDocument: "index.html",
+      errorDocument: ""
+    });
+    await server.run();
+    let error;
+    try {
+      const body = "<html><body>Hello</body></html>";
+      await s3Client
+        .putObject({
+          Bucket: bucket,
+          Key: "page/index.html",
+          Body: body
+        })
+        .promise();
+      await request({
+        baseUrl: s3Client.endpoint.href,
+        uri: "page",
+        headers: { host: `${bucket}.s3-website-us-east-1.amazonaws.com` },
+        followRedirect: false
+      });
+    } catch (err) {
+      error = err;
+    } finally {
+      await server.close();
+    }
+    expect(error).to.exist;
+    expect(error.statusCode).to.equal(302);
+    expect(error.response.headers).to.have.property("location", "/page/");
+  });
+
+  it("should get an HTML 404 error page", async function() {
+    const server = new S3rver({
+      port: 4569,
+      silent: true,
+      indexDocument: "index.html",
+      errorDocument: ""
+    });
+    await server.run();
+    let error;
+    try {
+      await request({
+        baseUrl: s3Client.endpoint.href,
+        uri: `${bucket}/page/not-exists`,
+        headers: { accept: "text/html" }
+      });
+    } catch (err) {
+      error = err;
+    } finally {
+      await server.close();
+    }
+    expect(error).to.exist;
+    expect(error.statusCode).to.equal(404);
+    expect(error.response.headers).to.have.property(
+      "content-type",
+      "text/html; charset=utf-8"
+    );
+  });
+
+  it("should get an XML error document for SDK requests", async function() {
+    const server = new S3rver({
+      port: 4569,
+      silent: true,
+      indexDocument: "index.html",
+      errorDocument: ""
+    });
+    await server.run();
+    let error;
+    try {
+      await s3Client
+        .getObject({
+          Bucket: bucket,
+          Key: "page/not-exists"
+        })
+        .promise();
+    } catch (err) {
+      error = err;
+    } finally {
+      await server.close();
+    }
+    expect(error).to.exist;
+    expect(error.statusCode).to.equal(404);
+    expect(error.code).to.equal("NoSuchKey");
   });
 });
 
 describe("S3rver Class Tests", function() {
-  it("should merge default options with provided options", function() {
-    const s3rver = new S3rver({
-      hostname: "testhost",
-      indexDocument: "index.html",
-      errorDocument: "",
-      directory: "./testdir",
-      key: new Buffer([1, 2, 3]),
-      cert: new Buffer([1, 2, 3]),
-      removeBucketsOnClose: true
-    });
-
-    expect(s3rver.options).to.have.property("hostname", "testhost");
-    expect(s3rver.options).to.have.property("port", 4578);
-    expect(s3rver.options).to.have.property("silent", false);
-    expect(s3rver.options).to.have.property("indexDocument", "index.html");
-    expect(s3rver.options).to.have.property("errorDocument", "");
-    expect(s3rver.options).to.have.property("directory", "./testdir");
-    expect(s3rver.options).to.have.property("key");
-    expect(s3rver.options).to.have.property("cert");
-    expect(s3rver.options.key).to.be.an.instanceOf(Buffer);
-    expect(s3rver.options.cert).to.be.an.instanceOf(Buffer);
-    expect(s3rver.options).to.have.property("removeBucketsOnClose", true);
-  });
-
   it("should support running on port 0", async function() {
     const server = new S3rver({
       port: 0,
