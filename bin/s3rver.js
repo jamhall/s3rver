@@ -14,10 +14,10 @@ function ensureDirectory(directory) {
 }
 
 // manually parse [config...] arguments for --create-bucket
-function parseCreateBucket(bucketName, memo = []) {
+function parseConfigureBucket(bucketName, memo = []) {
   let idx = 0;
   do {
-    idx = program.rawArgs.indexOf("--create-bucket", idx) + 1;
+    idx = program.rawArgs.indexOf("--configure-bucket", idx) + 1;
   } while (program.rawArgs[idx] !== bucketName);
   idx++;
 
@@ -62,9 +62,9 @@ program
   // NOTE: commander doesn't actually support options with multiple parts,
   // we must manually parse this option
   .option(
-    "--create-bucket <name> [configs...]",
-    "Bucket name and configuration files for prefabricating a bucket at startup",
-    parseCreateBucket
+    "--configure-bucket <name> [configs...]",
+    "Bucket name and configuration files for creating and configuring a bucket at startup",
+    parseConfigureBucket
   )
   .version(pkg.version, "-v, --version");
 
@@ -73,14 +73,14 @@ program.on("--help", () => {
   console.log("Examples:");
   console.log("  $ s3rver -d /tmp/s3rver -a 0.0.0.0 -p 0");
   console.log(
-    "  $ s3rver -d /tmp/s3rver --create-bucket test-bucket ./cors.xml ./website.xml"
+    "  $ s3rver -d /tmp/s3rver --configure-bucket test-bucket ./cors.xml ./website.xml"
   );
 });
 
 try {
   program.parse(process.argv);
-  program.prefabBuckets = program.createBucket;
-  delete program.createBucket;
+  program.configureBuckets = program.configureBucket;
+  delete program.configureBucket;
 } catch (err) {
   console.error("error: %s", err.message);
   process.exit(1);

@@ -63,10 +63,10 @@ describe("S3rver Class Tests", function() {
     expect(port).to.be.above(0);
   });
 
-  it("should create prefabricated buckets on startup", async function() {
+  it("should create preconfigured buckets on startup", async function() {
     const buckets = [{ name: "bucket1" }, { name: "bucket2" }];
     const server = new S3rver({
-      prefabBuckets: buckets
+      configureBuckets: buckets
     });
     const { port } = await server.run();
     const s3Client = new AWS.S3({
@@ -84,7 +84,7 @@ describe("S3rver Class Tests", function() {
     }
   });
 
-  it("should create a prefabricated bucket with configs on startup", async function() {
+  it("should create a preconfigured bucket with configs on startup", async function() {
     const bucket = {
       name: "bucket1",
       configs: [
@@ -93,7 +93,7 @@ describe("S3rver Class Tests", function() {
       ]
     };
     const server = new S3rver({
-      prefabBuckets: [bucket]
+      configureBuckets: [bucket]
     });
     const { port } = await server.run();
     const s3Client = new AWS.S3({
@@ -118,7 +118,7 @@ describe("S3rver Class Tests", function() {
 
     const server = new S3rver({
       resetOnClose: true,
-      prefabBuckets: [bucket]
+      configureBuckets: [bucket]
     });
     const { port } = await server.run();
     const s3Client = new AWS.S3({
@@ -141,7 +141,7 @@ describe("S3rver Class Tests", function() {
 
     const server = new S3rver({
       resetOnClose: false,
-      prefabBuckets: [bucket]
+      configureBuckets: [bucket]
     });
     const { port } = await server.run();
     const s3Client = new AWS.S3({
@@ -163,7 +163,7 @@ describe("S3rver Class Tests", function() {
     const bucket = { name: "foobars" };
 
     const server = new S3rver({
-      prefabBuckets: [bucket]
+      configureBuckets: [bucket]
     });
     const { port } = await server.run();
     const s3Client = new AWS.S3({
@@ -185,7 +185,7 @@ describe("S3rver Class Tests", function() {
     const bucket = { name: "foobars" };
 
     const server = new S3rver({
-      prefabBuckets: [bucket]
+      configureBuckets: [bucket]
     });
     const { port } = await server.run();
     const s3Client = new AWS.S3({
@@ -254,7 +254,7 @@ describe("S3rver Tests", function() {
   beforeEach("Reset buckets", resetTmpDir);
   beforeEach("Start server and create buckets", async function() {
     server = new S3rver({
-      prefabBuckets: buckets
+      configureBuckets: buckets
     });
     const { port } = await server.run();
 
@@ -1264,7 +1264,7 @@ describe("S3 Event Notification Tests", function() {
   beforeEach("Reset buckets", resetTmpDir);
   beforeEach("Start server and create buckets", async function() {
     server = new S3rver({
-      prefabBuckets: buckets
+      configureBuckets: buckets
     });
     const { port } = await server.run();
 
@@ -1376,7 +1376,7 @@ describe("S3rver CORS Policy Tests", function() {
     let error;
     try {
       const server = new S3rver({
-        prefabBuckets: [
+        configureBuckets: [
           {
             name: "bucket0",
             configs: [fs.readFileSync("./test/resources/cors_invalid0.xml")]
@@ -1394,7 +1394,7 @@ describe("S3rver CORS Policy Tests", function() {
 
   it("should fail to initialize a configuration with an illegal AllowedMethod", async function() {
     const server = new S3rver({
-      prefabBuckets: [
+      configureBuckets: [
         {
           name: "bucket1",
           configs: [fs.readFileSync("./test/resources/cors_invalid1.xml")]
@@ -1416,7 +1416,7 @@ describe("S3rver CORS Policy Tests", function() {
 
   it("should fail to initialize a configuration with missing required fields", async function() {
     const server = new S3rver({
-      prefabBuckets: [
+      configureBuckets: [
         {
           name: "bucket2",
           configs: [fs.readFileSync("./test/resources/cors_invalid2.xml")]
@@ -1437,7 +1437,7 @@ describe("S3rver CORS Policy Tests", function() {
   it("should put a CORS configuration in an unconfigured bucket", async function() {
     const bucket = { name: "cors-put" };
     const server = new S3rver({
-      prefabBuckets: [bucket]
+      configureBuckets: [bucket]
     });
     const { port } = await server.run();
     const s3Client = new AWS.S3({
@@ -1469,7 +1469,7 @@ describe("S3rver CORS Policy Tests", function() {
 
   it("should delete a CORS configuration in an configured bucket", async function() {
     const server = new S3rver({
-      prefabBuckets: [buckets[0]]
+      configureBuckets: [buckets[0]]
     });
     const { port } = await server.run();
     const s3Client = new AWS.S3({
@@ -1500,7 +1500,7 @@ describe("S3rver CORS Policy Tests", function() {
     };
 
     const server = new S3rver({
-      prefabBuckets: [bucket]
+      configureBuckets: [bucket]
     });
     const { port } = await server.run();
     const s3Client = new AWS.S3({
@@ -1538,7 +1538,7 @@ describe("S3rver CORS Policy Tests", function() {
   it("should add the Access-Control-Allow-Origin header for a matching origin", async function() {
     const origin = "http://a-test.example.com";
     const server = new S3rver({
-      prefabBuckets: [buckets[0]]
+      configureBuckets: [buckets[0]]
     });
     const { port } = await server.run();
     const s3Client = new AWS.S3({
@@ -1579,7 +1579,7 @@ describe("S3rver CORS Policy Tests", function() {
   it("should match an origin to a CORSRule with a wildcard character", async function() {
     const origin = "http://foo.bar.com";
     const server = new S3rver({
-      prefabBuckets: [buckets[0]]
+      configureBuckets: [buckets[0]]
     });
     const { port } = await server.run();
     const s3Client = new AWS.S3({
@@ -1620,7 +1620,7 @@ describe("S3rver CORS Policy Tests", function() {
   it("should not add the Access-Control-Allow-Origin header for a non-matching origin", async function() {
     const origin = "http://b-test.example.com";
     const server = new S3rver({
-      prefabBuckets: [buckets[0]]
+      configureBuckets: [buckets[0]]
     });
     const { port } = await server.run();
     const s3Client = new AWS.S3({
@@ -1658,7 +1658,7 @@ describe("S3rver CORS Policy Tests", function() {
   it("should expose appropriate headers for a range request", async function() {
     const origin = "http://a-test.example.com";
     const server = new S3rver({
-      prefabBuckets: [buckets[0]]
+      configureBuckets: [buckets[0]]
     });
     const { port } = await server.run();
     const s3Client = new AWS.S3({
@@ -1699,7 +1699,7 @@ describe("S3rver CORS Policy Tests", function() {
   it("should respond to OPTIONS requests with allowed headers", async function() {
     const origin = "http://foo.bar.com";
     const server = new S3rver({
-      prefabBuckets: [buckets[0]]
+      configureBuckets: [buckets[0]]
     });
     const { port } = await server.run();
     const s3Client = new AWS.S3({
@@ -1738,7 +1738,7 @@ describe("S3rver CORS Policy Tests", function() {
   it("should respond to OPTIONS requests with a Forbidden response", async function() {
     const origin = "http://a-test.example.com";
     const server = new S3rver({
-      prefabBuckets: [buckets[0]]
+      configureBuckets: [buckets[0]]
     });
     const { port } = await server.run();
     const s3Client = new AWS.S3({
@@ -1776,7 +1776,7 @@ describe("S3rver CORS Policy Tests", function() {
     const origin = "http://foo.bar.com";
     const bucket = { name: "foobar" };
     const server = new S3rver({
-      prefabBuckets: [bucket]
+      configureBuckets: [bucket]
     });
     const { port } = await server.run();
     const s3Client = new AWS.S3({
@@ -1813,7 +1813,7 @@ describe("S3rver CORS Policy Tests", function() {
   it("should respond correctly to OPTIONS requests that dont specify access-control-request-headers", async function() {
     const origin = "http://a-test.example.com";
     const server = new S3rver({
-      prefabBuckets: [buckets[0]]
+      configureBuckets: [buckets[0]]
     });
     const { port } = await server.run();
     const s3Client = new AWS.S3({
@@ -1857,7 +1857,7 @@ describe("S3rver Static Website Tests", function() {
   it("should put a website configuration in an unconfigured bucket", async function() {
     const bucket = { name: "website-put" };
     const server = new S3rver({
-      prefabBuckets: [bucket]
+      configureBuckets: [bucket]
     });
     const { port } = await server.run();
     const s3Client = new AWS.S3({
@@ -1886,7 +1886,7 @@ describe("S3rver Static Website Tests", function() {
 
   it("should delete a website configuration in an configured bucket", async function() {
     const server = new S3rver({
-      prefabBuckets: [buckets[0]]
+      configureBuckets: [buckets[0]]
     });
     const { port } = await server.run();
     const s3Client = new AWS.S3({
@@ -1912,7 +1912,7 @@ describe("S3rver Static Website Tests", function() {
   it("should fail to read an object at the website endpoint from a bucket with no website configuration", async function() {
     const bucket = { name: "bucket1" };
     const server = new S3rver({
-      prefabBuckets: [bucket]
+      configureBuckets: [bucket]
     });
     const { port } = await server.run();
     const s3Client = new AWS.S3({
@@ -1952,7 +1952,7 @@ describe("S3rver Static Website Tests", function() {
 
   it("should get an index page at / path", async function() {
     const server = new S3rver({
-      prefabBuckets: [buckets[0]]
+      configureBuckets: [buckets[0]]
     });
     const { port } = await server.run();
     const s3Client = new AWS.S3({
@@ -1984,7 +1984,7 @@ describe("S3rver Static Website Tests", function() {
 
   it("should get an index page at /page/ path", async function() {
     const server = new S3rver({
-      prefabBuckets: [buckets[0]]
+      configureBuckets: [buckets[0]]
     });
     const { port } = await server.run();
     const s3Client = new AWS.S3({
@@ -2016,7 +2016,7 @@ describe("S3rver Static Website Tests", function() {
 
   it("should not get an index page at /page/ path if an object is stored there", async function() {
     const server = new S3rver({
-      prefabBuckets: [buckets[0]]
+      configureBuckets: [buckets[0]]
     });
     const { port } = await server.run();
     const s3Client = new AWS.S3({
@@ -2057,7 +2057,7 @@ describe("S3rver Static Website Tests", function() {
 
   it("should get a 302 redirect at /page path", async function() {
     const server = new S3rver({
-      prefabBuckets: [buckets[0]]
+      configureBuckets: [buckets[0]]
     });
     const { port } = await server.run();
     const s3Client = new AWS.S3({
@@ -2098,7 +2098,7 @@ describe("S3rver Static Website Tests", function() {
 
   it("should get a 302 redirect at /page path for vhost-style bucket", async function() {
     const server = new S3rver({
-      prefabBuckets: [buckets[0]]
+      configureBuckets: [buckets[0]]
     });
     const { port } = await server.run();
     const s3Client = new AWS.S3({
@@ -2138,7 +2138,7 @@ describe("S3rver Static Website Tests", function() {
 
   it("should get a HTML 404 error page", async function() {
     const server = new S3rver({
-      prefabBuckets: [buckets[0]]
+      configureBuckets: [buckets[0]]
     });
     const { port } = await server.run();
     const s3Client = new AWS.S3({
@@ -2174,7 +2174,7 @@ describe("S3rver Static Website Tests", function() {
       configs: [fs.readFileSync("./example/website.xml")]
     };
     const server = new S3rver({
-      prefabBuckets: [bucket]
+      configureBuckets: [bucket]
     });
     const { port } = await server.run();
     const s3Client = new AWS.S3({
@@ -2215,7 +2215,7 @@ describe("S3rver Static Website Tests", function() {
 
   it("should return a XML error document for SDK requests", async function() {
     const server = new S3rver({
-      prefabBuckets: [buckets[0]]
+      configureBuckets: [buckets[0]]
     });
     const { port } = await server.run();
     const s3Client = new AWS.S3({

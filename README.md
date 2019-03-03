@@ -94,17 +94,17 @@ You can also run s3rver programmatically.
 Creates a S3rver instance
 
 <!-- prettier-ignore-start -->
-| Option                      | Type                 | Default     | Description
-| --------------------------- | -------------------- | ----------- | -----------
-| address                     | `string`             | `localhost` | Host/IP to bind to
-| port                        | `number`             | `4568`      | Port of the HTTP server
-| key                         | `string` \| `Buffer` |             | Private key for running with TLS
-| cert                        | `string` \| `Buffer` |             | Certificate for running with TLS
-| silent                      | `boolean`            | `false`     | Suppress log messages
-| directory                   | `string`             |             | Data directory
-| removeBucketsOnClose        | `boolean`            | `false`     | Remove all bucket data on server close
-| prefabBuckets\[].name       | `string`             |             | The name of a prefabricated bucket to create when the server starts
-| prefabBuckets\[].configs\[] | `string` \| `Buffer` |             | Raw XML string or Buffer of Bucket config
+| Option                         | Type                 | Default     | Description
+| ------------------------------ | -------------------- | ----------- | -----------
+| address                        | `string`             | `localhost` | Host/IP to bind to
+| port                           | `number`             | `4568`      | Port of the HTTP server
+| key                            | `string` \| `Buffer` |             | Private key for running with TLS
+| cert                           | `string` \| `Buffer` |             | Certificate for running with TLS
+| silent                         | `boolean`            | `false`     | Suppress log messages
+| directory                      | `string`             |             | Data directory
+| removeBucketsOnClose           | `boolean`            | `false`     | Remove all bucket data on server close
+| configureBuckets\[].name       | `string`             |             | The name of a prefabricated bucket to create when the server starts
+| configureBuckets\[].configs\[] | `string` \| `Buffer` |             | Raw XML string or Buffer of Bucket config
 <!-- prettier-ignore-end -->
 
 For your convenience, we've provided sample bucket configurations you can access using `require.resolve`:
