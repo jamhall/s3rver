@@ -2242,4 +2242,127 @@ describe("S3rver Static Website Tests", function() {
     expect(error.statusCode).to.equal(404);
     expect(error.code).to.equal("NoSuchKey");
   });
+
+  it("should store an object with website-redirect-location metadata", async function() {
+    const server = new S3rver({
+      configureBuckets: [buckets[0]]
+    });
+    const { port } = await server.run();
+    const s3Client = new AWS.S3({
+      accessKeyId: "123",
+      secretAccessKey: "abc",
+      endpoint: `http://localhost:${port}`,
+      sslEnabled: false,
+      s3ForcePathStyle: true
+    });
+    try {
+      const redirectLocation = "https://github.com/jamhall/s3rver";
+      await s3Client
+        .putObject({
+          Bucket: buckets[0].name,
+          Key: "index.html",
+          Body: "<html><body>Hello</body></html>",
+          WebsiteRedirectLocation: redirectLocation
+        })
+        .promise();
+      const res = await s3Client
+        .getObject({
+          Bucket: buckets[0].name,
+          Key: "index.html"
+        })
+        .promise();
+      expect(res).to.have.property("WebsiteRedirectLocation", redirectLocation);
+    } finally {
+      await server.close();
+    }
+  });
+
+  it("should redirect for an object stored with a website-redirect-location", async function() {
+    const server = new S3rver({
+      configureBuckets: [buckets[0]]
+    });
+    const { port } = await server.run();
+    const s3Client = new AWS.S3({
+      accessKeyId: "123",
+      secretAccessKey: "abc",
+      endpoint: `http://localhost:${port}`,
+      sslEnabled: false,
+      s3ForcePathStyle: true
+    });
+    const redirectLocation = "https://github.com/jamhall/s3rver";
+    let error;
+    try {
+      await s3Client
+        .putObject({
+          Bucket: buckets[0].name,
+          Key: "index.html",
+          Body: "<html><body>Hello</body></html>",
+          WebsiteRedirectLocation: redirectLocation
+        })
+        .promise();
+      await request({
+        baseUrl: s3Client.endpoint.href,
+        uri: `${buckets[0].name}/`,
+        headers: { accept: "text/html" },
+        followRedirect: false
+      });
+    } catch (err) {
+      error = err;
+    } finally {
+      await server.close();
+    }
+    expect(error).to.exist;
+    expect(error.statusCode).to.equal(301);
+    expect(error.response.headers).to.have.property(
+      "location",
+      redirectLocation
+    );
+  });
+
+  it("should redirect for a custom error page stored with a website-redirect-location", async function() {
+    const bucket = {
+      name: "site",
+      configs: [fs.readFileSync("./example/website.xml")]
+    };
+    const server = new S3rver({
+      configureBuckets: [bucket]
+    });
+    const { port } = await server.run();
+    const s3Client = new AWS.S3({
+      accessKeyId: "123",
+      secretAccessKey: "abc",
+      endpoint: `http://localhost:${port}`,
+      sslEnabled: false,
+      s3ForcePathStyle: true
+    });
+    const redirectLocation = "https://github.com/jamhall/s3rver";
+    let error;
+    try {
+      const body = "<html><body>Hello</body></html>";
+      await s3Client
+        .putObject({
+          Bucket: bucket.name,
+          Key: "error.html",
+          Body: body,
+          WebsiteRedirectLocation: redirectLocation
+        })
+        .promise();
+      await request({
+        baseUrl: s3Client.endpoint.href,
+        uri: `${buckets[0].name}/page/`,
+        headers: { accept: "text/html" },
+        followRedirect: false
+      });
+    } catch (err) {
+      error = err;
+    } finally {
+      await server.close();
+    }
+    expect(error).to.exist;
+    expect(error.statusCode).to.equal(301);
+    expect(error.response.headers).to.have.property(
+      "location",
+      redirectLocation
+    );
+  });
 });
