@@ -395,6 +395,23 @@ describe("S3rver Tests", function() {
     expect(data.ETag).to.match(/"[a-fA-F0-9]{32}"/);
   });
 
+  it("should store a text object with invalid win32 path characters and retrieve it", async function() {
+    const reservedChars = '\\/:*?"<>|';
+    await s3Client
+      .putObject({
+        Bucket: buckets[0].name,
+        Key: `mykey-&-${reservedChars}`,
+        Body: "Hello!"
+      })
+      .promise();
+
+    const object = await s3Client
+      .getObject({ Bucket: buckets[0].name, Key: `mykey-&-${reservedChars}` })
+      .promise();
+
+    expect(object.Body.toString()).to.equal("Hello!");
+  });
+
   it("should store a text object with no content type and retrieve it", async function() {
     const res = await request({
       method: "PUT",
