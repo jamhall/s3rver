@@ -50,6 +50,17 @@ $ s3rver --help
 Please see [Fake S3's wiki page](https://github.com/jubos/fake-s3/wiki/Supported-Clients) for a list of supported clients.
 When listening on HTTPS with a self-signed certificate, the AWS SDK in a Node.js environment will need `httpOptions: { agent: new https.Agent({ rejectUnauthorized: false }) }` in order to allow interaction.
 
+If your client only supports signed requests, specify the credentials
+
+```javascript
+{
+  accessKeyId: "S3RVER",
+  secretAccessKey: "S3RVER",
+}
+```
+
+in your client's configuration.
+
 Please test, if you encounter any problems please do not hesitate to open an issue :)
 
 ## Static Website Hosting
