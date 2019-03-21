@@ -1,8 +1,6 @@
 <CORSConfiguration>
     <CORSRule>
-        <AllowedOrigin>*</AllowedOrigin>
-        <!-- Method must be one of GET, PUT, POST, DELETE, HEAD -->
-        <AllowedMethod>*</AllowedMethod>
+        <!-- At least one AllowedOrigin or AllowedMethod must be specified -->
         <MaxAgeSeconds>3000</MaxAgeSeconds>
         <AllowedHeader>*</AllowedHeader>
     </CORSRule>

@@ -54,7 +54,8 @@ Please test, if you encounter any problems please do not hesitate to open an iss
 
 ## Static Website Hosting
 
-If you specify an _indexDocument_ then `GET` requests will serve the _indexDocument_ if it is found, simulating the static website mode of AWS S3. An _errorDocument_ can also be set, to serve a custom 404 page.
+If you specify a [website configuration file](https://docs.aws.amazon.com/AmazonS3/latest/API/RESTBucketPUTwebsite.html#RESTBucketPUTwebsite-examples),
+S3rver supports simulating S3's static website mode for incoming `GET` requests.
 
 ### Hostname Resolution
 
@@ -93,21 +94,39 @@ You can also run s3rver programmatically.
 Creates a S3rver instance
 
 <!-- prettier-ignore-start -->
-
-| Option               | Type                 | Default                                    | Description
-| -------------------- | -------------------- | ------------------------------------------ | -----------
-| port                 | `number`             | `4578`                                     | Port of the mock S3 server
-| hostname             | `string`             | `localhost`                                | Host/IP to bind to
-| key                  | `string` \| `Buffer` |                                            | Private key for running with TLS
-| cert                 | `string` \| `Buffer` |                                            | Certificate for running with TLS
-| silent               | `boolean`            | `false`                                    | Suppress log messages
-| directory            | `string`             |                                            | Data directory
-| cors                 | `string` \| `Buffer` | [S3 Sample policy](cors_sample_policy.xml) | Raw XML string or Buffer of CORS policy
-| indexDocument        | `string`             |                                            | Index document for static web hosting
-| errorDocument        | `string`             |                                            | Error document for static web hosting
-| removeBucketsOnClose | `boolean`            | `false`                                    | Remove all bucket data on server close 
-
+| Option                         | Type                 | Default     | Description
+| ------------------------------ | -------------------- | ----------- | -----------
+| address                        | `string`             | `localhost` | Host/IP to bind to
+| port                           | `number`             | `4568`      | Port of the HTTP server
+| key                            | `string` \| `Buffer` |             | Private key for running with TLS
+| cert                           | `string` \| `Buffer` |             | Certificate for running with TLS
+| silent                         | `boolean`            | `false`     | Suppress log messages
+| directory                      | `string`             |             | Data directory
+| removeBucketsOnClose           | `boolean`            | `false`     | Remove all bucket data on server close
+| configureBuckets\[].name       | `string`             |             | The name of a prefabricated bucket to create when the server starts
+| configureBuckets\[].configs\[] | `string` \| `Buffer` |             | Raw XML string or Buffer of Bucket config
 <!-- prettier-ignore-end -->
+
+For your convenience, we've provided sample bucket configurations you can access using `require.resolve`:
+
+```javascript
+const corsConfig = require.resolve("s3rver/example/cors.xml");
+const websiteConfig = require.resolve("s3rver/example/website.xml");
+
+const s3rver = new S3rver({
+  prefabBuckets: [
+    {
+      name: "test-bucket",
+      configs: [fs.readFileSync(corsConfig), fs.readFileSync(websiteConfig)]
+    }
+  ]
+});
+```
+
+Additional reference for defining these configurations can be found here:
+
+- CORS: https://docs.aws.amazon.com/AmazonS3/latest/API/RESTBucketPUTcors.html
+- Static website: https://docs.aws.amazon.com/AmazonS3/latest/API/RESTBucketPUTwebsite.html
 
 ### s3rver.run(callback)
 
@@ -158,11 +177,11 @@ const instance = new S3rver({
   hostname: "localhost",
   silent: false,
   directory: "/tmp/s3rver_test_directory"
-}).run((err, { address, port }) => {
+}).run((err, { address, port } = {}) => {
   if (err) {
     console.error(err);
   } else {
-    console.log("now listening on host %s and port %d", address, port);
+    console.log("now listening at address %s and port %d", address, port);
   }
 });
 
