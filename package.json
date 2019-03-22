@@ -1,24 +1,7 @@
 {
   "name": "s3rver",
-  "version": "2.2.9",
+  "version": "3.0.0",
   "description": "Fake S3 server for node",
-  "main": "lib/index.js",
-  "scripts": {
-    "test": "mocha --require co-mocha --timeout 30000 --reporter spec --ui bdd",
-    "prettier-check": "prettier-check --ignore-path .gitignore \"**/*.js\"",
-    "prettier-fix": "prettier --ignore-path .gitignore --write \"**/*.js\"",
-    "eslint": "eslint --ignore-path .gitignore \"**/*.js\"",
-    "eslint-fix": "eslint --ignore-path .gitignore --fix \"**/*.js\""
-  },
-  "author": {
-    "name": "Jamie Hall",
-    "email": "hello@jamiehall.eu",
-    "url": "http://github.com/jamhall/s3rver"
-  },
-  "bin": {
-    "s3rver": "bin/s3rver.js"
-  },
-  "license": "MIT",
   "keywords": [
     "fake",
     "s3",
@@ -27,26 +10,59 @@
     "false",
     "amazon"
   ],
+  "author": {
+    "name": "Jamie Hall",
+    "email": "hello@jamiehall.eu",
+    "url": "http://github.com/jamhall/s3rver"
+  },
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git@github.com:jamhall/s3rver.git"
+  },
+  "bugs": {
+    "url": "https://github.com/jamhall/s3rver/issues"
+  },
+  "homepage": "https://github.com/jamhall/s3rver",
+  "scripts": {
+    "test": "mocha --timeout 10000 --reporter spec --ui bdd",
+    "prettier-check": "prettier-check --ignore-path .gitignore \"**/*.{js,md}\"",
+    "prettier-fix": "prettier --ignore-path .gitignore --write \"**/*.{js,md}\"",
+    "eslint": "eslint --ignore-path .gitignore \"**/*.js\"",
+    "eslint-fix": "eslint --ignore-path .gitignore --fix \"**/*.js\""
+  },
+  "main": "lib/s3rver.js",
+  "files": [
+    "bin/**/*",
+    "lib/**/*",
+    "example/*.xml"
+  ],
+  "bin": {
+    "s3rver": "bin/s3rver"
+  },
+  "directories": {
+    "lib": "./lib",
+    "example": "./example",
+    "test": "./test"
+  },
+  "engines": {
+    "node": ">=8.3.0"
+  },
   "dependencies": {
-    "async": "^2.0.0",
     "commander": "^2.6.0",
-    "concat-stream": "^2.0.0",
-    "express": "^4.10.6",
+    "fast-xml-parser": "^3.12.13",
     "fs-extra": "^7.0.0",
-    "jstoxml": "^1.0.0",
+    "koa": "^2.7.0",
+    "koa-logger": "^3.2.0",
+    "koa-router": "^7.4.0",
     "lodash": "^4.17.5",
-    "morgan": "^1.5.1",
-    "promise-limit": "^2.6.0",
-    "rxjs": "^6.0.0",
-    "winston": "^3.0.0",
-    "xml2js": "^0.4.4",
-    "xmlbuilder": "^11.0.0"
+    "statuses": "^1.5.0",
+    "winston": "^3.0.0"
   },
   "devDependencies": {
     "aws-sdk": "2.423.0",
     "chai": "4.2.0",
     "chai-as-promised": "7.1.1",
-    "co-mocha": "1.2.2",
     "eslint": "5.15.3",
     "eslint-config-prettier": "4.1.0",
     "md5": "2.2.1",
@@ -54,18 +70,9 @@
     "moment": "2.24.0",
     "prettier": "1.16.4",
     "prettier-check": "2.0.0",
+    "promise-limit": "2.7.0",
     "request": "2.88.0",
-    "request-promise-native": "1.0.7"
-  },
-  "engines": {
-    "node": ">=6.0.0"
-  },
-  "bugs": {
-    "url": "https://github.com/jamhall/s3rver/issues"
-  },
-  "repository": {
-    "type": "git",
-    "url": "git@github.com:jamhall/s3rver.git"
-  },
-  "homepage": "https://github.com/jamhall/s3rver"
+    "request-promise-native": "1.0.7",
+    "rxjs": "6.4.0"
+  }
 }

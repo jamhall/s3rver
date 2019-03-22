@@ -1,0 +1,10 @@
+<CORSConfiguration>
+    <CORSRule>
+        <!-- Only one wildcard is allowed -->
+        <AllowedOrigin>https://*.*</AllowedOrigin>
+        <AllowedMethod>HEAD</AllowedMethod>
+        <AllowedMethod>GET</AllowedMethod>
+        <MaxAgeSeconds>3000</MaxAgeSeconds>
+        <AllowedHeader>*</AllowedHeader>
+    </CORSRule>
+</CORSConfiguration>

@@ -11,7 +11,7 @@
   "packageRules": [
     {
       "packageNames": ["aws-sdk"],
-      "schedule": ["on monday"]
+      "schedule": ["before 5am on monday"]
     }
   ],
   "rebaseStalePrs": true,

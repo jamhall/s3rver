@@ -1,65 +1,101 @@
 #!/usr/bin/env node
 "use strict";
 
+/* eslint-disable no-console */
+
 const fs = require("fs-extra");
 const program = require("commander");
 const pkg = require("../package.json");
 const S3rver = require("..");
 
-program.version(pkg.version, "--version");
-program
-  .option(
-    "-h, --hostname [value]",
-    "Set the host name or IP to bind to",
-    "localhost"
-  )
-  .option("-p, --port <n>", "Set the port of the http server", 4568)
-  .option("-s, --silent", "Suppress log messages", false)
-  .option("-i, --indexDocument [path]", "Index Document for Static Web Hosting")
-  .option(
-    "-e, --errorDocument [path]",
-    "Custom Error Document for Static Web Hosting"
-  )
-  .option("-d, --directory [path]", "Data directory")
-  .option("-c, --cors [path]", "Path to S3 CORS configuration XML file")
-  .option("--key [path]", "Path to private key file for running with TLS")
-  .option("--cert [path]", "Path to certificate file for running with TLS")
-  .parse(process.argv);
-
-if (program.directory === undefined) {
-  // eslint-disable-next-line no-console
-  console.error("Data directory -d is required");
-  process.exit(64);
+function ensureDirectory(directory) {
+  fs.ensureDirSync(directory);
+  return directory;
 }
 
-try {
-  const stats = fs.lstatSync(program.directory);
-  if (!stats.isDirectory()) {
-    throw new Error();
+// manually parse [config...] arguments for --create-bucket
+function parseConfigureBucket(bucketName, memo = []) {
+  let idx = 0;
+  do {
+    idx = program.rawArgs.indexOf("--configure-bucket", idx) + 1;
+  } while (program.rawArgs[idx] !== bucketName);
+  idx++;
+
+  const bucketConfigs = [];
+  while (
+    idx < program.rawArgs.length &&
+    !program.rawArgs[idx].startsWith("-")
+  ) {
+    bucketConfigs.push(program.rawArgs[idx++]);
   }
-} catch (e) {
-  // eslint-disable-next-line no-console
-  console.error(
-    "Data directory does not exist. Please create it and then run the command again."
+  memo.push({
+    name: bucketName,
+    configs: bucketConfigs.map(config => fs.readFileSync(config))
+  });
+  return memo;
+}
+
+program
+  .usage("-d <path> [options]")
+  .option("-d, --directory <path>", "Data directory", ensureDirectory)
+  .option(
+    "-a, --address <value>",
+    "Hostname or IP to bind to",
+    S3rver.defaultOptions.address
+  )
+  .option(
+    "-p, --port <n>",
+    "Port of the http server",
+    S3rver.defaultOptions.port
+  )
+  .option("-s, --silent", "Suppress log messages", S3rver.defaultOptions.silent)
+  .option(
+    "--key <path>",
+    "Path to private key file for running with TLS",
+    fs.readFileSync
+  )
+  .option(
+    "--cert <path>",
+    "Path to certificate file for running with TLS",
+    fs.readFileSync
+  )
+  // NOTE: commander doesn't actually support options with multiple parts,
+  // we must manually parse this option
+  .option(
+    "--configure-bucket <name> [configs...]",
+    "Bucket name and configuration files for creating and configuring a bucket at startup",
+    parseConfigureBucket
+  )
+  .version(pkg.version, "-v, --version");
+
+program.on("--help", () => {
+  console.log("");
+  console.log("Examples:");
+  console.log("  $ s3rver -d /tmp/s3rver -a 0.0.0.0 -p 0");
+  console.log(
+    "  $ s3rver -d /tmp/s3rver --configure-bucket test-bucket ./cors.xml ./website.xml"
   );
+});
+
+try {
+  program.parse(process.argv);
+  program.configureBuckets = program.configureBucket;
+  delete program.configureBucket;
+} catch (err) {
+  console.error("error: %s", err.message);
   process.exit(1);
 }
 
-if (program.cors) {
-  program.cors = fs.readFileSync(program.cors);
+if (program.directory === undefined) {
+  console.error("error: data directory -d is required");
+  process.exit(1);
 }
 
-if (program.key && program.cert) {
-  program.key = fs.readFileSync(program.key);
-  program.cert = fs.readFileSync(program.cert);
-}
-
-new S3rver(program).run((err, host, port) => {
+new S3rver(program).run((err, { address, port } = {}) => {
   if (err) {
-    // eslint-disable-next-line no-console
-    console.error(err);
+    console.error(err.message);
     process.exit(1);
   }
-  // eslint-disable-next-line no-console
-  console.log("S3rver listening on %s:%d", host, port);
+  console.log();
+  console.log("S3rver listening on %s:%d", address, port);
 });
