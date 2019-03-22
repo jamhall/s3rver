@@ -1,6 +1,6 @@
 {
   "name": "s3rver",
-  "version": "3.0.0",
+  "version": "3.0.1",
   "description": "Fake S3 server for node",
   "keywords": [
     "fake",
@@ -38,7 +38,7 @@
     "example/*.xml"
   ],
   "bin": {
-    "s3rver": "bin/s3rver"
+    "s3rver": "bin/s3rver.js"
   },
   "directories": {
     "lib": "./lib",
