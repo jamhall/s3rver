@@ -1264,13 +1264,22 @@ describe("S3rver Tests", function() {
     expect(find(data.Deleted, { Key: "doesnotexist" })).to.exist;
   });
 
-  it("should reach the server with a bucket vhost", async function() {
+  it("should reach the server with a bucket subdomain", async function() {
     const body = await request({
       url: s3Client.endpoint.href,
       headers: { host: buckets[0].name + ".s3.amazonaws.com" },
       json: true
     });
-    expect(body).to.include("ListBucketResult");
+    expect(body).to.include(`<Name>${buckets[0].name}</Name>`);
+  });
+
+  it("should reach the server with a bucket vhost", async function() {
+    const body = await request({
+      url: s3Client.endpoint.href,
+      headers: { host: buckets[0].name },
+      json: true
+    });
+    expect(body).to.include(`<Name>${buckets[0].name}</Name>`);
   });
 });
 
