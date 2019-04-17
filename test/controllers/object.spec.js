@@ -1229,5 +1229,31 @@ describe('Operations on Objects', () => {
         .promise();
       expect(data.CopyPartResult.ETag).to.be.ok;
     });
+
+    it('should copy parts from bucket to bucket', async function () {
+      const upload = await s3Client
+        .createMultipartUpload({
+          Bucket: 'bucket-a',
+          Key: 'merged',
+        })
+        .promise();
+      await s3Client
+        .upload({
+          Bucket: 'bucket-b',
+          Key: 'part',
+          Body: Buffer.alloc(20 * Math.pow(1024, 2)), // 20MB
+        })
+        .promise();
+      const data = await s3Client
+        .uploadPartCopy({
+          CopySource: `bucket-b/part`,
+          Bucket: 'bucket-a',
+          Key: 'destination',
+          PartNumber: 1,
+          UploadId: upload.UploadId,
+        })
+        .promise();
+      expect(data.CopyPartResult.ETag).to.be.ok;
+    });
   });
 });
