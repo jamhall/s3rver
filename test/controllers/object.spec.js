@@ -1228,6 +1228,21 @@ describe('Operations on Objects', () => {
         })
         .promise();
       expect(JSON.parse(data.CopyPartResult.ETag)).to.be.ok;
+      await s3Client
+        .completeMultipartUpload({
+          Bucket: 'bucket-a',
+          Key: 'desintation',
+          UploadId: upload.UploadId,
+          MultipartUpload: {
+            Parts: [
+              {
+                ETag: data.CopyPartResult.ETag,
+                PartNumber: 1,
+              },
+            ],
+          },
+        })
+        .promise();
     });
 
     it('should copy parts from bucket to bucket', async function () {
