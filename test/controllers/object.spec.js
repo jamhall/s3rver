@@ -1227,7 +1227,7 @@ describe('Operations on Objects', () => {
           UploadId: upload.UploadId,
         })
         .promise();
-      expect(data.CopyPartResult.ETag).to.be.ok;
+      expect(JSON.parse(data.CopyPartResult.ETag)).to.be.ok;
     });
 
     it('should copy parts from bucket to bucket', async function () {
@@ -1253,7 +1253,7 @@ describe('Operations on Objects', () => {
           UploadId: upload.UploadId,
         })
         .promise();
-      expect(data.CopyPartResult.ETag).to.be.ok;
+      expect(JSON.parse(data.CopyPartResult.ETag)).to.be.ok;
     });
   });
 });
