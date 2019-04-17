@@ -41,9 +41,10 @@ function resetTmpDir() {
 }
 
 function generateTestObjects(s3Client, bucket, amount) {
+  const padding = amount.toString().length;
   const objects = times(amount, i => ({
     Bucket: bucket,
-    Key: "key" + i,
+    Key: "key" + i.toString().padStart(padding, "0"),
     Body: "Hello!"
   }));
 
@@ -1010,6 +1011,7 @@ describe("S3rver Tests", function() {
     expect(data.Name).to.equal(buckets[1].name);
     expect(data.Contents).to.have.lengthOf(testObjects.length);
     expect(data.IsTruncated).to.be.false;
+    expect(data.MaxKeys).to.equal(1000);
   });
 
   it("should list objects in a bucket filtered by a prefix", async function() {
@@ -1066,7 +1068,7 @@ describe("S3rver Tests", function() {
     expect(find(data.Contents, { Key: "akey3" })).to.not.exist;
   });
 
-  it("should list objects in a bucket filtered by a marker", async function() {
+  it("should list objects in a bucket starting after a marker", async function() {
     const testObjects = [
       "akey1",
       "akey2",
@@ -1092,7 +1094,80 @@ describe("S3rver Tests", function() {
     expect(data.Contents).to.have.lengthOf(4);
   });
 
-  it("should list objects in a bucket filtered by a marker and prefix", async function() {
+  it("should list objects in a bucket starting after a key [v2]", async function() {
+    const testObjects = [
+      "akey1",
+      "akey2",
+      "akey3",
+      "key/key1",
+      "key1",
+      "key2",
+      "key3"
+    ];
+    await Promise.all(
+      testObjects.map(key =>
+        s3Client
+          .putObject({ Bucket: buckets[1].name, Key: key, Body: "Hello!" })
+          .promise()
+      )
+    );
+    const data = await s3Client
+      .listObjectsV2({
+        Bucket: buckets[1].name,
+        StartAfter: "akey3"
+      })
+      .promise();
+    expect(data.Contents).to.have.lengthOf(4);
+  });
+
+  it("should list objects in a bucket starting after a nonexistent key [v2]", async function() {
+    const testObjects = [
+      "akey1",
+      "akey2",
+      "akey3",
+      "key/key1",
+      "key1",
+      "key2",
+      "key3"
+    ];
+    await Promise.all(
+      testObjects.map(key =>
+        s3Client
+          .putObject({ Bucket: buckets[1].name, Key: key, Body: "Hello!" })
+          .promise()
+      )
+    );
+    const data = await s3Client
+      .listObjectsV2({
+        Bucket: buckets[1].name,
+        StartAfter: "akey4"
+      })
+      .promise();
+    expect(data.Contents).to.have.lengthOf(4);
+  });
+
+  it("should list prefix/foo after prefix.foo in a bucket [v2]", async function() {
+    const testObjects = ["prefix.foo", "prefix/foo"];
+    await Promise.all(
+      testObjects.map(key =>
+        s3Client
+          .putObject({ Bucket: buckets[1].name, Key: key, Body: "Hello!" })
+          .promise()
+      )
+    );
+    const data = await s3Client
+      .listObjectsV2({
+        Bucket: buckets[1].name,
+        Delimiter: "/",
+        StartAfter: "prefix.foo"
+      })
+      .promise();
+    expect(data.Contents).to.have.lengthOf(0);
+    expect(data.CommonPrefixes).to.have.lengthOf(1);
+    expect(data.CommonPrefixes[0]).to.have.property("Prefix", "prefix/");
+  });
+
+  it("should list objects in a bucket filtered by a prefix starting after a marker", async function() {
     const testObjects = [
       "akey1",
       "akey2",
@@ -1113,9 +1188,10 @@ describe("S3rver Tests", function() {
       .listObjects({ Bucket: buckets[1].name, Prefix: "akey", Marker: "akey2" })
       .promise();
     expect(data.Contents).to.have.lengthOf(1);
+    expect(data.Contents[0]).to.have.property("Key", "akey3");
   });
 
-  it("should list objects in a bucket filtered by a delimiter", async function() {
+  it("should list objects in a bucket filtered prefix starting after a key [v2]", async function() {
     const testObjects = [
       "akey1",
       "akey2",
@@ -1133,13 +1209,42 @@ describe("S3rver Tests", function() {
       )
     );
     const data = await s3Client
-      .listObjects({ Bucket: buckets[1].name, Delimiter: "/" })
+      .listObjectsV2({
+        Bucket: buckets[1].name,
+        Prefix: "akey",
+        StartAfter: "akey2"
+      })
       .promise();
-    expect(data.Contents).to.have.lengthOf(6);
-    expect(find(data.CommonPrefixes, { Prefix: "key/" })).to.exist;
+    expect(data.Contents).to.have.lengthOf(1);
+    expect(data.Contents[0]).to.have.property("Key", "akey3");
   });
 
-  it("should list folders in a bucket filtered by a prefix and a delimiter", async function() {
+  it("should list objects in a bucket filtered by a delimiter [v2]", async function() {
+    const testObjects = [
+      "akey1",
+      "akey2",
+      "akey3",
+      "key/key1",
+      "key1",
+      "key2",
+      "key3"
+    ];
+    await Promise.all(
+      testObjects.map(key =>
+        s3Client
+          .putObject({ Bucket: buckets[1].name, Key: key, Body: "Hello!" })
+          .promise()
+      )
+    );
+    const data = await s3Client
+      .listObjectsV2({ Bucket: buckets[1].name, Delimiter: "/" })
+      .promise();
+    expect(data.Contents).to.have.lengthOf(6);
+    expect(data.CommonPrefixes).to.have.lengthOf(1);
+    expect(data.CommonPrefixes[0]).to.have.property("Prefix", "key/");
+  });
+
+  it("should list folders in a bucket filtered by a prefix and a delimiter [v2]", async function() {
     const testObjects = [
       "folder1/file1.txt",
       "folder1/file2.txt",
@@ -1162,64 +1267,115 @@ describe("S3rver Tests", function() {
     );
 
     const data = await s3Client
-      .listObjects({
+      .listObjectsV2({
         Bucket: buckets[5].name,
         Prefix: "folder1/",
         Delimiter: "/"
       })
       .promise();
     expect(data.CommonPrefixes).to.have.lengthOf(3);
-    expect(find(data.CommonPrefixes, { Prefix: "folder1/folder2/" })).to.exist;
-    expect(find(data.CommonPrefixes, { Prefix: "folder1/folder3/" })).to.exist;
-    expect(find(data.CommonPrefixes, { Prefix: "folder1/folder4/" })).to.exist;
+    expect(data.CommonPrefixes[0]).to.have.property(
+      "Prefix",
+      "folder1/folder2/"
+    );
+    expect(data.CommonPrefixes[1]).to.have.property(
+      "Prefix",
+      "folder1/folder3/"
+    );
+    expect(data.CommonPrefixes[2]).to.have.property(
+      "Prefix",
+      "folder1/folder4/"
+    );
   });
 
-  it("should list no objects because of invalid prefix", async function() {
-    const data = await s3Client
-      .listObjects({ Bucket: buckets[1].name, Prefix: "myinvalidprefix" })
-      .promise();
-    expect(data.Contents).to.have.lengthOf(0);
-  });
-
-  it("should list no objects because of invalid marker", async function() {
-    const data = await s3Client
-      .listObjects({
-        Bucket: buckets[1].name,
-        Marker: "myinvalidmarker"
-      })
-      .promise();
-    expect(data.Contents).to.have.lengthOf(0);
-  });
-
-  it("should generate a few thousand small objects", async function() {
-    this.timeout(30000);
-    const data = await generateTestObjects(s3Client, buckets[2].name, 2000);
-    for (const object of data) {
-      expect(object.ETag).to.match(/[a-fA-F0-9]{32}/);
-    }
-  });
-
-  it("should return one thousand small objects", async function() {
-    this.timeout(30000);
-    await generateTestObjects(s3Client, buckets[2].name, 2000);
-    const data = await s3Client
-      .listObjects({ Bucket: buckets[2].name })
-      .promise();
-    expect(data.IsTruncated).to.be.true;
-    expect(data.Contents).to.have.lengthOf(1000);
-  });
-
-  it("should return 500 small objects", async function() {
+  it("should truncate a listing to 500 objects [v2]", async function() {
     this.timeout(30000);
     await generateTestObjects(s3Client, buckets[2].name, 1000);
     const data = await s3Client
-      .listObjects({ Bucket: buckets[2].name, MaxKeys: 500 })
+      .listObjectsV2({ Bucket: buckets[2].name, MaxKeys: 500 })
       .promise();
     expect(data.IsTruncated).to.be.true;
+    expect(data.KeyCount).to.equal(500);
     expect(data.Contents).to.have.lengthOf(500);
   });
 
-  it("should delete 500 small objects", async function() {
+  it("should report no truncation when setting max keys to 0 [v2]", async function() {
+    await generateTestObjects(s3Client, buckets[2].name, 100);
+    const data = await s3Client
+      .listObjectsV2({ Bucket: buckets[2].name, MaxKeys: 0 })
+      .promise();
+    expect(data.IsTruncated).to.be.false;
+    expect(data.KeyCount).to.equal(0);
+    expect(data.Contents).to.have.lengthOf(0);
+  });
+
+  it("should list at most 1000 objects [v2]", async function() {
+    this.timeout(30000);
+    await generateTestObjects(s3Client, buckets[2].name, 1100);
+    const data = await s3Client
+      .listObjectsV2({ Bucket: buckets[2].name, MaxKeys: 1100 })
+      .promise();
+    expect(data.IsTruncated).to.be.true;
+    expect(data.MaxKeys).to.equal(1100);
+    expect(data.Contents).to.have.lengthOf(1000);
+    expect(data.KeyCount).to.equal(1000);
+  });
+
+  it("should list 100 objects without returning the next marker", async function() {
+    this.timeout(30000);
+    await generateTestObjects(s3Client, buckets[2].name, 200);
+    const data = await s3Client
+      .listObjects({ Bucket: buckets[2].name, MaxKeys: 100 })
+      .promise();
+    expect(data.IsTruncated).to.be.true;
+    expect(data.Contents).to.have.lengthOf(100);
+    expect(data.NextMarker).to.not.exist;
+  });
+
+  it("should list 100 delimited objects and return the next marker", async function() {
+    this.timeout(30000);
+    await generateTestObjects(s3Client, buckets[2].name, 200);
+    const data = await s3Client
+      .listObjects({ Bucket: buckets[2].name, MaxKeys: 100, Delimiter: "/" })
+      .promise();
+    expect(data.IsTruncated).to.be.true;
+    expect(data.Contents).to.have.lengthOf(100);
+    expect(data.NextMarker).to.equal("key099");
+  });
+
+  it("should list 100 objects and return a continuation token [v2]", async function() {
+    this.timeout(30000);
+    await generateTestObjects(s3Client, buckets[2].name, 200);
+    const data = await s3Client
+      .listObjectsV2({ Bucket: buckets[2].name, MaxKeys: 100 })
+      .promise();
+    expect(data.IsTruncated).to.be.true;
+    expect(data.Contents).to.have.lengthOf(100);
+    expect(data.KeyCount).to.equal(100);
+    expect(data.NextContinuationToken).to.exist;
+  });
+
+  it("should list additional objects using a continuation token [v2]", async function() {
+    this.timeout(30000);
+    await generateTestObjects(s3Client, buckets[2].name, 500);
+    const data = await s3Client
+      .listObjectsV2({ Bucket: buckets[2].name, MaxKeys: 400 })
+      .promise();
+    expect(data.IsTruncated).to.be.true;
+    expect(data.Contents).to.have.lengthOf(400);
+    expect(data.NextContinuationToken).to.exist;
+    const nextData = await s3Client
+      .listObjectsV2({
+        Bucket: buckets[2].name,
+        ContinuationToken: data.NextContinuationToken
+      })
+      .promise();
+    expect(nextData.Contents).to.have.lengthOf(100);
+    expect(nextData.ContinuationToken).to.equal(data.NextContinuationToken);
+    expect(nextData.NextContinuationToken).to.not.exist;
+  });
+
+  it("should delete 500 objects", async function() {
     this.timeout(30000);
     await generateTestObjects(s3Client, buckets[2].name, 500);
     await promiseLimit(100).map(times(500), i =>
@@ -1229,7 +1385,7 @@ describe("S3rver Tests", function() {
     );
   });
 
-  it("should delete 500 small objects with deleteObjects", async function() {
+  it("should delete 500 objects with deleteObjects", async function() {
     this.timeout(30000);
     await generateTestObjects(s3Client, buckets[2].name, 500);
     const deleteObj = { Objects: times(500, i => ({ Key: "key" + i })) };
