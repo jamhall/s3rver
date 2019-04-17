@@ -1203,5 +1203,31 @@ describe('Operations on Objects', () => {
         .promise();
       expect(object.Metadata.somekey).to.equal('value');
     });
+
+    it('should upload a part by copying it', async function () {
+      const upload = await s3Client
+        .createMultipartUpload({
+          Bucket: 'bucket-a',
+          Key: 'merged',
+        })
+        .promise();
+      await s3Client
+        .upload({
+          Bucket: 'bucket-a',
+          Key: 'part',
+          Body: Buffer.alloc(20 * Math.pow(1024, 2)), // 20MB
+        })
+        .promise();
+      const data = await s3Client
+        .uploadPartCopy({
+          CopySource: 'bucket-a/part',
+          Bucket: 'bucket-a',
+          Key: 'destination',
+          PartNumber: 1,
+          UploadId: upload.UploadId,
+        })
+        .promise();
+      expect(data.CopyPartResult.ETag).to.be.ok;
+    });
   });
 });
