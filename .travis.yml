@@ -1,5 +1,6 @@
 language: node_js
 node_js:
+  - "8.10.0" # Support latest AWS Lambda 8.x release
   - "8"
   - "10"
   - "11"
