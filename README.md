@@ -125,7 +125,7 @@ const corsConfig = require.resolve("s3rver/example/cors.xml");
 const websiteConfig = require.resolve("s3rver/example/website.xml");
 
 const s3rver = new S3rver({
-  prefabBuckets: [
+  configureBuckets: [
     {
       name: "test-bucket",
       configs: [fs.readFileSync(corsConfig), fs.readFileSync(websiteConfig)]
@@ -134,7 +134,7 @@ const s3rver = new S3rver({
 });
 ```
 
-Additional reference for defining these configurations can be found here:
+Additional references for defining these configurations can be found here:
 
 - CORS: https://docs.aws.amazon.com/AmazonS3/latest/API/RESTBucketPUTcors.html
 - Static website: https://docs.aws.amazon.com/AmazonS3/latest/API/RESTBucketPUTwebsite.html
