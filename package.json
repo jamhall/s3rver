@@ -69,7 +69,7 @@
     "md5": "2.2.1",
     "mocha": "6.1.4",
     "moment": "2.24.0",
-    "prettier": "1.17.0",
+    "prettier": "1.17.1",
     "prettier-check": "2.0.0",
     "promise-limit": "2.7.0",
     "request": "2.88.0",
