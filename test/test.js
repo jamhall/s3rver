@@ -518,6 +518,13 @@ describe("S3rver Tests", function() {
       .promise();
     expect(copyResult.ETag).to.equal(data.ETag);
     expect(moment(copyResult.LastModified).isValid()).to.be.true;
+    const object = await s3Client
+      .getObject({
+        Bucket: buckets[3].name,
+        Key: destKey
+      })
+      .promise();
+    expect(object.ETag).to.equal(data.ETag);
   });
 
   it("should copy an image object into another bucket including its metadata", async function() {
@@ -550,6 +557,7 @@ describe("S3rver Tests", function() {
       .promise();
     expect(object.Metadata).to.have.property("somekey", "value");
     expect(object.ContentType).to.equal("image/jpeg");
+    expect(object.ETag).to.equal(data.ETag);
   });
 
   it("should copy an object using spaces/unicode chars in keys", async function() {
