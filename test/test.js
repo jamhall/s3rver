@@ -521,7 +521,7 @@ describe("S3rver Tests", function() {
     const object = await s3Client
       .getObject({
         Bucket: buckets[3].name,
-        Key: destKey,
+        Key: destKey
       })
       .promise();
     expect(object.ETag).to.equal(data.ETag);
