@@ -1,6 +1,6 @@
 {
   "name": "s3rver",
-  "version": "3.0.3",
+  "version": "3.1.0",
   "description": "Fake S3 server for node",
   "keywords": [
     "fake",
