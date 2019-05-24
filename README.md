@@ -167,7 +167,7 @@ after(function(done) {
 
 ### s3rver.callback() ⇒ `function (req, res)`
 
-_Alias:_ **s3rver.middleware()**
+_Alias:_ **s3rver.getMiddleware()**
 
 Creates and returns a callback that can be passed into `http.createServer()` or mounted in an Express app.
 
