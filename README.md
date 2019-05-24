@@ -171,7 +171,16 @@ _Alias:_ **s3rver.middleware()**
 
 Creates and returns a callback that can be passed into `http.createServer()` or mounted in an Express app.
 
-## Subscribing to S3 Event
+### s3rver.configureBuckets() => `Promise<void>`
+
+Convenience method for configurating a set of buckets without going through S3's
+API. Useful for quickly provisioning buckets before starting up the server.
+
+### s3rver.reset() => `void`
+
+Resets all bucket and configurations supported by the configured store.
+
+## Subscribing to S3 Events
 
 ### Event: `'event'`
 
