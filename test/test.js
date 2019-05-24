@@ -3,6 +3,7 @@
 const AWS = require("aws-sdk");
 const chai = require("chai");
 const chaiAsPromised = require("chai-as-promised");
+const express = require("express");
 const fs = require("fs-extra");
 const { find, times } = require("lodash");
 const md5 = require("md5");
@@ -1447,6 +1448,124 @@ describe("S3rver Tests", function() {
   });
 });
 
+describe("Middleware tests", function() {
+  beforeEach("Reset buckets", resetTmpDir);
+
+  it("can be mounted on a subpath in an Express app", async function() {
+    const buckets = [{ name: "bucket1" }, { name: "bucket2" }];
+    const server = new S3rver({
+      configureBuckets: buckets
+    });
+    await server.configureBuckets();
+
+    const app = express();
+    app.use("/basepath", server.getMiddleware());
+
+    const { port } = S3rver.defaultOptions;
+    let httpServer;
+    await new Promise((resolve, reject) => {
+      httpServer = app.listen(S3rver.defaultOptions.port, err =>
+        err ? reject(err) : resolve()
+      );
+    });
+
+    const s3Client = new AWS.S3({
+      accessKeyId: "S3RVER",
+      secretAccessKey: "S3RVER",
+      endpoint: `http://localhost:${port}/basepath`,
+      sslEnabled: false,
+      s3ForcePathStyle: true
+    });
+    try {
+      const res = await s3Client.listBuckets().promise();
+      expect(res.Buckets).to.have.lengthOf(2);
+      await s3Client
+        .putObject({ Bucket: buckets[0].name, Key: "text", Body: "Hello!" })
+        .promise();
+    } finally {
+      await new Promise(resolve => httpServer.close(resolve));
+    }
+  });
+
+  it("can store and retrieve an object while mounted on a subpath", async function() {
+    const buckets = [{ name: "bucket1" }, { name: "bucket2" }];
+    const server = new S3rver({
+      configureBuckets: buckets
+    });
+    await server.configureBuckets();
+
+    const app = express();
+    app.use("/basepath", server.getMiddleware());
+
+    const { port } = S3rver.defaultOptions;
+    let httpServer;
+    await new Promise((resolve, reject) => {
+      httpServer = app.listen(S3rver.defaultOptions.port, err =>
+        err ? reject(err) : resolve()
+      );
+    });
+
+    const s3Client = new AWS.S3({
+      accessKeyId: "S3RVER",
+      secretAccessKey: "S3RVER",
+      endpoint: `http://localhost:${port}/basepath`,
+      sslEnabled: false,
+      s3ForcePathStyle: true
+    });
+    try {
+      await s3Client
+        .putObject({ Bucket: buckets[0].name, Key: "text", Body: "Hello!" })
+        .promise();
+      const object = await s3Client
+        .getObject({ Bucket: buckets[0].name, Key: "text" })
+        .promise();
+      expect(object.Body.toString()).to.equal("Hello!");
+    } finally {
+      await new Promise(resolve => httpServer.close(resolve));
+    }
+  });
+
+  it("can use signed URLs while mounted on a subpath", async function() {
+    const buckets = [{ name: "bucket1" }, { name: "bucket2" }];
+    const server = new S3rver({
+      configureBuckets: buckets
+    });
+    await server.configureBuckets();
+
+    const app = express();
+    app.use("/basepath", server.getMiddleware());
+
+    const { port } = S3rver.defaultOptions;
+    let httpServer;
+    await new Promise((resolve, reject) => {
+      httpServer = app.listen(S3rver.defaultOptions.port, err =>
+        err ? reject(err) : resolve()
+      );
+    });
+
+    const s3Client = new AWS.S3({
+      accessKeyId: "S3RVER",
+      secretAccessKey: "S3RVER",
+      endpoint: `http://localhost:${port}/basepath`,
+      sslEnabled: false,
+      s3ForcePathStyle: true
+    });
+    try {
+      await s3Client
+        .putObject({ Bucket: buckets[0].name, Key: "text", Body: "Hello!" })
+        .promise();
+      const url = s3Client.getSignedUrl("getObject", {
+        Bucket: buckets[0].name,
+        Key: "text"
+      });
+      const res = await request(url);
+      expect(res).to.equal("Hello!");
+    } finally {
+      await new Promise(resolve => httpServer.close(resolve));
+    }
+  });
+});
+
 describe("Authenticated Request Tests", function() {
   const buckets = [{ name: "bucket1" }, { name: "bucket2" }];
   let server;
@@ -1683,9 +1802,7 @@ describe("Authenticated Request Tests", function() {
     });
     let error;
     try {
-      await request({
-        url
-      });
+      await request(url);
     } catch (err) {
       error = err;
     }
