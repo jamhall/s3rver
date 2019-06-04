@@ -1437,9 +1437,7 @@ describe("S3rver Tests", function() {
     });
     expect(body).to.include(`<Name>${buckets[0].name}</Name>`);
   });
-
 });
-
 
 describe("Virtual host tests", function() {
   const buckets = [
@@ -1482,9 +1480,7 @@ describe("Virtual host tests", function() {
     });
     expect(body).to.include(`<Name>${buckets[0].name}</Name>`);
   });
-
-
-})
+});
 describe("Middleware tests", function() {
   beforeEach("Reset buckets", resetTmpDir);
 
@@ -1492,7 +1488,7 @@ describe("Middleware tests", function() {
     const buckets = [{ name: "bucket1" }, { name: "bucket2" }];
     const server = new S3rver({
       configureBuckets: buckets,
-      enableSubpathMounting: true,
+      enableSubpathMounting: true
     });
 
     const app = express();
