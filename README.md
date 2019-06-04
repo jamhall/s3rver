@@ -112,10 +112,12 @@ Creates a S3rver instance
 | key                            | `string` \| `Buffer` |             | Private key for running with TLS
 | cert                           | `string` \| `Buffer` |             | Certificate for running with TLS
 | silent                         | `boolean`            | `false`     | Suppress log messages
+| bypassSignatureCheck           | `boolean`            | `false`     | Bypass signature checks
 | directory                      | `string`             |             | Data directory
 | resetOnClose                   | `boolean`            | `false`     | Remove all bucket data on server close
 | configureBuckets\[].name       | `string`             |             | The name of a prefabricated bucket to create when the server starts
 | configureBuckets\[].configs\[] | `string` \| `Buffer` |             | Raw XML string or Buffer of Bucket config
+
 <!-- prettier-ignore-end -->
 
 For your convenience, we've provided sample bucket configurations you can access using `require.resolve`:
