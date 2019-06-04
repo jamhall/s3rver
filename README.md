@@ -116,6 +116,8 @@ Creates a S3rver instance
 | resetOnClose                   | `boolean`            | `false`     | Remove all bucket data on server close
 | configureBuckets\[].name       | `string`             |             | The name of a prefabricated bucket to create when the server starts
 | configureBuckets\[].configs\[] | `string` \| `Buffer` |             | Raw XML string or Buffer of Bucket config
+| forceVirtualHostnames          | `boolean` |          | `false`     | Treat all incoming hostnames as s3 virtual hostnames
+| enableSubpathMounting          | `boolean` |          | `false`     | Allow a bucket to be mounted under a subpath
 <!-- prettier-ignore-end -->
 
 For your convenience, we've provided sample bucket configurations you can access using `require.resolve`:
