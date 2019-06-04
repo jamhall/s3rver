@@ -1438,6 +1438,42 @@ describe("S3rver Tests", function() {
     expect(body).to.include(`<Name>${buckets[0].name}</Name>`);
   });
 
+});
+
+
+describe("Virtual host tests", function() {
+  const buckets = [
+    { name: "bucket1" },
+    { name: "bucket2" },
+    { name: "bucket3" },
+    { name: "bucket4" },
+    { name: "bucket5" },
+    { name: "bucket6" }
+  ];
+  let server;
+  let s3Client;
+
+  beforeEach("Reset buckets", resetTmpDir);
+  beforeEach("Start server and create buckets", async function() {
+    server = new S3rver({
+      configureBuckets: buckets,
+      forceVirtualHostnames: true
+    });
+    const { port } = await server.run();
+
+    s3Client = new AWS.S3({
+      accessKeyId: "S3RVER",
+      secretAccessKey: "S3RVER",
+      endpoint: `http://localhost:${port}`,
+      sslEnabled: false,
+      s3ForcePathStyle: true
+    });
+  });
+
+  afterEach("Close server", function(done) {
+    server.close(done);
+  });
+
   it("should reach the server with a bucket vhost", async function() {
     const body = await request({
       url: s3Client.endpoint.href,
@@ -1446,17 +1482,18 @@ describe("S3rver Tests", function() {
     });
     expect(body).to.include(`<Name>${buckets[0].name}</Name>`);
   });
-});
 
+
+})
 describe("Middleware tests", function() {
   beforeEach("Reset buckets", resetTmpDir);
 
   it("can be mounted on a subpath in an Express app", async function() {
     const buckets = [{ name: "bucket1" }, { name: "bucket2" }];
     const server = new S3rver({
-      configureBuckets: buckets
+      configureBuckets: buckets,
+      enableSubpathMounting: true,
     });
-    await server.configureBuckets();
 
     const app = express();
     app.use("/basepath", server.getMiddleware());
@@ -1490,7 +1527,8 @@ describe("Middleware tests", function() {
   it("can store and retrieve an object while mounted on a subpath", async function() {
     const buckets = [{ name: "bucket1" }, { name: "bucket2" }];
     const server = new S3rver({
-      configureBuckets: buckets
+      configureBuckets: buckets,
+      enableSubpathMounting: true
     });
     await server.configureBuckets();
 
@@ -1528,7 +1566,8 @@ describe("Middleware tests", function() {
   it("can use signed URLs while mounted on a subpath", async function() {
     const buckets = [{ name: "bucket1" }, { name: "bucket2" }];
     const server = new S3rver({
-      configureBuckets: buckets
+      configureBuckets: buckets,
+      enableSubpathMounting: true
     });
     await server.configureBuckets();
 
