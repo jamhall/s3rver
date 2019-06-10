@@ -114,6 +114,7 @@ Creates a S3rver instance
 | silent                         | `boolean`            | `false`     | Suppress log messages
 | directory                      | `string`             |             | Data directory
 | resetOnClose                   | `boolean`            | `false`     | Remove all bucket data on server close
+| allowMismatchedSignatures      | `boolean`            | `false`     | Prevent `SignatureDoesNotMatch` errors for all well-formed signatures
 | configureBuckets\[].name       | `string`             |             | The name of a prefabricated bucket to create when the server starts
 | configureBuckets\[].configs\[] | `string` \| `Buffer` |             | Raw XML string or Buffer of Bucket config
 <!-- prettier-ignore-end -->

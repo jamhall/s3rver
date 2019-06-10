@@ -59,6 +59,10 @@ program
     "Path to certificate file for running with TLS",
     fs.readFileSync
   )
+  .option(
+    "--allow-mismatched-signatures",
+    "Prevent SignatureDoesNotMatch errors for all well-formed signatures"
+  )
   // NOTE: commander doesn't actually support options with multiple parts,
   // we must manually parse this option
   .option(
