@@ -14,6 +14,7 @@ const promiseLimit = require("promise-limit");
 const request = require("request-promise-native");
 const { fromEvent } = require("rxjs");
 const { take } = require("rxjs/operators");
+const { URL } = require("url");
 
 const S3rver = require("..");
 const { toISO8601String } = require("../lib/utils");
@@ -1488,7 +1489,7 @@ describe("Middleware tests", function() {
   });
 
   it("can store and retrieve an object while mounted on a subpath", async function() {
-    const buckets = [{ name: "bucket1" }, { name: "bucket2" }];
+    const buckets = [{ name: "bucket1" }];
     const server = new S3rver({
       configureBuckets: buckets
     });
@@ -1526,7 +1527,7 @@ describe("Middleware tests", function() {
   });
 
   it("can use signed URLs while mounted on a subpath", async function() {
-    const buckets = [{ name: "bucket1" }, { name: "bucket2" }];
+    const buckets = [{ name: "bucket1" }];
     const server = new S3rver({
       configureBuckets: buckets
     });
@@ -1564,6 +1565,58 @@ describe("Middleware tests", function() {
       await new Promise(resolve => httpServer.close(resolve));
     }
   });
+
+  it("can use signed vhost URLs while mounted on a subpath", async function() {
+    const buckets = [{ name: "bucket1" }];
+    const server = new S3rver({
+      configureBuckets: buckets
+    });
+    await server.configureBuckets();
+
+    const app = express();
+    app.use("/basepath", server.getMiddleware());
+
+    const { port } = S3rver.defaultOptions;
+    let httpServer;
+    await new Promise((resolve, reject) => {
+      httpServer = app.listen(S3rver.defaultOptions.port, err =>
+        err ? reject(err) : resolve()
+      );
+    });
+
+    const s3Client = new AWS.S3({
+      accessKeyId: "S3RVER",
+      secretAccessKey: "S3RVER",
+      endpoint: `http://localhost:${port}/basepath`,
+      sslEnabled: false,
+      s3ForcePathStyle: true
+    });
+    try {
+      await s3Client
+        .putObject({ Bucket: buckets[0].name, Key: "text", Body: "Hello!" })
+        .promise();
+      s3Client.setEndpoint(`http://${buckets[0].name}:${port}/basepath`);
+      Object.assign(s3Client.config, {
+        s3ForcePathStyle: false,
+        s3BucketEndpoint: true
+      });
+      const url = s3Client.getSignedUrl("getObject", {
+        Bucket: buckets[0].name,
+        Key: "text"
+      });
+      const { host, pathname, search } = new URL(url);
+      const res = await request({
+        baseUrl: `http://localhost:${port}`,
+        url: pathname + search,
+        headers: {
+          Host: host
+        }
+      });
+      expect(res).to.equal("Hello!");
+    } finally {
+      await new Promise(resolve => httpServer.close(resolve));
+    }
+  });
 });
 
 describe("Authenticated Request Tests", function() {
@@ -1580,6 +1633,69 @@ describe("Authenticated Request Tests", function() {
 
   afterEach("Close server", function(done) {
     server.close(done);
+  });
+
+  it("can GET a signed URL with subdomain bucket", async function() {
+    const { port } = server.httpServer.address();
+    const s3Client = new AWS.S3({
+      accessKeyId: "S3RVER",
+      secretAccessKey: "S3RVER",
+      endpoint: `http://localhost:${port}`,
+      sslEnabled: false,
+      s3ForcePathStyle: true
+    });
+    await s3Client
+      .putObject({ Bucket: buckets[0].name, Key: "text", Body: "Hello!" })
+      .promise();
+    s3Client.setEndpoint(`http://s3.amazonaws.com`);
+    Object.assign(s3Client.config, {
+      s3ForcePathStyle: false
+    });
+    const url = s3Client.getSignedUrl("getObject", {
+      Bucket: buckets[0].name,
+      Key: "text"
+    });
+    const { host, pathname, search } = new URL(url);
+    const res = await request({
+      baseUrl: `http://localhost:${port}`,
+      url: pathname + search,
+      headers: {
+        Host: host
+      }
+    });
+    expect(res).to.equal("Hello!");
+  });
+
+  it("can GET a signed URL with vhost bucket", async function() {
+    const { port } = server.httpServer.address();
+    const s3Client = new AWS.S3({
+      accessKeyId: "S3RVER",
+      secretAccessKey: "S3RVER",
+      endpoint: `http://localhost:${port}`,
+      sslEnabled: false,
+      s3ForcePathStyle: true
+    });
+    await s3Client
+      .putObject({ Bucket: buckets[0].name, Key: "text", Body: "Hello!" })
+      .promise();
+    s3Client.setEndpoint(`http://${buckets[0].name}:${port}`);
+    Object.assign(s3Client.config, {
+      s3ForcePathStyle: false,
+      s3BucketEndpoint: true
+    });
+    const url = s3Client.getSignedUrl("getObject", {
+      Bucket: buckets[0].name,
+      Key: "text"
+    });
+    const { host, pathname, search } = new URL(url);
+    const res = await request({
+      baseUrl: `http://localhost:${port}`,
+      url: pathname + search,
+      headers: {
+        Host: host
+      }
+    });
+    expect(res).to.equal("Hello!");
   });
 
   it("should reject a request specifying multiple auth mechanisms", async function() {
