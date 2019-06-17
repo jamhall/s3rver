@@ -1679,7 +1679,8 @@ describe("Authenticated Request Tests", function() {
 
     const url = s3Client.getSignedUrl("getObject", {
       Bucket: buckets[0].name,
-      Key: "mykey"
+      Key: "mykey",
+      Expires: -10 // 10 seconds in the past
     });
     let error;
     try {
