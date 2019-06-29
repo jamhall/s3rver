@@ -110,8 +110,6 @@ describe("S3rver Class Tests", function() {
     try {
       await s3Client.getBucketCors({ Bucket: bucket.name }).promise();
       await s3Client.getBucketWebsite({ Bucket: bucket.name }).promise();
-    } catch (err) {
-      throw err;
     } finally {
       await server.close();
     }

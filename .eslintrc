@@ -10,6 +10,9 @@
     "eslint:recommended",
     "prettier"
   ],
+  "rules": {
+    "require-atomic-updates": "off"
+  },
   "overrides": [
     {
       "files": "test/**/*.js",
