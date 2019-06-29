@@ -66,7 +66,7 @@
     "chai-as-promised": "7.1.1",
     "eslint": "5.16.0",
     "eslint-config-prettier": "4.3.0",
-    "express": "^4.17.0",
+    "express": "4.17.1",
     "md5": "2.2.1",
     "mocha": "6.1.4",
     "moment": "2.24.0",
