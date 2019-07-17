@@ -2641,6 +2641,12 @@ describe("Static Website Tests", function() {
     {
       name: "site",
       configs: [fs.readFileSync("./test/resources/website_test0.xml")]
+    },
+
+    // A static website with routing rules
+    {
+      name: "site",
+      configs: [fs.readFileSync("./test/resources/website_test1.xml")]
     }
   ];
 
@@ -3156,5 +3162,40 @@ describe("Static Website Tests", function() {
       "location",
       redirectLocation
     );
+  });
+
+  describe("Routing rules", () => {
+    it("should redirect when key matches routing condition", async function() {
+      const server = new S3rver({
+        configureBuckets: [buckets[1]]
+      });
+      const { port } = await server.run();
+      const s3Client = new AWS.S3({
+        accessKeyId: "S3RVER",
+        secretAccessKey: "S3RVER",
+        endpoint: `http://localhost:${port}`,
+        sslEnabled: false,
+        s3ForcePathStyle: true
+      });
+      let error;
+      try {
+        await request({
+          baseUrl: s3Client.endpoint.href,
+          uri: `${buckets[0].name}/test/key`,
+          headers: { accept: "text/html" },
+          followRedirect: false
+        });
+      } catch (err) {
+        error = err;
+      } finally {
+        await server.close();
+      }
+      expect(error).to.exist;
+      expect(error.statusCode).to.equal(307);
+      expect(error.response.headers).to.have.property(
+        "location",
+        "http://hostname/replacement/key"
+      );
+    });
   });
 });
