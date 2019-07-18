@@ -18,6 +18,7 @@ const { URL } = require("url");
 
 const S3rver = require("..");
 const { toISO8601String } = require("../lib/utils");
+const RoutingRule = require("../lib/models/routing-rule");
 
 const { expect } = chai;
 chai.use(chaiAsPromised);
@@ -3196,6 +3197,60 @@ describe("Static Website Tests", function() {
         "location",
         "http://hostname/replacement/key"
       );
+    });
+  });
+});
+
+describe("Routing Rule Tests", () => {
+  describe("Condition", () => {
+    const matchingKey = "prefix/key";
+    const nonMatchKey = "without-prefix/key";
+    const matchingStatusCode = 404;
+    const nonMatchStatusCode = 200;
+
+    it("evaluates only KeyPrefixEquals", () => {
+      const rule = new RoutingRule({
+        Condition: {
+          KeyPrefixEquals: "prefix"
+        },
+        Redirect: {
+          HostName: "localhost"
+        }
+      });
+
+      expect(rule.evaluate(matchingKey, 200)).to.exist;
+      expect(rule.evaluate(nonMatchKey, 200)).to.be.null;
+    });
+
+    it("evaluates only HttpErrorCodeReturnedEquals", () => {
+      const rule = new RoutingRule({
+        Condition: {
+          HttpErrorCodeReturnedEquals: 404
+        },
+        Redirect: {
+          HostName: "localhost"
+        }
+      });
+
+      expect(rule.evaluate("key", matchingStatusCode)).to.exist;
+      expect(rule.evaluate("key", nonMatchStatusCode)).to.be.null;
+    });
+
+    it("evaluates both KeyPrefixEquals and HttpErrorCodeReturnedEquals", () => {
+      const rule = new RoutingRule({
+        Condition: {
+          KeyPrefixEquals: "prefix",
+          HttpErrorCodeReturnedEquals: 404
+        },
+        Redirect: {
+          HostName: "localhost"
+        }
+      });
+
+      expect(rule.evaluate(matchingKey, matchingStatusCode)).to.exist;
+      expect(rule.evaluate(nonMatchKey, matchingStatusCode)).to.be.null;
+      expect(rule.evaluate(matchingKey, nonMatchStatusCode)).to.be.null;
+      expect(rule.evaluate(nonMatchKey, nonMatchStatusCode)).to.be.null;
     });
   });
 });
