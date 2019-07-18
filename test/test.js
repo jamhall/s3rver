@@ -2644,10 +2644,16 @@ describe("Static Website Tests", function() {
       configs: [fs.readFileSync("./test/resources/website_test0.xml")]
     },
 
-    // A static website with routing rules
+    // A static website with a single simple routing rule
     {
       name: "site",
       configs: [fs.readFileSync("./test/resources/website_test1.xml")]
+    },
+
+    // A static website with multiple routing rules
+    {
+      name: "site",
+      configs: [fs.readFileSync("./test/resources/website_test2.xml")]
     }
   ];
 
@@ -3166,7 +3172,7 @@ describe("Static Website Tests", function() {
   });
 
   describe("Routing rules", () => {
-    it("should redirect when key matches routing condition", async function() {
+    it("should evaluate a single simple routing rule", async function() {
       const server = new S3rver({
         configureBuckets: [buckets[1]]
       });
@@ -3196,6 +3202,72 @@ describe("Static Website Tests", function() {
       expect(error.response.headers).to.have.property(
         "location",
         "http://localhost:4569/site/replacement/key"
+      );
+    });
+
+    it("should evaluate a multi-rule config", async function() {
+      const server = new S3rver({
+        configureBuckets: [buckets[2]]
+      });
+      const { port } = await server.run();
+      const s3Client = new AWS.S3({
+        accessKeyId: "S3RVER",
+        secretAccessKey: "S3RVER",
+        endpoint: `http://localhost:${port}`,
+        sslEnabled: false,
+        s3ForcePathStyle: true
+      });
+      let error;
+      try {
+        await request({
+          baseUrl: s3Client.endpoint.href,
+          uri: `${buckets[0].name}/simple/key`,
+          headers: { accept: "text/html" },
+          followRedirect: false
+        });
+      } catch (err) {
+        error = err;
+      } finally {
+        await server.close();
+      }
+      expect(error).to.exist;
+      expect(error.statusCode).to.equal(302);
+      expect(error.response.headers).to.have.property(
+        "location",
+        "http://localhost:4569/site/replacement/key"
+      );
+    });
+
+    it("should evaluate a complex rule", async function() {
+      const server = new S3rver({
+        configureBuckets: [buckets[2]]
+      });
+      const { port } = await server.run();
+      const s3Client = new AWS.S3({
+        accessKeyId: "S3RVER",
+        secretAccessKey: "S3RVER",
+        endpoint: `http://localhost:${port}`,
+        sslEnabled: false,
+        s3ForcePathStyle: true
+      });
+      let error;
+      try {
+        await request({
+          baseUrl: s3Client.endpoint.href,
+          uri: `${buckets[0].name}/complex/key`,
+          headers: { accept: "text/html" },
+          followRedirect: false
+        });
+      } catch (err) {
+        error = err;
+      } finally {
+        await server.close();
+      }
+      expect(error).to.exist;
+      expect(error.statusCode).to.equal(307);
+      expect(error.response.headers).to.have.property(
+        "location",
+        "https://custom/replacement"
       );
     });
   });
