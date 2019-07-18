@@ -3192,10 +3192,10 @@ describe("Static Website Tests", function() {
         await server.close();
       }
       expect(error).to.exist;
-      expect(error.statusCode).to.equal(307);
+      expect(error.statusCode).to.equal(302);
       expect(error.response.headers).to.have.property(
         "location",
-        "http://hostname/replacement/key"
+        "http://localhost:4569/site/replacement/key"
       );
     });
   });
@@ -3208,59 +3208,140 @@ describe("Routing Rule Tests", () => {
     const matchingStatusCode = 404;
     const nonMatchStatusCode = 200;
 
-    it("evaluates with no condition", () => {
+    it("should redirect with no condition", () => {
+      const rule = new RoutingRule({});
+
+      expect(rule.shouldRedirect("key", 200)).to.exist;
+    });
+
+    it("should redirect using only KeyPrefixEquals", () => {
+      const rule = new RoutingRule({
+        Condition: {
+          KeyPrefixEquals: "prefix"
+        }
+      });
+
+      expect(rule.shouldRedirect(matchingKey, 200)).to.be.true;
+      expect(rule.shouldRedirect(nonMatchKey, 200)).to.be.false;
+    });
+
+    it("should redirect using only HttpErrorCodeReturnedEquals", () => {
+      const rule = new RoutingRule({
+        Condition: {
+          HttpErrorCodeReturnedEquals: 404
+        }
+      });
+
+      expect(rule.shouldRedirect("key", matchingStatusCode)).to.be.true;
+      expect(rule.shouldRedirect("key", nonMatchStatusCode)).to.be.false;
+    });
+
+    it("should redirect using both KeyPrefixEquals and HttpErrorCodeReturnedEquals", () => {
+      const rule = new RoutingRule({
+        Condition: {
+          KeyPrefixEquals: "prefix",
+          HttpErrorCodeReturnedEquals: 404
+        }
+      });
+
+      expect(rule.shouldRedirect(matchingKey, matchingStatusCode)).to.be.true;
+      expect(rule.shouldRedirect(nonMatchKey, matchingStatusCode)).to.be.false;
+      expect(rule.shouldRedirect(matchingKey, nonMatchStatusCode)).to.be.false;
+      expect(rule.shouldRedirect(nonMatchKey, nonMatchStatusCode)).to.be.false;
+    });
+  });
+
+  describe("Redirect", () => {
+    const defaults = {
+      protocol: "https",
+      hostname: "example.com"
+    };
+
+    it("should redirect using only HostName", () => {
       const rule = new RoutingRule({
         Redirect: {
           HostName: "localhost"
         }
       });
 
-      expect(rule.evaluate("key", 200)).to.exist;
+      expect(rule.statusCode).to.equal(302);
+      expect(rule.getLocation("key", defaults)).to.equal(
+        "https://localhost/key"
+      );
     });
 
-    it("evaluates only KeyPrefixEquals", () => {
+    it("should redirect using only Protocol", () => {
+      const rule = new RoutingRule({
+        Redirect: {
+          HttpRedirectCode: 307
+        }
+      });
+
+      expect(rule.statusCode).to.equal(307);
+      expect(rule.getLocation("key", defaults)).to.equal(
+        "https://example.com/key"
+      );
+    });
+
+    it("should redirect using only Protocol", () => {
+      const rule = new RoutingRule({
+        Redirect: {
+          Protocol: "http"
+        }
+      });
+
+      expect(rule.statusCode).to.equal(302);
+      expect(rule.getLocation("key", defaults)).to.equal(
+        "http://example.com/key"
+      );
+    });
+
+    it("should redirect using only ReplaceKeyPrefixWith", () => {
       const rule = new RoutingRule({
         Condition: {
           KeyPrefixEquals: "prefix"
         },
         Redirect: {
-          HostName: "localhost"
+          ReplaceKeyPrefixWith: "replacement"
         }
       });
 
-      expect(rule.evaluate(matchingKey, 200)).to.exist;
-      expect(rule.evaluate(nonMatchKey, 200)).to.be.null;
+      expect(rule.statusCode).to.equal(302);
+      expect(rule.getLocation("prefix/key", defaults)).to.equal(
+        "https://example.com/replacement/key"
+      );
     });
 
-    it("evaluates only HttpErrorCodeReturnedEquals", () => {
+    it("should redirect using only ReplaceKeyWith", () => {
       const rule = new RoutingRule({
-        Condition: {
-          HttpErrorCodeReturnedEquals: 404
-        },
         Redirect: {
-          HostName: "localhost"
+          ReplaceKeyWith: "replacement"
         }
       });
 
-      expect(rule.evaluate("key", matchingStatusCode)).to.exist;
-      expect(rule.evaluate("key", nonMatchStatusCode)).to.be.null;
+      expect(rule.statusCode).to.equal(302);
+      expect(rule.getLocation("key", defaults)).to.equal(
+        "https://example.com/replacement"
+      );
     });
 
-    it("evaluates both KeyPrefixEquals and HttpErrorCodeReturnedEquals", () => {
+    it("should redirect using a combination of options", () => {
       const rule = new RoutingRule({
         Condition: {
-          KeyPrefixEquals: "prefix",
-          HttpErrorCodeReturnedEquals: 404
+          KeyPrefixEquals: "prefix"
         },
         Redirect: {
-          HostName: "localhost"
+          Protocol: "http",
+          HttpRedirectCode: 307,
+          HostName: "localhost",
+          ReplaceKeyPrefixWith: "replacement"
         }
       });
 
-      expect(rule.evaluate(matchingKey, matchingStatusCode)).to.exist;
-      expect(rule.evaluate(nonMatchKey, matchingStatusCode)).to.be.null;
-      expect(rule.evaluate(matchingKey, nonMatchStatusCode)).to.be.null;
-      expect(rule.evaluate(nonMatchKey, nonMatchStatusCode)).to.be.null;
+      expect(rule.statusCode).to.equal(307);
+      expect(rule.getLocation("prefix/key", defaults)).to.equal(
+        "http://localhost/replacement/key"
+      );
     });
   });
 });

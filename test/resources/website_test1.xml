@@ -5,13 +5,9 @@
     <RoutingRules>
         <RoutingRule>
             <Condition>
-                <HttpErrorCodeReturnedEquals>404</HttpErrorCodeReturnedEquals>
                 <KeyPrefixEquals>test/</KeyPrefixEquals>
             </Condition>
             <Redirect>
-                <HostName>hostname</HostName>
-                <HttpRedirectCode>307</HttpRedirectCode>
-                <Protocol>http</Protocol>
                 <ReplaceKeyPrefixWith>replacement/</ReplaceKeyPrefixWith>
             </Redirect>
         </RoutingRule>
