@@ -3208,6 +3208,16 @@ describe("Routing Rule Tests", () => {
     const matchingStatusCode = 404;
     const nonMatchStatusCode = 200;
 
+    it("evaluates with no condition", () => {
+      const rule = new RoutingRule({
+        Redirect: {
+          HostName: "localhost"
+        }
+      });
+
+      expect(rule.evaluate("key", 200)).to.exist;
+    });
+
     it("evaluates only KeyPrefixEquals", () => {
       const rule = new RoutingRule({
         Condition: {
