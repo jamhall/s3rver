@@ -3198,7 +3198,7 @@ describe("Static Website Tests", function() {
         await server.close();
       }
       expect(error).to.exist;
-      expect(error.statusCode).to.equal(302);
+      expect(error.statusCode).to.equal(301);
       expect(error.response.headers).to.have.property(
         "location",
         "http://localhost:4569/site/replacement/key"
@@ -3231,7 +3231,7 @@ describe("Static Website Tests", function() {
         await server.close();
       }
       expect(error).to.exist;
-      expect(error.statusCode).to.equal(302);
+      expect(error.statusCode).to.equal(301);
       expect(error.response.headers).to.have.property(
         "location",
         "http://localhost:4569/site/replacement/key"
@@ -3336,7 +3336,7 @@ describe("Routing Rule Tests", () => {
         }
       });
 
-      expect(rule.statusCode).to.equal(302);
+      expect(rule.statusCode).to.equal(301);
       expect(rule.getLocation("key", defaults)).to.equal(
         "https://localhost/key"
       );
@@ -3362,7 +3362,7 @@ describe("Routing Rule Tests", () => {
         }
       });
 
-      expect(rule.statusCode).to.equal(302);
+      expect(rule.statusCode).to.equal(301);
       expect(rule.getLocation("key", defaults)).to.equal(
         "http://example.com/key"
       );
@@ -3378,7 +3378,7 @@ describe("Routing Rule Tests", () => {
         }
       });
 
-      expect(rule.statusCode).to.equal(302);
+      expect(rule.statusCode).to.equal(301);
       expect(rule.getLocation("prefix/key", defaults)).to.equal(
         "https://example.com/replacement/key"
       );
@@ -3391,7 +3391,7 @@ describe("Routing Rule Tests", () => {
         }
       });
 
-      expect(rule.statusCode).to.equal(302);
+      expect(rule.statusCode).to.equal(301);
       expect(rule.getLocation("key", defaults)).to.equal(
         "https://example.com/replacement"
       );
