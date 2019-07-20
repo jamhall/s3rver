@@ -3680,6 +3680,27 @@ describe("S3WebsiteConfiguration Tests", () => {
         ).to.exist;
       });
 
+      it("parses values with XML encoding", () => {
+        const config = S3WebsiteConfiguration.validate(`
+<WebsiteConfiguration>
+  <IndexDocument>
+      <Suffix>index.html</Suffix>
+  </IndexDocument>
+  <RoutingRules>
+      <RoutingRule>
+          <Redirect>
+              <ReplaceKeyPrefixWith>url?test=1&amp;key=</ReplaceKeyPrefixWith>
+          </Redirect>
+      </RoutingRule>
+  </RoutingRules>
+</WebsiteConfiguration>
+    `);
+
+        expect(config.routingRules[0].redirect.ReplaceKeyPrefixWith).to.equal(
+          "url?test=1&key="
+        );
+      });
+
       it("rejects a Redirect config with both ReplaceKeyWith and ReplaceKeyPrefixWith elements", () => {
         expect(() =>
           S3WebsiteConfiguration.validate(`
