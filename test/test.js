@@ -3445,8 +3445,7 @@ describe("S3WebsiteConfiguration Tests", () => {
             </Redirect>
         </RoutingRule>
     </RoutingRules>
-</WebsiteConfiguration>
-      `)
+</WebsiteConfiguration>`)
       ).to.throw(notWellFormedError);
     });
 
@@ -3460,8 +3459,7 @@ describe("S3WebsiteConfiguration Tests", () => {
     <RoutingRules>
         <other />
     </RoutingRules>
-</WebsiteConfiguration>
-      `)
+</WebsiteConfiguration>`)
       ).to.throw(notWellFormedError);
     });
 
@@ -3479,8 +3477,7 @@ describe("S3WebsiteConfiguration Tests", () => {
             </Redirect>
         </RoutingRule>
     </RoutingRules>
-</WebsiteConfiguration>
-      `)
+</WebsiteConfiguration>`)
       ).to.exist;
     });
 
@@ -3503,8 +3500,7 @@ describe("S3WebsiteConfiguration Tests", () => {
             </Redirect>
         </RoutingRule>
     </RoutingRules>
-</WebsiteConfiguration>
-      `)
+</WebsiteConfiguration>`)
       ).to.exist;
     });
 
@@ -3526,8 +3522,7 @@ describe("S3WebsiteConfiguration Tests", () => {
             </Redirect>
         </RoutingRule>
     </RoutingRules>
-</WebsiteConfiguration>
-      `)
+</WebsiteConfiguration>`)
         ).to.throw(notWellFormedError);
       });
 
@@ -3548,8 +3543,7 @@ describe("S3WebsiteConfiguration Tests", () => {
             </Redirect>
         </RoutingRule>
     </RoutingRules>
-</WebsiteConfiguration>
-      `)
+</WebsiteConfiguration>`)
         ).to.exist;
       });
 
@@ -3570,8 +3564,7 @@ describe("S3WebsiteConfiguration Tests", () => {
             </Redirect>
         </RoutingRule>
     </RoutingRules>
-</WebsiteConfiguration>
-      `)
+</WebsiteConfiguration>`)
         ).to.exist;
       });
 
@@ -3589,8 +3582,7 @@ describe("S3WebsiteConfiguration Tests", () => {
             </Redirect>
         </RoutingRule>
     </RoutingRules>
-</WebsiteConfiguration>
-      `)
+</WebsiteConfiguration>`)
         ).to.exist;
       });
     });
@@ -3610,8 +3602,7 @@ describe("S3WebsiteConfiguration Tests", () => {
             </Condition>
         </RoutingRule>
     </RoutingRules>
-</WebsiteConfiguration>
-      `)
+</WebsiteConfiguration>`)
         ).to.throw(notWellFormedError);
       });
 
@@ -3632,8 +3623,7 @@ describe("S3WebsiteConfiguration Tests", () => {
             </Redirect>
         </RoutingRule>
     </RoutingRules>
-</WebsiteConfiguration>
-      `)
+</WebsiteConfiguration>`)
         ).to.throw(notWellFormedError);
       });
 
@@ -3654,8 +3644,7 @@ describe("S3WebsiteConfiguration Tests", () => {
             </Redirect>
         </RoutingRule>
     </RoutingRules>
-</WebsiteConfiguration>
-      `)
+</WebsiteConfiguration>`)
         ).to.throw(
           "Invalid protocol, protocol can be http or https. If not defined the protocol will be selected automatically."
         );
@@ -3675,8 +3664,7 @@ describe("S3WebsiteConfiguration Tests", () => {
             </Redirect>
         </RoutingRule>
     </RoutingRules>
-</WebsiteConfiguration>
-      `)
+</WebsiteConfiguration>`)
         ).to.exist;
       });
 
@@ -3719,8 +3707,7 @@ describe("S3WebsiteConfiguration Tests", () => {
             </Redirect>
         </RoutingRule>
     </RoutingRules>
-</WebsiteConfiguration>
-      `)
+</WebsiteConfiguration>`)
         ).to.throw(
           "You can only define ReplaceKeyPrefix or ReplaceKey but not both."
         );
