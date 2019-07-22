@@ -3539,6 +3539,50 @@ describe("S3WebsiteConfiguration Tests", () => {
         ).to.throw(notWellFormedError);
       });
 
+      it("rejects when HttpErrorCodeReturnedEquals is not in range", () => {
+        expect(() =>
+          S3WebsiteConfiguration.validate(`
+<WebsiteConfiguration>
+    <IndexDocument>
+        <Suffix>index.html</Suffix>
+    </IndexDocument>
+    <RoutingRules>
+        <RoutingRule>
+            <Condition>
+                <HttpErrorCodeReturnedEquals>304</HttpErrorCodeReturnedEquals>
+            </Condition>
+            <Redirect>
+                <HostName>example.com</HostName>
+            </Redirect>
+        </RoutingRule>
+    </RoutingRules>
+</WebsiteConfiguration>`)
+        ).to.throw(
+          "The provided HTTP error code (304) is not valid. Valid codes are 4XX or 5XX."
+        );
+
+        expect(() =>
+          S3WebsiteConfiguration.validate(`
+<WebsiteConfiguration>
+    <IndexDocument>
+        <Suffix>index.html</Suffix>
+    </IndexDocument>
+    <RoutingRules>
+        <RoutingRule>
+            <Condition>
+                <HttpErrorCodeReturnedEquals>600</HttpErrorCodeReturnedEquals>
+            </Condition>
+            <Redirect>
+                <HostName>example.com</HostName>
+            </Redirect>
+        </RoutingRule>
+    </RoutingRules>
+</WebsiteConfiguration>`)
+        ).to.throw(
+          "The provided HTTP error code (600) is not valid. Valid codes are 4XX or 5XX."
+        );
+      });
+
       it("accepts a Condition with a KeyPrefixEquals element", () => {
         expect(
           S3WebsiteConfiguration.validate(`
