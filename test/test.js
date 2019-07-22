@@ -3338,7 +3338,7 @@ describe("Routing Rule Tests", () => {
       });
 
       expect(rule.statusCode).to.equal(301);
-      expect(rule.getLocation("key", defaults)).to.equal(
+      expect(rule.getRedirectLocation("key", defaults)).to.equal(
         "https://localhost/key"
       );
     });
@@ -3351,7 +3351,7 @@ describe("Routing Rule Tests", () => {
       });
 
       expect(rule.statusCode).to.equal(307);
-      expect(rule.getLocation("key", defaults)).to.equal(
+      expect(rule.getRedirectLocation("key", defaults)).to.equal(
         "https://example.com/key"
       );
     });
@@ -3364,7 +3364,7 @@ describe("Routing Rule Tests", () => {
       });
 
       expect(rule.statusCode).to.equal(301);
-      expect(rule.getLocation("key", defaults)).to.equal(
+      expect(rule.getRedirectLocation("key", defaults)).to.equal(
         "http://example.com/key"
       );
     });
@@ -3380,7 +3380,7 @@ describe("Routing Rule Tests", () => {
       });
 
       expect(rule.statusCode).to.equal(301);
-      expect(rule.getLocation("prefix/key", defaults)).to.equal(
+      expect(rule.getRedirectLocation("prefix/key", defaults)).to.equal(
         "https://example.com/replacement/key"
       );
     });
@@ -3393,7 +3393,7 @@ describe("Routing Rule Tests", () => {
       });
 
       expect(rule.statusCode).to.equal(301);
-      expect(rule.getLocation("key", defaults)).to.equal(
+      expect(rule.getRedirectLocation("key", defaults)).to.equal(
         "https://example.com/replacement"
       );
     });
@@ -3412,7 +3412,7 @@ describe("Routing Rule Tests", () => {
       });
 
       expect(rule.statusCode).to.equal(307);
-      expect(rule.getLocation("prefix/key", defaults)).to.equal(
+      expect(rule.getRedirectLocation("prefix/key", defaults)).to.equal(
         "http://localhost/replacement/key"
       );
     });
