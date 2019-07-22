@@ -3385,6 +3385,19 @@ describe("Routing Rule Tests", () => {
       );
     });
 
+    it("should replace blank prefix with ReplaceKeyPrefixWith", () => {
+      const rule = new RoutingRule({
+        Redirect: {
+          ReplaceKeyPrefixWith: "replacement/"
+        }
+      });
+
+      expect(rule.statusCode).to.equal(301);
+      expect(rule.getRedirectLocation("prefix/key", defaults)).to.equal(
+        "https://example.com/replacement/prefix/key"
+      );
+    });
+
     it("should redirect using only ReplaceKeyWith", () => {
       const rule = new RoutingRule({
         Redirect: {
