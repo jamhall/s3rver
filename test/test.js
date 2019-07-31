@@ -18,6 +18,8 @@ const { URL } = require("url");
 
 const S3rver = require("..");
 const { toISO8601String } = require("../lib/utils");
+const RoutingRule = require("../lib/models/routing-rule");
+const { S3WebsiteConfiguration } = require("../lib/models/config");
 
 const { expect } = chai;
 chai.use(chaiAsPromised);
@@ -2641,6 +2643,18 @@ describe("Static Website Tests", function() {
     {
       name: "site",
       configs: [fs.readFileSync("./test/resources/website_test0.xml")]
+    },
+
+    // A static website with a single simple routing rule
+    {
+      name: "site",
+      configs: [fs.readFileSync("./test/resources/website_test1.xml")]
+    },
+
+    // A static website with multiple routing rules
+    {
+      name: "site",
+      configs: [fs.readFileSync("./test/resources/website_test2.xml")]
     }
   ];
 
@@ -3156,5 +3170,605 @@ describe("Static Website Tests", function() {
       "location",
       redirectLocation
     );
+  });
+
+  describe("Routing rules", () => {
+    it("should evaluate a single simple routing rule", async function() {
+      const server = new S3rver({
+        configureBuckets: [buckets[1]]
+      });
+      const { port } = await server.run();
+      const s3Client = new AWS.S3({
+        accessKeyId: "S3RVER",
+        secretAccessKey: "S3RVER",
+        endpoint: `http://localhost:${port}`,
+        sslEnabled: false,
+        s3ForcePathStyle: true
+      });
+      let error;
+      try {
+        await request({
+          baseUrl: s3Client.endpoint.href,
+          uri: `${buckets[0].name}/test/key`,
+          headers: { accept: "text/html" },
+          followRedirect: false
+        });
+      } catch (err) {
+        error = err;
+      } finally {
+        await server.close();
+      }
+      expect(error).to.exist;
+      expect(error.statusCode).to.equal(301);
+      expect(error.response.headers).to.have.property(
+        "location",
+        "http://localhost:4569/site/replacement/key"
+      );
+    });
+
+    it("should evaluate a multi-rule config", async function() {
+      const server = new S3rver({
+        configureBuckets: [buckets[2]]
+      });
+      const { port } = await server.run();
+      const s3Client = new AWS.S3({
+        accessKeyId: "S3RVER",
+        secretAccessKey: "S3RVER",
+        endpoint: `http://localhost:${port}`,
+        sslEnabled: false,
+        s3ForcePathStyle: true
+      });
+      let error;
+      try {
+        await request({
+          baseUrl: s3Client.endpoint.href,
+          uri: `${buckets[0].name}/simple/key`,
+          headers: { accept: "text/html" },
+          followRedirect: false
+        });
+      } catch (err) {
+        error = err;
+      } finally {
+        await server.close();
+      }
+      expect(error).to.exist;
+      expect(error.statusCode).to.equal(301);
+      expect(error.response.headers).to.have.property(
+        "location",
+        "http://localhost:4569/site/replacement/key"
+      );
+    });
+
+    it("should evaluate a complex rule", async function() {
+      const server = new S3rver({
+        configureBuckets: [buckets[2]]
+      });
+      const { port } = await server.run();
+      const s3Client = new AWS.S3({
+        accessKeyId: "S3RVER",
+        secretAccessKey: "S3RVER",
+        endpoint: `http://localhost:${port}`,
+        sslEnabled: false,
+        s3ForcePathStyle: true
+      });
+      let error;
+      try {
+        await request({
+          baseUrl: s3Client.endpoint.href,
+          uri: `${buckets[0].name}/complex/key`,
+          headers: { accept: "text/html" },
+          followRedirect: false
+        });
+      } catch (err) {
+        error = err;
+      } finally {
+        await server.close();
+      }
+      expect(error).to.exist;
+      expect(error.statusCode).to.equal(307);
+      expect(error.response.headers).to.have.property(
+        "location",
+        "https://custom/replacement"
+      );
+    });
+  });
+});
+
+describe("Routing Rule Tests", () => {
+  describe("Condition", () => {
+    const matchingKey = "prefix/key";
+    const nonMatchKey = "without-prefix/key";
+    const matchingStatusCode = 404;
+    const nonMatchStatusCode = 200;
+
+    it("should redirect with no condition", () => {
+      const rule = new RoutingRule({});
+
+      expect(rule.shouldRedirect("key", 200)).to.exist;
+    });
+
+    it("should redirect using only KeyPrefixEquals", () => {
+      const rule = new RoutingRule({
+        Condition: {
+          KeyPrefixEquals: "prefix"
+        }
+      });
+
+      expect(rule.shouldRedirect(matchingKey, 200)).to.be.true;
+      expect(rule.shouldRedirect(nonMatchKey, 200)).to.be.false;
+    });
+
+    it("should redirect using only HttpErrorCodeReturnedEquals", () => {
+      const rule = new RoutingRule({
+        Condition: {
+          HttpErrorCodeReturnedEquals: 404
+        }
+      });
+
+      expect(rule.shouldRedirect("key", matchingStatusCode)).to.be.true;
+      expect(rule.shouldRedirect("key", nonMatchStatusCode)).to.be.false;
+    });
+
+    it("should redirect using both KeyPrefixEquals and HttpErrorCodeReturnedEquals", () => {
+      const rule = new RoutingRule({
+        Condition: {
+          KeyPrefixEquals: "prefix",
+          HttpErrorCodeReturnedEquals: 404
+        }
+      });
+
+      expect(rule.shouldRedirect(matchingKey, matchingStatusCode)).to.be.true;
+      expect(rule.shouldRedirect(nonMatchKey, matchingStatusCode)).to.be.false;
+      expect(rule.shouldRedirect(matchingKey, nonMatchStatusCode)).to.be.false;
+      expect(rule.shouldRedirect(nonMatchKey, nonMatchStatusCode)).to.be.false;
+    });
+  });
+
+  describe("Redirect", () => {
+    const defaults = {
+      protocol: "https",
+      hostname: "example.com"
+    };
+
+    it("should redirect using only HostName", () => {
+      const rule = new RoutingRule({
+        Redirect: {
+          HostName: "localhost"
+        }
+      });
+
+      expect(rule.statusCode).to.equal(301);
+      expect(rule.getRedirectLocation("key", defaults)).to.equal(
+        "https://localhost/key"
+      );
+    });
+
+    it("should redirect using only Protocol", () => {
+      const rule = new RoutingRule({
+        Redirect: {
+          HttpRedirectCode: 307
+        }
+      });
+
+      expect(rule.statusCode).to.equal(307);
+      expect(rule.getRedirectLocation("key", defaults)).to.equal(
+        "https://example.com/key"
+      );
+    });
+
+    it("should redirect using only Protocol", () => {
+      const rule = new RoutingRule({
+        Redirect: {
+          Protocol: "http"
+        }
+      });
+
+      expect(rule.statusCode).to.equal(301);
+      expect(rule.getRedirectLocation("key", defaults)).to.equal(
+        "http://example.com/key"
+      );
+    });
+
+    it("should redirect using only ReplaceKeyPrefixWith", () => {
+      const rule = new RoutingRule({
+        Condition: {
+          KeyPrefixEquals: "prefix"
+        },
+        Redirect: {
+          ReplaceKeyPrefixWith: "replacement"
+        }
+      });
+
+      expect(rule.statusCode).to.equal(301);
+      expect(rule.getRedirectLocation("prefix/key", defaults)).to.equal(
+        "https://example.com/replacement/key"
+      );
+    });
+
+    it("should replace blank prefix with ReplaceKeyPrefixWith", () => {
+      const rule = new RoutingRule({
+        Redirect: {
+          ReplaceKeyPrefixWith: "replacement/"
+        }
+      });
+
+      expect(rule.statusCode).to.equal(301);
+      expect(rule.getRedirectLocation("prefix/key", defaults)).to.equal(
+        "https://example.com/replacement/prefix/key"
+      );
+    });
+
+    it("should redirect using only ReplaceKeyWith", () => {
+      const rule = new RoutingRule({
+        Redirect: {
+          ReplaceKeyWith: "replacement"
+        }
+      });
+
+      expect(rule.statusCode).to.equal(301);
+      expect(rule.getRedirectLocation("key", defaults)).to.equal(
+        "https://example.com/replacement"
+      );
+    });
+
+    it("should redirect using a combination of options", () => {
+      const rule = new RoutingRule({
+        Condition: {
+          KeyPrefixEquals: "prefix"
+        },
+        Redirect: {
+          Protocol: "http",
+          HttpRedirectCode: 307,
+          HostName: "localhost",
+          ReplaceKeyPrefixWith: "replacement"
+        }
+      });
+
+      expect(rule.statusCode).to.equal(307);
+      expect(rule.getRedirectLocation("prefix/key", defaults)).to.equal(
+        "http://localhost/replacement/key"
+      );
+    });
+  });
+});
+
+describe("S3WebsiteConfiguration Tests", () => {
+  const notWellFormedError =
+    "The XML you provided was not well-formed or did not validate against our published schema";
+
+  describe("RoutingRules", () => {
+    it("rejects when multiple RoutingRules elements exist", () => {
+      expect(() =>
+        S3WebsiteConfiguration.validate(`
+<WebsiteConfiguration>
+    <IndexDocument>
+        <Suffix>index.html</Suffix>
+    </IndexDocument>
+    <RoutingRules>
+        <RoutingRule>
+            <Redirect>
+                <HostName>example.com</HostName>
+            </Redirect>
+        </RoutingRule>
+    </RoutingRules>
+    <RoutingRules>
+        <RoutingRule>
+            <Redirect>
+                <HostName>example.com</HostName>
+            </Redirect>
+        </RoutingRule>
+    </RoutingRules>
+</WebsiteConfiguration>`)
+      ).to.throw(notWellFormedError);
+    });
+
+    it("rejects when no RoutingRules.RoutingRule elements exist", () => {
+      expect(() =>
+        S3WebsiteConfiguration.validate(`
+<WebsiteConfiguration>
+    <IndexDocument>
+        <Suffix>index.html</Suffix>
+    </IndexDocument>
+    <RoutingRules>
+        <other />
+    </RoutingRules>
+</WebsiteConfiguration>`)
+      ).to.throw(notWellFormedError);
+    });
+
+    it("accepts single RoutingRules.RoutingRule", () => {
+      expect(
+        S3WebsiteConfiguration.validate(`
+<WebsiteConfiguration>
+    <IndexDocument>
+        <Suffix>index.html</Suffix>
+    </IndexDocument>
+    <RoutingRules>
+        <RoutingRule>
+            <Redirect>
+                <HostName>example.com</HostName>
+            </Redirect>
+        </RoutingRule>
+    </RoutingRules>
+</WebsiteConfiguration>`)
+      ).to.exist;
+    });
+
+    it("accepts multiple RoutingRules.RoutingRule", () => {
+      expect(
+        S3WebsiteConfiguration.validate(`
+<WebsiteConfiguration>
+    <IndexDocument>
+        <Suffix>index.html</Suffix>
+    </IndexDocument>
+    <RoutingRules>
+        <RoutingRule>
+            <Redirect>
+                <HostName>example.com</HostName>
+            </Redirect>
+        </RoutingRule>
+        <RoutingRule>
+            <Redirect>
+                <HostName>example.com</HostName>
+            </Redirect>
+        </RoutingRule>
+    </RoutingRules>
+</WebsiteConfiguration>`)
+      ).to.exist;
+    });
+
+    describe("Condition", () => {
+      it("rejects when no KeyPrefixEquals or HttpErrorCodeReturnedEquals elements exist", () => {
+        expect(() =>
+          S3WebsiteConfiguration.validate(`
+<WebsiteConfiguration>
+    <IndexDocument>
+        <Suffix>index.html</Suffix>
+    </IndexDocument>
+    <RoutingRules>
+        <RoutingRule>
+            <Condition>
+                <other />
+            </Condition>
+            <Redirect>
+                <HostName>example.com</HostName>
+            </Redirect>
+        </RoutingRule>
+    </RoutingRules>
+</WebsiteConfiguration>`)
+        ).to.throw(notWellFormedError);
+      });
+
+      it("rejects when HttpErrorCodeReturnedEquals is not in range", () => {
+        expect(() =>
+          S3WebsiteConfiguration.validate(`
+<WebsiteConfiguration>
+    <IndexDocument>
+        <Suffix>index.html</Suffix>
+    </IndexDocument>
+    <RoutingRules>
+        <RoutingRule>
+            <Condition>
+                <HttpErrorCodeReturnedEquals>304</HttpErrorCodeReturnedEquals>
+            </Condition>
+            <Redirect>
+                <HostName>example.com</HostName>
+            </Redirect>
+        </RoutingRule>
+    </RoutingRules>
+</WebsiteConfiguration>`)
+        ).to.throw(
+          "The provided HTTP error code (304) is not valid. Valid codes are 4XX or 5XX."
+        );
+
+        expect(() =>
+          S3WebsiteConfiguration.validate(`
+<WebsiteConfiguration>
+    <IndexDocument>
+        <Suffix>index.html</Suffix>
+    </IndexDocument>
+    <RoutingRules>
+        <RoutingRule>
+            <Condition>
+                <HttpErrorCodeReturnedEquals>600</HttpErrorCodeReturnedEquals>
+            </Condition>
+            <Redirect>
+                <HostName>example.com</HostName>
+            </Redirect>
+        </RoutingRule>
+    </RoutingRules>
+</WebsiteConfiguration>`)
+        ).to.throw(
+          "The provided HTTP error code (600) is not valid. Valid codes are 4XX or 5XX."
+        );
+      });
+
+      it("accepts a Condition with a KeyPrefixEquals element", () => {
+        expect(
+          S3WebsiteConfiguration.validate(`
+<WebsiteConfiguration>
+    <IndexDocument>
+        <Suffix>index.html</Suffix>
+    </IndexDocument>
+    <RoutingRules>
+        <RoutingRule>
+            <Condition>
+                <KeyPrefixEquals>test</KeyPrefixEquals>
+            </Condition>
+            <Redirect>
+                <HostName>example.com</HostName>
+            </Redirect>
+        </RoutingRule>
+    </RoutingRules>
+</WebsiteConfiguration>`)
+        ).to.exist;
+      });
+
+      it("accepts a Condition with a HttpErrorCodeReturnedEquals element", () => {
+        expect(
+          S3WebsiteConfiguration.validate(`
+<WebsiteConfiguration>
+    <IndexDocument>
+        <Suffix>index.html</Suffix>
+    </IndexDocument>
+    <RoutingRules>
+        <RoutingRule>
+            <Condition>
+                <HttpErrorCodeReturnedEquals>404</HttpErrorCodeReturnedEquals>
+            </Condition>
+            <Redirect>
+                <HostName>example.com</HostName>
+            </Redirect>
+        </RoutingRule>
+    </RoutingRules>
+</WebsiteConfiguration>`)
+        ).to.exist;
+      });
+
+      it("accepts a config with no Condition", () => {
+        expect(
+          S3WebsiteConfiguration.validate(`
+<WebsiteConfiguration>
+    <IndexDocument>
+        <Suffix>index.html</Suffix>
+    </IndexDocument>
+    <RoutingRules>
+        <RoutingRule>
+            <Redirect>
+                <HostName>example.com</HostName>
+            </Redirect>
+        </RoutingRule>
+    </RoutingRules>
+</WebsiteConfiguration>`)
+        ).to.exist;
+      });
+    });
+
+    describe("Redirect", () => {
+      it("rejects when Redirect doesn't exist", () => {
+        expect(() =>
+          S3WebsiteConfiguration.validate(`
+<WebsiteConfiguration>
+    <IndexDocument>
+        <Suffix>index.html</Suffix>
+    </IndexDocument>
+    <RoutingRules>
+        <RoutingRule>
+            <Condition>
+                <KeyPrefixEquals>test</KeyPrefixEquals>
+            </Condition>
+        </RoutingRule>
+    </RoutingRules>
+</WebsiteConfiguration>`)
+        ).to.throw(notWellFormedError);
+      });
+
+      it("rejects when no valid Redirect options exist", () => {
+        expect(() =>
+          S3WebsiteConfiguration.validate(`
+<WebsiteConfiguration>
+    <IndexDocument>
+        <Suffix>index.html</Suffix>
+    </IndexDocument>
+    <RoutingRules>
+        <RoutingRule>
+            <Condition>
+                <KeyPrefixEquals>test</KeyPrefixEquals>
+            </Condition>
+            <Redirect>
+                <other />
+            </Redirect>
+        </RoutingRule>
+    </RoutingRules>
+</WebsiteConfiguration>`)
+        ).to.throw(notWellFormedError);
+      });
+
+      it("rejects when Protocol isn't http or https", () => {
+        expect(() =>
+          S3WebsiteConfiguration.validate(`
+<WebsiteConfiguration>
+    <IndexDocument>
+        <Suffix>index.html</Suffix>
+    </IndexDocument>
+    <RoutingRules>
+        <RoutingRule>
+            <Condition>
+                <KeyPrefixEquals>test</KeyPrefixEquals>
+            </Condition>
+            <Redirect>
+                <Protocol>ftp</Protocol>
+            </Redirect>
+        </RoutingRule>
+    </RoutingRules>
+</WebsiteConfiguration>`)
+        ).to.throw(
+          "Invalid protocol, protocol can be http or https. If not defined the protocol will be selected automatically."
+        );
+      });
+
+      it("accepts a valid Redirect config", () => {
+        expect(
+          S3WebsiteConfiguration.validate(`
+<WebsiteConfiguration>
+    <IndexDocument>
+        <Suffix>index.html</Suffix>
+    </IndexDocument>
+    <RoutingRules>
+        <RoutingRule>
+            <Redirect>
+                <HostName>example.com</HostName>
+            </Redirect>
+        </RoutingRule>
+    </RoutingRules>
+</WebsiteConfiguration>`)
+        ).to.exist;
+      });
+
+      it("parses values with XML encoding", () => {
+        const config = S3WebsiteConfiguration.validate(`
+<WebsiteConfiguration>
+  <IndexDocument>
+      <Suffix>index.html</Suffix>
+  </IndexDocument>
+  <RoutingRules>
+      <RoutingRule>
+          <Redirect>
+              <ReplaceKeyPrefixWith>url?test=1&amp;key=</ReplaceKeyPrefixWith>
+          </Redirect>
+      </RoutingRule>
+  </RoutingRules>
+</WebsiteConfiguration>
+    `);
+
+        expect(config.routingRules[0].redirect.ReplaceKeyPrefixWith).to.equal(
+          "url?test=1&key="
+        );
+      });
+
+      it("rejects a Redirect config with both ReplaceKeyWith and ReplaceKeyPrefixWith elements", () => {
+        expect(() =>
+          S3WebsiteConfiguration.validate(`
+<WebsiteConfiguration>
+    <IndexDocument>
+        <Suffix>index.html</Suffix>
+    </IndexDocument>
+    <RoutingRules>
+        <RoutingRule>
+            <Condition>
+                <KeyPrefixEquals>test</KeyPrefixEquals>
+            </Condition>
+            <Redirect>
+                <ReplaceKeyWith>foo</ReplaceKeyWith>
+                <ReplaceKeyPrefixWith>bar</ReplaceKeyPrefixWith>
+            </Redirect>
+        </RoutingRule>
+    </RoutingRules>
+</WebsiteConfiguration>`)
+        ).to.throw(
+          "You can only define ReplaceKeyPrefix or ReplaceKey but not both."
+        );
+      });
+    });
   });
 });

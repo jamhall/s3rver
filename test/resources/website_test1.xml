@@ -1,0 +1,15 @@
+<WebsiteConfiguration xmlns="http://s3.amazonaws.com/doc/2006-03-01/">
+    <IndexDocument>
+        <Suffix>index.html</Suffix>
+    </IndexDocument>
+    <RoutingRules>
+        <RoutingRule>
+            <Condition>
+                <KeyPrefixEquals>test/</KeyPrefixEquals>
+            </Condition>
+            <Redirect>
+                <ReplaceKeyPrefixWith>replacement/</ReplaceKeyPrefixWith>
+            </Redirect>
+        </RoutingRule>
+    </RoutingRules>
+</WebsiteConfiguration>
