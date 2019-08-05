@@ -50,7 +50,7 @@
   },
   "dependencies": {
     "commander": "^2.6.0",
-    "fast-xml-parser": "^3.12.13",
+    "fast-xml-parser": "^3.12.19",
     "fs-extra": "^8.0.0",
     "he": "^1.2.0",
     "koa": "^2.7.0",
