@@ -398,6 +398,26 @@ describe('S3rver Tests', function() {
     expect(data.ETag).to.match(/"[a-fA-F0-9]{32}"/);
   });
 
+  it('should store a text object when POSTed using traditional url-form-encoded', async function() {
+    const file = path.join(__dirname, 'resources/post_file.txt');
+    const res = await request.post({
+      method: 'POST',
+      baseUrl: s3Client.config.endpoint,
+      url: `/${buckets[0].name}`,
+      formData: {
+        key: 'text',
+        file: fs.createReadStream(file),
+      },
+      resolveWithFullResponse: true,
+    });
+    expect(res.statusCode).to.equal(201);
+    const object = await s3Client
+      .getObject({ Bucket: buckets[0].name, Key: 'text' })
+      .promise();
+    expect(object.ContentType).to.equal('binary/octet-stream');
+    expect(object.Body.toString()).to.equal('Hello!\n');
+  });
+
   it('should store a text object with invalid win32 path characters and retrieve it', async function() {
     const reservedChars = '\\/:*?"<>|';
     await s3Client
