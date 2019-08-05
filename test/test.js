@@ -748,6 +748,20 @@ describe("S3rver Tests", function() {
     expect(object.ContentType).to.equal("image/jpeg");
   });
 
+  it("should HEAD an empty object in a bucket", async function() {
+    await s3Client
+      .putObject({
+        Bucket: buckets[0].name,
+        Key: "somekey",
+        Body: ""
+      })
+      .promise();
+    const object = await s3Client
+      .headObject({ Bucket: buckets[0].name, Key: "somekey" })
+      .promise();
+    expect(object.ETag).to.match(/"[a-fA-F0-9]{32}"/);
+  });
+
   it("should get partial image from a bucket with a range request", async function() {
     const file = path.join(__dirname, "resources/image0.jpg");
     await s3Client
