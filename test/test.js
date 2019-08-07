@@ -398,29 +398,6 @@ describe("S3rver Tests", function() {
     expect(data.ETag).to.match(/"[a-fA-F0-9]{32}"/);
   });
 
-  it("should tag an object in a bucket", async function() {
-    await s3Client
-      .putObject({ Bucket: buckets[0].name, Key: "text", Body: "Hello!" })
-      .promise();
-
-    await s3Client
-      .putObjectTagging({
-        Bucket: buckets[0].name,
-        Key: "text",
-        Tagging: { TagSet: [{ Key: "Test", Value: "true" }] }
-      })
-      .promise();
-
-    const tagging = await s3Client
-      .getObjectTagging({
-        Bucket: buckets[0].name,
-        Key: "text"
-      })
-      .promise();
-
-    expect(tagging).to.eql({ TagSet: [{ Key: "Test", Value: "true" }] });
-  });
-
   it("should store a text object with invalid win32 path characters and retrieve it", async function() {
     const reservedChars = '\\/:*?"<>|';
     await s3Client
@@ -1483,6 +1460,69 @@ describe("S3rver Tests", function() {
       json: true
     });
     expect(body).to.include(`<Name>${buckets[0].name}</Name>`);
+  });
+
+  describe("Object Tagging", () => {
+    it("should tag an object in a bucket", async function() {
+      await s3Client
+        .putObject({ Bucket: buckets[0].name, Key: "text", Body: "Hello!" })
+        .promise();
+
+      await s3Client
+        .putObjectTagging({
+          Bucket: buckets[0].name,
+          Key: "text",
+          Tagging: { TagSet: [{ Key: "Test", Value: "true" }] }
+        })
+        .promise();
+
+      const tagging = await s3Client
+        .getObjectTagging({
+          Bucket: buckets[0].name,
+          Key: "text"
+        })
+        .promise();
+
+      expect(tagging).to.eql({ TagSet: [{ Key: "Test", Value: "true" }] });
+    });
+
+    it("errors when tagging an object that doesn't exist", async function() {
+      await expect(
+        s3Client
+          .putObjectTagging({
+            Bucket: buckets[0].name,
+            Key: "text",
+            Tagging: { TagSet: [{ Key: "Test", Value: "true" }] }
+          })
+          .promise()
+      ).to.eventually.be.rejectedWith("The specified key does not exist.");
+    });
+
+    it("errors when getting tags for an object that doesn't exist", async function() {
+      await expect(
+        s3Client
+          .getObjectTagging({
+            Bucket: buckets[0].name,
+            Key: "text"
+          })
+          .promise()
+      ).to.eventually.be.rejectedWith("The specified key does not exist.");
+    });
+
+    it("returns an empty tag set for an untagged object", async function() {
+      await s3Client
+        .putObject({ Bucket: buckets[0].name, Key: "text", Body: "Hello!" })
+        .promise();
+
+      const tagging = await s3Client
+        .getObjectTagging({
+          Bucket: buckets[0].name,
+          Key: "text"
+        })
+        .promise();
+
+      expect(tagging).to.eql({ TagSet: [] });
+    });
   });
 });
 
