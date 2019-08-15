@@ -7,17 +7,22 @@
     "ecmaVersion": 2018
   },
   "extends": [
-    "eslint:recommended",
+    "semistandard",
     "prettier"
   ],
   "rules": {
-    "require-atomic-updates": "off"
+    "new-cap": ["error", {
+      "newIsCapExceptions": ["j2xParser"]
+    }]
   },
   "overrides": [
     {
       "files": "test/**/*.js",
       "env": {
         "mocha": true
+      },
+      "rules": {
+        "no-unused-expressions": "off"
       }
     }
   ]

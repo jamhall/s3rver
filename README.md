@@ -122,16 +122,16 @@ Creates a S3rver instance
 For your convenience, we've provided sample bucket configurations you can access using `require.resolve`:
 
 ```javascript
-const corsConfig = require.resolve("s3rver/example/cors.xml");
-const websiteConfig = require.resolve("s3rver/example/website.xml");
+const corsConfig = require.resolve('s3rver/example/cors.xml');
+const websiteConfig = require.resolve('s3rver/example/website.xml');
 
 const s3rver = new S3rver({
   configureBuckets: [
     {
-      name: "test-bucket",
-      configs: [fs.readFileSync(corsConfig), fs.readFileSync(websiteConfig)]
-    }
-  ]
+      name: 'test-bucket',
+      configs: [fs.readFileSync(corsConfig), fs.readFileSync(websiteConfig)],
+    },
+  ],
 });
 ```
 
@@ -149,15 +149,15 @@ Starts/stops the server on the configured port and host. Returns a Promise if no
 Example in mocha:
 
 ```javascript
-const S3rver = require("s3rver");
+const S3rver = require('s3rver');
 let instance;
 
 before(function(done) {
   instance = new S3rver({
     port: 4569,
-    hostname: "localhost",
+    hostname: 'localhost',
     silent: false,
-    directory: "/tmp/s3rver_test_directory"
+    directory: '/tmp/s3rver_test_directory',
   }).run(done);
 });
 
@@ -189,27 +189,27 @@ You can subscribe to notifications for PUT, POST, COPY and DELETE object events 
 Please refer to [AWS's documentation](http://docs.aws.amazon.com/AmazonS3/latest/dev/notification-content-structure.html) for details of event object.
 
 ```javascript
-const S3rver = require("s3rver");
-const { fromEvent } = require("rxjs");
-const { filter } = require("rxjs/operators");
+const S3rver = require('s3rver');
+const { fromEvent } = require('rxjs');
+const { filter } = require('rxjs/operators');
 
 const instance = new S3rver({
   port: 4568,
-  hostname: "localhost",
+  hostname: 'localhost',
   silent: false,
-  directory: "/tmp/s3rver_test_directory"
+  directory: '/tmp/s3rver_test_directory',
 }).run((err, { address, port } = {}) => {
   if (err) {
     console.error(err);
   } else {
-    console.log("now listening at address %s and port %d", address, port);
+    console.log('now listening at address %s and port %d', address, port);
   }
 });
 
-const s3Events = fromEvent(instance, "event");
+const s3Events = fromEvent(instance, 'event');
 s3Events.subscribe(event => console.log(event));
 s3Events
-  .pipe(filter(event => event.Records[0].eventName == "ObjectCreated:Copy"))
+  .pipe(filter(event => event.Records[0].eventName == 'ObjectCreated:Copy'))
   .subscribe(event => console.log(event));
 ```
 
