@@ -48,7 +48,7 @@
     "node": ">=8.3.0"
   },
   "dependencies": {
-    "commander": "^2.6.0",
+    "commander": "^3.0.0",
     "fast-xml-parser": "^3.12.19",
     "fs-extra": "^8.0.0",
     "he": "^1.2.0",
