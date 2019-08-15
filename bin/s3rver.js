@@ -1,12 +1,12 @@
 #!/usr/bin/env node
-"use strict";
+'use strict';
 
 /* eslint-disable no-console */
 
-const fs = require("fs-extra");
-const program = require("commander");
-const pkg = require("../package.json");
-const S3rver = require("..");
+const fs = require('fs-extra');
+const program = require('commander');
+const pkg = require('../package.json');
+const S3rver = require('..');
 
 function ensureDirectory(directory) {
   fs.ensureDirSync(directory);
@@ -17,67 +17,67 @@ function ensureDirectory(directory) {
 function parseConfigureBucket(bucketName, memo = []) {
   let idx = 0;
   do {
-    idx = program.rawArgs.indexOf("--configure-bucket", idx) + 1;
+    idx = program.rawArgs.indexOf('--configure-bucket', idx) + 1;
   } while (program.rawArgs[idx] !== bucketName);
   idx++;
 
   const bucketConfigs = [];
   while (
     idx < program.rawArgs.length &&
-    !program.rawArgs[idx].startsWith("-")
+    !program.rawArgs[idx].startsWith('-')
   ) {
     bucketConfigs.push(program.rawArgs[idx++]);
   }
   memo.push({
     name: bucketName,
-    configs: bucketConfigs.map(config => fs.readFileSync(config))
+    configs: bucketConfigs.map(config => fs.readFileSync(config)),
   });
   return memo;
 }
 
 program
-  .usage("-d <path> [options]")
-  .option("-d, --directory <path>", "Data directory", ensureDirectory)
+  .usage('-d <path> [options]')
+  .option('-d, --directory <path>', 'Data directory', ensureDirectory)
   .option(
-    "-a, --address <value>",
-    "Hostname or IP to bind to",
-    S3rver.defaultOptions.address
+    '-a, --address <value>',
+    'Hostname or IP to bind to',
+    S3rver.defaultOptions.address,
   )
   .option(
-    "-p, --port <n>",
-    "Port of the http server",
-    S3rver.defaultOptions.port
+    '-p, --port <n>',
+    'Port of the http server',
+    S3rver.defaultOptions.port,
   )
-  .option("-s, --silent", "Suppress log messages", S3rver.defaultOptions.silent)
+  .option('-s, --silent', 'Suppress log messages', S3rver.defaultOptions.silent)
   .option(
-    "--key <path>",
-    "Path to private key file for running with TLS",
-    fs.readFileSync
-  )
-  .option(
-    "--cert <path>",
-    "Path to certificate file for running with TLS",
-    fs.readFileSync
+    '--key <path>',
+    'Path to private key file for running with TLS',
+    fs.readFileSync,
   )
   .option(
-    "--allow-mismatched-signatures",
-    "Prevent SignatureDoesNotMatch errors for all well-formed signatures"
+    '--cert <path>',
+    'Path to certificate file for running with TLS',
+    fs.readFileSync,
+  )
+  .option(
+    '--allow-mismatched-signatures',
+    'Prevent SignatureDoesNotMatch errors for all well-formed signatures',
   )
   // NOTE: commander doesn't actually support options with multiple parts,
   // we must manually parse this option
   .option(
-    "--configure-bucket <name> [configs...]",
-    "Bucket name and configuration files for creating and configuring a bucket at startup",
-    parseConfigureBucket
+    '--configure-bucket <name> [configs...]',
+    'Bucket name and configuration files for creating and configuring a bucket at startup',
+    parseConfigureBucket,
   )
-  .version(pkg.version, "-v, --version");
+  .version(pkg.version, '-v, --version');
 
-program.on("--help", () => {
-  console.log("");
-  console.log("Examples:");
-  console.log("  $ s3rver -d /tmp/s3rver -a 0.0.0.0 -p 0");
+program.on('--help', () => {
+  console.log('');
+  console.log('Examples:');
+  console.log('  $ s3rver -d /tmp/s3rver -a 0.0.0.0 -p 0');
   console.log(
-    "  $ s3rver -d /tmp/s3rver --configure-bucket test-bucket ./cors.xml ./website.xml"
+    '  $ s3rver -d /tmp/s3rver --configure-bucket test-bucket ./cors.xml ./website.xml',
   );
 });
 
@@ -86,12 +86,12 @@ try {
   program.configureBuckets = program.configureBucket;
   delete program.configureBucket;
 } catch (err) {
-  console.error("error: %s", err.message);
+  console.error('error: %s', err.message);
   process.exit(1);
 }
 
 if (program.directory === undefined) {
-  console.error("error: data directory -d is required");
+  console.error('error: data directory -d is required');
   process.exit(1);
 }
 
@@ -101,5 +101,5 @@ new S3rver(program).run((err, { address, port } = {}) => {
     process.exit(1);
   }
   console.log();
-  console.log("S3rver listening on %s:%d", address, port);
+  console.log('S3rver listening on %s:%d', address, port);
 });
