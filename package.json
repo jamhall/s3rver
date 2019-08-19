@@ -72,7 +72,7 @@
     "eslint-plugin-import": "2.18.2",
     "eslint-plugin-node": "9.1.0",
     "eslint-plugin-promise": "4.2.1",
-    "eslint-plugin-standard": "4.0.0",
+    "eslint-plugin-standard": "4.0.1",
     "express": "4.17.1",
     "md5": "2.2.1",
     "mocha": "6.2.0",
