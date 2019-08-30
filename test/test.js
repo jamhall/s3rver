@@ -2885,25 +2885,25 @@ describe('Static Website Tests', function() {
     }
   });
 
-  it("should allow redirects for image requests", async function() {
+  it('should allow redirects for image requests', async function() {
     const server = new S3rver({
-      configureBuckets: [buckets[2]]
+      configureBuckets: [buckets[2]],
     });
     const { port } = await server.run();
     const s3Client = new AWS.S3({
-      accessKeyId: "S3RVER",
-      secretAccessKey: "S3RVER",
+      accessKeyId: 'S3RVER',
+      secretAccessKey: 'S3RVER',
       endpoint: `http://localhost:${port}`,
       sslEnabled: false,
-      s3ForcePathStyle: true
+      s3ForcePathStyle: true,
     });
     let error;
     try {
       await request({
         baseUrl: s3Client.endpoint.href,
         uri: `${buckets[2].name}/complex/image.png`,
-        headers: { accept: "image/png" },
-        followRedirect: false
+        headers: { accept: 'image/png' },
+        followRedirect: false,
       });
     } catch (err) {
       error = err;
@@ -2914,11 +2914,11 @@ describe('Static Website Tests', function() {
     expect(error.statusCode).to.equal(307);
     expect(error.response.headers).to.have.property(
       'location',
-      'https://custom/replacement'
+      'https://custom/replacement',
     );
   });
 
-  it("should get an index page at /page/ path", async function() {
+  it('should get an index page at /page/ path', async function() {
     const server = new S3rver({
       configureBuckets: [buckets[0]],
     });
