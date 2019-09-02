@@ -105,18 +105,19 @@ You can also run s3rver programmatically.
 Creates a S3rver instance
 
 <!-- prettier-ignore-start -->
-| Option                         | Type                 | Default     | Description
-| ------------------------------ | -------------------- | ----------- | -----------
-| address                        | `string`             | `localhost` | Host/IP to bind to
-| port                           | `number`             | `4568`      | Port of the HTTP server
-| key                            | `string` \| `Buffer` |             | Private key for running with TLS
-| cert                           | `string` \| `Buffer` |             | Certificate for running with TLS
-| silent                         | `boolean`            | `false`     | Suppress log messages
-| directory                      | `string`             |             | Data directory
-| resetOnClose                   | `boolean`            | `false`     | Remove all bucket data on server close
-| allowMismatchedSignatures      | `boolean`            | `false`     | Prevent `SignatureDoesNotMatch` errors for all well-formed signatures
-| configureBuckets\[].name       | `string`             |             | The name of a prefabricated bucket to create when the server starts
-| configureBuckets\[].configs\[] | `string` \| `Buffer` |             | Raw XML string or Buffer of Bucket config
+| Option                         | Type                 | Default         | Description
+| ------------------------------ | -------------------- | --------------- | -----------
+| address                        | `string`             | `localhost`     | Host/IP to bind to
+| port                           | `number`             | `4568`          | Port of the HTTP server
+| key                            | `string` \| `Buffer` |                 | Private key for running with TLS
+| cert                           | `string` \| `Buffer` |                 | Certificate for running with TLS
+| silent                         | `boolean`            | `false`         | Suppress log messages
+| serviceEndpoint                | `string`             | `amazonaws.com` | For self-hosted setups where S3rver should override the AWS S3 endpoint
+| directory                      | `string`             |                 | Data directory
+| resetOnClose                   | `boolean`            | `false`         | Remove all bucket data on server close
+| allowMismatchedSignatures      | `boolean`            | `false`         | Prevent `SignatureDoesNotMatch` errors for all well-formed signatures
+| configureBuckets\[].name       | `string`             |                 | The name of a prefabricated bucket to create when the server starts
+| configureBuckets\[].configs\[] | `string` \| `Buffer` |                 | Raw XML string or Buffer of Bucket config
 <!-- prettier-ignore-end -->
 
 For your convenience, we've provided sample bucket configurations you can access using `require.resolve`:
