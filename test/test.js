@@ -4,8 +4,10 @@ const AWS = require('aws-sdk');
 const chai = require('chai');
 const chaiAsPromised = require('chai-as-promised');
 const express = require('express');
+const xmlParser = require('fast-xml-parser');
 const fs = require('fs-extra');
-const { find, times } = require('lodash');
+const he = require('he');
+const { find, times, zip } = require('lodash');
 const md5 = require('md5');
 const moment = require('moment');
 const os = require('os');
@@ -241,6 +243,68 @@ describe('S3rver Class Tests', function() {
       await server.close();
     }
   });
+
+  it('should list 6 buckets at a custom service endpoint', async function() {
+    const buckets = [
+      { name: 'bucket1' },
+      { name: 'bucket2' },
+      { name: 'bucket3' },
+      { name: 'bucket4' },
+      { name: 'bucket5' },
+      { name: 'bucket6' },
+    ];
+
+    const server = new S3rver({
+      configureBuckets: buckets,
+      serviceEndpoint: 'example.com',
+    });
+    const { port } = await server.run();
+    try {
+      const res = await request({
+        method: 'GET',
+        baseUrl: `http://localhost:${port}`,
+        url: '/',
+        headers: { host: 's3.example.com' },
+      });
+      const parsedBody = xmlParser.parse(res, {
+        tagValueProcessor: a => he.decode(a),
+      });
+      expect(parsedBody).to.haveOwnProperty('ListAllMyBucketsResult');
+      const parsedBuckets = parsedBody.ListAllMyBucketsResult.Buckets.Bucket;
+      expect(parsedBuckets).to.be.instanceOf(Array);
+      expect(parsedBuckets).to.have.lengthOf(6);
+      for (const [bucket, config] of zip(parsedBuckets, buckets)) {
+        expect(bucket.Name).to.equal(config.name);
+        expect(moment(bucket.CreationDate).isValid()).to.be.true;
+      }
+    } finally {
+      await server.close();
+    }
+  });
+
+  it('should list objects in a bucket at a custom service endpoint', async function() {
+    const bucket = { name: 'foobars' };
+
+    const server = new S3rver({
+      configureBuckets: [bucket],
+      serviceEndpoint: 'example.com',
+    });
+    const { port } = await server.run();
+    try {
+      const res = await request({
+        method: 'GET',
+        baseUrl: `http://localhost:${port}`,
+        url: '/',
+        headers: { host: 'foobars.s3.example.com' },
+      });
+      const parsedBody = xmlParser.parse(res, {
+        tagValueProcessor: a => he.decode(a),
+      });
+      expect(parsedBody.ListBucketResult.Name).to.equal(bucket.name);
+    } finally {
+      await server.close();
+    }
+  });
 });
 
 describe('S3rver Tests', function() {
@@ -276,10 +340,10 @@ describe('S3rver Tests', function() {
   });
 
   it('should fetch six buckets', async function() {
-    const buckets = await s3Client.listBuckets().promise();
-    expect(buckets.Buckets).to.have.lengthOf(6);
-    for (const bucket of buckets.Buckets) {
-      expect(bucket.Name).to.exist;
+    const data = await s3Client.listBuckets().promise();
+    expect(data.Buckets).to.have.lengthOf(6);
+    for (const [bucket, config] of zip(data.Buckets, buckets)) {
+      expect(bucket.Name).to.equal(config.name);
       expect(moment(bucket.CreationDate).isValid()).to.be.true;
     }
   });

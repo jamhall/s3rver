@@ -60,6 +60,11 @@ program
     fs.readFileSync,
   )
   .option(
+    '--service-endpoint <address>',
+    'Overrides the AWS S3 service endpoint',
+    S3rver.defaultOptions.serviceEndpoint,
+  )
+  .option(
     '--allow-mismatched-signatures',
     'Prevent SignatureDoesNotMatch errors for all well-formed signatures',
   )
