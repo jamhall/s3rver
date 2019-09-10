@@ -2275,8 +2275,10 @@ describe('S3 Event Notification Tests', function() {
     const eventPromise = fromEvent(server, 'event')
       .pipe(take(1))
       .toPromise();
-    const { url, fields } = await s3Client
-      .createPresignedPost({ Bucket: buckets[0].name, Fields: { key: 'testPostKey' } });
+    const { url, fields } = await s3Client.createPresignedPost({
+      Bucket: buckets[0].name,
+      Fields: { key: 'testPostKey' },
+    });
     await request({
       method: 'POST',
       uri: url,
