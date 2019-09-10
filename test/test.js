@@ -2268,6 +2268,34 @@ describe('S3 Event Notification Tests', function() {
     });
   });
 
+  it('should trigger a Post event on presignedPost', async function() {
+    const file = path.join(__dirname, 'resources/post_file.txt');
+    const { size } = fs.statSync(file);
+    const eTag = md5(fs.readFileSync(file));
+    const eventPromise = fromEvent(server, 'event')
+      .pipe(take(1))
+      .toPromise();
+    const { url, fields } = await s3Client
+      .createPresignedPost({ Bucket: buckets[0].name, Fields: { key: 'testPostKey' } });
+    await request({
+      method: 'POST',
+      uri: url,
+      formData: {
+        ...fields,
+        file: fs.createReadStream(file),
+      },
+      resolveWithFullResponse: true,
+    });
+    const event = await eventPromise;
+    expect(event.Records[0].eventName).to.equal('ObjectCreated:Post');
+    expect(event.Records[0].s3.bucket.name).to.equal(buckets[0].name);
+    expect(event.Records[0].s3.object).to.contain({
+      key: 'testPostKey',
+      size,
+      eTag,
+    });
+  });
+
   it('should trigger a Copy event', async function() {
     const body = 'Hello!';
     await s3Client
