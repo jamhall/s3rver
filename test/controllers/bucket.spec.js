@@ -481,6 +481,17 @@ describe('Operations on Buckets', () => {
 
   describe('GET Bucket cors', () => {});
 
+  describe('GET Bucket location', () => {
+    it('returns default bucket location', async function() {
+      const location = await s3Client
+        .getBucketLocation({
+          Bucket: 'bucket-a',
+        })
+        .promise();
+      expect(location).to.have.property('LocationConstraint', '');
+    });
+  });
+
   describe('GET Bucket website', () => {});
 
   describe('PUT Bucket', () => {
