@@ -75,7 +75,7 @@
     "eslint-plugin-standard": "4.0.1",
     "express": "4.17.1",
     "md5": "2.2.1",
-    "mocha": "6.2.0",
+    "mocha": "6.2.1",
     "moment": "2.24.0",
     "prettier": "1.18.2",
     "prettier-check": "2.0.0",
