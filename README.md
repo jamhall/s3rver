@@ -81,6 +81,8 @@ mysite.local 127.0.0.1
 
 Now you can access the served content at `http://mysite.local:4568/`
 
+This behaviour can be disabled by setting the `resolveVhosts` option to `false`.
+
 ## Tests
 
 The tests should be run by one of the active LTS versions. The CI Server runs the tests on the latest active releases.
@@ -118,6 +120,7 @@ Creates a S3rver instance
 | allowMismatchedSignatures      | `boolean`            | `false`         | Prevent `SignatureDoesNotMatch` errors for all well-formed signatures
 | configureBuckets\[].name       | `string`             |                 | The name of a prefabricated bucket to create when the server starts
 | configureBuckets\[].configs\[] | `string` \| `Buffer` |                 | Raw XML string or Buffer of Bucket config
+| resolveVhosts                  | `boolean`            | `true`          | Enable vhost to bucket name resolution
 <!-- prettier-ignore-end -->
 
 For your convenience, we've provided sample bucket configurations you can access using `require.resolve`:
