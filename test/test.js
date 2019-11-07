@@ -1780,6 +1780,57 @@ describe('Middleware tests', function() {
   });
 });
 
+it('should disable vhost resolution', async function() {
+  const buckets = [{ name: 'bucket1' }];
+  const server = new S3rver({
+    configureBuckets: buckets,
+    resolveVhosts: false,
+  });
+  await server.configureBuckets();
+
+  const app = express();
+  app.use('/basepath', server.getMiddleware());
+
+  const { port } = S3rver.defaultOptions;
+  let httpServer;
+  await new Promise((resolve, reject) => {
+    httpServer = app.listen(S3rver.defaultOptions.port, err =>
+      err ? reject(err) : resolve(),
+    );
+  });
+
+  const s3Client = new AWS.S3({
+    accessKeyId: 'S3RVER',
+    secretAccessKey: 'S3RVER',
+    endpoint: `http://localhost:${port}/basepath`,
+    sslEnabled: false,
+    s3ForcePathStyle: true,
+    s3BucketEndpoint: false,
+  });
+  try {
+    await s3Client
+      .putObject({ Bucket: buckets[0].name, Key: 'text', Body: 'Hello!' })
+      .promise();
+    s3Client.setEndpoint(`http://${buckets[0].name}:${port}/basepath`);
+
+    const url = s3Client.getSignedUrl('getObject', {
+      Bucket: buckets[0].name,
+      Key: 'text',
+    });
+    const { host, pathname, search } = new URL(url);
+    const res = await request({
+      baseUrl: `http://localhost:${port}`,
+      url: pathname + search,
+      headers: {
+        Host: host,
+      },
+    });
+    expect(res).to.equal('Hello!');
+  } finally {
+    await new Promise(resolve => httpServer.close(resolve));
+  }
+});
+
 describe('Authenticated Request Tests', function() {
   const buckets = [{ name: 'bucket1' }, { name: 'bucket2' }];
   let server;
