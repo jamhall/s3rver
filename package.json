@@ -48,13 +48,13 @@
     "node": ">=8.3.0"
   },
   "dependencies": {
+    "@koa/router": "^8.0.0",
     "commander": "^3.0.0",
     "fast-xml-parser": "^3.12.19",
     "fs-extra": "^8.0.0",
     "he": "^1.2.0",
     "koa": "^2.7.0",
     "koa-logger": "^3.2.0",
-    "koa-router": "^7.4.0",
     "lodash": "^4.17.5",
     "md5-file": "^4.0.0",
     "multiparty": "^4.2.1",
