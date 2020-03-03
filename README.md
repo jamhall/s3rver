@@ -61,6 +61,12 @@ If your client only supports signed requests, specify the credentials
 
 in your client's configuration.
 
+You can customize the credentials by setting environment variables:
+```
+S3RVER_ACCESS_KEY_ID=S3RVER
+S3RVER_SECRET_ACCESS_KEY=S3RVER
+```
+
 Please test, if you encounter any problems please do not hesitate to open an issue :)
 
 ## Static Website Hosting
