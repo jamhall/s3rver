@@ -25,10 +25,16 @@
   },
   "homepage": "https://github.com/jamhall/s3rver",
   "scripts": {
-    "test": "mocha --timeout 10000 --reporter spec --ui bdd",
+    "coverage": "nyc npm run test",
     "eslint": "eslint --ignore-path .gitignore \"**/*.js\"",
     "prettier-check": "prettier-check --ignore-path .gitignore \"**/*.{js,md}\"",
-    "format": "eslint --fix --ignore-path .gitignore \"**/*.js\" && prettier --ignore-path .gitignore --write \"**/*.{js,md}\""
+    "format": "eslint --fix --ignore-path .gitignore \"**/*.js\" && prettier --ignore-path .gitignore --write \"**/*.{js,md}\"",
+    "test": "mocha --timeout 10000 --reporter spec --ui bdd"
+  },
+  "nyc": {
+    "functions": 90,
+    "lines": 88,
+    "statements": 88
   },
   "main": "lib/s3rver.js",
   "files": [
@@ -77,6 +83,7 @@
     "md5": "2.2.1",
     "mocha": "7.1.0",
     "moment": "2.24.0",
+    "nyc": "^15.0.0",
     "prettier": "1.19.1",
     "prettier-check": "2.0.0",
     "promise-limit": "2.7.0",
