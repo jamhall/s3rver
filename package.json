@@ -26,6 +26,7 @@
   },
   "homepage": "https://github.com/jamhall/s3rver",
   "scripts": {
+    "coverage": "nyc npm test",
     "test": "mocha",
     "fmt": "eslint . --fix && prettier . --write"
   },
@@ -75,6 +76,7 @@
     "md5": "2.3.0",
     "mocha": "8.3.0",
     "moment": "2.29.1",
+    "nyc": "15.1.0",
     "p-map": "4.0.0",
     "prettier": "2.2.1",
     "request": "2.88.2",

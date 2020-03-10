@@ -1,4 +1,5 @@
 # Coverage directory used by tools like istanbul
+.nyc_output/
 coverage/
 
 # Dependencies
