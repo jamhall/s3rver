@@ -36,8 +36,9 @@ function parseConfigureBucket(bucketName, memo = []) {
 }
 
 program
+  .storeOptionsAsProperties(true)
   .usage('-d <path> [options]')
-  .option('-d, --directory <path>', 'Data directory', ensureDirectory)
+  .requiredOption('-d, --directory <path>', 'Data directory', ensureDirectory)
   .option(
     '-a, --address <value>',
     'Hostname or IP to bind to',
@@ -86,25 +87,15 @@ program.on('--help', () => {
   );
 });
 
-try {
-  program.parse(process.argv);
-  program.configureBuckets = program.configureBucket;
-  delete program.configureBucket;
-} catch (err) {
-  console.error('error: %s', err.message);
-  process.exit(1);
-}
-
-if (program.directory === undefined) {
-  console.error('error: data directory -d is required');
-  process.exit(1);
-}
-
-new S3rver(program).run((err, { address, port } = {}) => {
-  if (err) {
-    console.error(err.message);
-    process.exit(1);
-  }
+program.action(async command => {
+  const { configureBucket, ...opts } = command.opts();
+  opts.configureBuckets = configureBucket;
+  const { address, port } = await new S3rver(opts).run();
   console.log();
   console.log('S3rver listening on %s:%d', address, port);
+});
+
+program.parseAsync(process.argv).catch(err => {
+  console.error(err);
+  process.exit(1);
 });

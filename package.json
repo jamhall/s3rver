@@ -49,7 +49,7 @@
   },
   "dependencies": {
     "@koa/router": "^8.0.0",
-    "commander": "^4.0.0",
+    "commander": "^5.0.0",
     "fast-xml-parser": "^3.12.19",
     "fs-extra": "^8.0.0",
     "he": "^1.2.0",
