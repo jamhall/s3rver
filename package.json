@@ -82,6 +82,6 @@
     "promise-limit": "2.7.0",
     "request": "2.88.2",
     "request-promise-native": "1.0.8",
-    "rxjs": "6.5.4"
+    "rxjs": "6.5.5"
   }
 }
