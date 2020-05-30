@@ -76,7 +76,7 @@
     "express": "4.17.1",
     "md5": "2.2.1",
     "mocha": "7.1.1",
-    "moment": "2.24.0",
+    "moment": "2.26.0",
     "prettier": "1.19.1",
     "prettier-check": "2.0.0",
     "promise-limit": "2.7.0",
