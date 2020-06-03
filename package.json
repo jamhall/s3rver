@@ -49,6 +49,7 @@
   },
   "dependencies": {
     "@koa/router": "^9.0.0",
+    "busboy": "^0.3.1",
     "commander": "^5.0.0",
     "fast-xml-parser": "^3.12.19",
     "fs-extra": "^8.0.0",
@@ -56,8 +57,6 @@
     "koa": "^2.7.0",
     "koa-logger": "^3.2.0",
     "lodash": "^4.17.5",
-    "md5-file": "^4.0.0",
-    "multiparty": "^4.2.1",
     "statuses": "^2.0.0",
     "winston": "^3.0.0"
   },
