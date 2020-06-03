@@ -3,8 +3,12 @@
 const AWS = require('aws-sdk');
 const { expect } = require('chai');
 const express = require('express');
+const FormData = require('form-data');
 const fs = require('fs-extra');
 const md5 = require('md5');
+const request = require('request-promise-native').defaults({
+  resolveWithFullResponse: true,
+});
 
 const { createServerAndClient, generateTestObjects } = require('./helpers');
 
@@ -161,6 +165,29 @@ describe('S3rver', () => {
       const iso8601 = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z$/;
       expect(event.Records[0].eventTime).to.match(iso8601);
       expect(new Date(event.Records[0].eventTime)).to.not.satisfy(isNaN);
+    });
+
+    it('triggers a Post event', async function() {
+      const eventPromise = once(s3rver, 'event');
+      const body = 'Hello!';
+
+      const form = new FormData();
+      form.append('key', 'testPostKey');
+      form.append('file', body);
+      await request.post('bucket-a', {
+        baseUrl: s3Client.config.endpoint,
+        body: form,
+        headers: form.getHeaders(),
+      });
+
+      const [event] = await eventPromise;
+      expect(event.Records[0].eventName).to.equal('ObjectCreated:Post');
+      expect(event.Records[0].s3.bucket.name).to.equal('bucket-a');
+      expect(event.Records[0].s3.object).to.contain({
+        key: 'testPostKey',
+        size: body.length,
+        eTag: md5(body),
+      });
     });
 
     it('triggers a Put event', async function() {

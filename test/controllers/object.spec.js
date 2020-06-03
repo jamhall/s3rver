@@ -12,6 +12,7 @@ const pMap = require('p-map');
 const request = require('request-promise-native').defaults({
   resolveWithFullResponse: true,
 });
+const { URL, URLSearchParams } = require('url');
 
 const S3rver = require('../..');
 
@@ -326,21 +327,350 @@ describe('Operations on Objects', () => {
 
   describe('POST Object', () => {
     it('stores a text object for a multipart/form-data request', async function() {
-      const file = require.resolve('../fixtures/post_file.txt');
       const form = new FormData();
       form.append('key', 'text');
+      form.append('file', 'Hello!', 'post_file.txt');
+      const res = await request.post('bucket-a', {
+        baseUrl: s3Client.config.endpoint,
+        body: form,
+        headers: form.getHeaders(),
+      });
+      expect(res.statusCode).to.equal(204);
+      const object = await s3Client
+        .getObject({ Bucket: 'bucket-a', Key: 'text' })
+        .promise();
+      expect(object.ContentType).to.equal('binary/octet-stream');
+      expect(object.Body).to.deep.equal(Buffer.from('Hello!'));
+    });
+
+    it('rejects requests with an invalid content-type', async function() {
+      let res;
+      try {
+        res = await request.post('bucket-a', {
+          baseUrl: s3Client.config.endpoint,
+          body: new URLSearchParams({
+            key: 'text',
+            file: 'Hello!',
+          }).toString(),
+        });
+      } catch (err) {
+        res = err.response;
+      }
+      expect(res.statusCode).to.equal(412);
+      expect(res.body).to.contain(
+        '<Condition>Bucket POST must be of the enclosure-type multipart/form-data</Condition>',
+      );
+    });
+    it('stores a text object without filename part metadata', async function() {
+      const form = new FormData();
+      form.append('key', 'text');
+      form.append('file', 'Hello!');
+      const res = await request.post('bucket-a', {
+        baseUrl: s3Client.config.endpoint,
+        body: form,
+        headers: form.getHeaders(),
+      });
+      expect(res.statusCode).to.equal(204);
+      const object = await s3Client
+        .getObject({ Bucket: 'bucket-a', Key: 'text' })
+        .promise();
+      expect(object.ContentType).to.equal('binary/octet-stream');
+      expect(object.Body.toString()).to.equal('Hello!');
+    });
+
+    it('stores a text object with a content-type', async function() {
+      const form = new FormData();
+      form.append('key', 'text');
+      form.append('Content-Type', 'text/plain');
+      form.append('file', 'Hello!', 'post_file.txt');
+      const res = await request.post('bucket-a', {
+        baseUrl: s3Client.config.endpoint,
+        body: form,
+        headers: form.getHeaders(),
+      });
+      expect(res.statusCode).to.equal(204);
+      const object = await s3Client
+        .getObject({ Bucket: 'bucket-a', Key: 'text' })
+        .promise();
+      expect(object.ContentType).to.equal('text/plain');
+      expect(object.Body).to.deep.equal(Buffer.from('Hello!'));
+    });
+
+    it('returns the location of the stored object in a header', async function() {
+      const file = require.resolve('../fixtures/image0.jpg');
+      const form = new FormData();
+      form.append('key', 'image');
       form.append('file', fs.createReadStream(file));
       const res = await request.post('bucket-a', {
         baseUrl: s3Client.config.endpoint,
         body: form,
         headers: form.getHeaders(),
       });
+      expect(res.statusCode).to.equal(204);
+      expect(res.headers).to.have.property(
+        'location',
+        new URL('/bucket-a/image', s3Client.config.endpoint).href,
+      );
+      const objectRes = await request(res.headers.location, {
+        encoding: null,
+      });
+      expect(objectRes.body).to.deep.equal(fs.readFileSync(file));
+    });
+
+    it('returns the location of the stored object in a header with vhost URL', async function() {
+      const file = require.resolve('../fixtures/image0.jpg');
+      const form = new FormData();
+      form.append('key', 'image');
+      form.append('file', fs.createReadStream(file));
+      const res = await request.post('', {
+        baseUrl: s3Client.config.endpoint,
+        body: form,
+        headers: {
+          host: 'bucket-a',
+          ...form.getHeaders(),
+        },
+      });
+      expect(res.statusCode).to.equal(204);
+      expect(res.headers).to.have.property(
+        'location',
+        new URL('/image', `http://bucket-a`).href,
+      );
+    });
+
+    it('returns the location of the stored object in a header with subdomain URL', async function() {
+      const file = require.resolve('../fixtures/image0.jpg');
+      const form = new FormData();
+      form.append('key', 'image');
+      form.append('file', fs.createReadStream(file));
+      const res = await request.post('', {
+        baseUrl: s3Client.config.endpoint,
+        body: form,
+        headers: {
+          host: 'bucket-a.s3.amazonaws.com',
+          ...form.getHeaders(),
+        },
+      });
+      expect(res.statusCode).to.equal(204);
+      expect(res.headers).to.have.property(
+        'location',
+        new URL('/image', 'http://bucket-a.s3.amazonaws.com').href,
+      );
+    });
+
+    it('returns a 200 status code with empty response body', async function() {
+      const form = new FormData();
+      form.append('key', 'text');
+      form.append('success_action_status', '200');
+      form.append('file', 'Hello!');
+      const res = await request.post('bucket-a', {
+        baseUrl: s3Client.config.endpoint,
+        body: form,
+        headers: form.getHeaders(),
+      });
+      expect(res.statusCode).to.equal(200);
+      expect(res.headers).not.to.have.property('content-type');
+      expect(res.body).to.equal('');
+    });
+
+    it('returns a 201 status code with XML response body', async function() {
+      const form = new FormData();
+      form.append('key', 'text');
+      form.append('success_action_status', '201');
+      form.append('file', 'Hello!');
+      const res = await request.post('bucket-a', {
+        baseUrl: s3Client.config.endpoint,
+        body: form,
+        headers: form.getHeaders(),
+      });
       expect(res.statusCode).to.equal(201);
-      const object = await s3Client
-        .getObject({ Bucket: 'bucket-a', Key: 'text' })
-        .promise();
-      expect(object.ContentType).to.equal('binary/octet-stream');
-      expect(object.Body.toString()).to.equal('Hello!\n');
+      expect(res.headers).to.have.property('content-type', 'application/xml');
+      expect(res.body).to.contain('<PostResponse>');
+      expect(res.body).to.contain('<Bucket>bucket-a</Bucket><Key>text</Key>');
+    });
+
+    it('returns a 204 status code when an invalid status is specified', async function() {
+      const form = new FormData();
+      form.append('key', 'text');
+      form.append('success_action_status', '301');
+      form.append('file', 'Hello!');
+      const res = await request.post('bucket-a', {
+        baseUrl: s3Client.config.endpoint,
+        body: form,
+        headers: form.getHeaders(),
+      });
+      expect(res.statusCode).to.equal(204);
+    });
+
+    it('redirects a custom location with search parameters', async function() {
+      const successRedirect = new URL('http://foo.local/path?bar=baz');
+      const form = new FormData();
+      form.append('key', 'text');
+      form.append('success_action_redirect', successRedirect.href);
+      form.append('file', 'Hello!');
+      let res;
+      try {
+        res = await request.post('bucket-a', {
+          baseUrl: s3Client.config.endpoint,
+          body: form,
+          headers: form.getHeaders(),
+        });
+      } catch (err) {
+        res = err.response;
+      }
+      expect(res.statusCode).to.equal(303);
+      const location = new URL(res.headers.location);
+      expect(location.host).to.equal(successRedirect.host);
+      expect(location.pathname).to.equal(successRedirect.pathname);
+      expect(new Map(location.searchParams)).to.contain.key('bar');
+      expect(location.searchParams.get('bucket')).to.equal('bucket-a');
+      expect(location.searchParams.get('key')).to.equal('text');
+      expect(location.searchParams.get('etag')).to.equal(
+        JSON.stringify(md5('Hello!')),
+      );
+    });
+
+    it('redirects a custom location using deprecated redirect fieldname', async function() {
+      const successRedirect = new URL('http://foo.local/path?bar=baz');
+      const form = new FormData();
+      form.append('key', 'text');
+      form.append('redirect', successRedirect.href);
+      form.append('file', 'Hello!');
+      let res;
+      try {
+        res = await request.post('bucket-a', {
+          baseUrl: s3Client.config.endpoint,
+          body: form,
+          headers: form.getHeaders(),
+        });
+      } catch (err) {
+        res = err.response;
+      }
+      expect(res.statusCode).to.equal(303);
+      const location = new URL(res.headers.location);
+      expect(location.host).to.equal(successRedirect.host);
+      expect(location.pathname).to.equal(successRedirect.pathname);
+    });
+
+    it('ignores deprecated redirect field when success_action_redirect is specified', async function() {
+      const successRedirect = new URL('http://foo.local/path?bar=baz');
+      const form = new FormData();
+      form.append('key', 'text');
+      form.append('success_action_redirect', successRedirect.href);
+      form.append('redirect', 'http://ignore-me.local');
+      form.append('file', 'Hello!');
+      let res;
+      try {
+        res = await request.post('bucket-a', {
+          baseUrl: s3Client.config.endpoint,
+          body: form,
+          headers: form.getHeaders(),
+        });
+      } catch (err) {
+        res = err.response;
+      }
+      expect(res.statusCode).to.equal(303);
+      const location = new URL(res.headers.location);
+      expect(location.host).to.equal(successRedirect.host);
+      expect(location.pathname).to.equal(successRedirect.pathname);
+    });
+
+    it('ignores status field when redirect is specified', async function() {
+      const successRedirect = new URL('http://foo.local/path?bar=baz');
+      const form = new FormData();
+      form.append('key', 'text');
+      form.append('success_action_redirect', successRedirect.href);
+      form.append('success_action_status', '200');
+      form.append('file', 'Hello!');
+      let res;
+      try {
+        res = await request.post('bucket-a', {
+          baseUrl: s3Client.config.endpoint,
+          body: form,
+          headers: form.getHeaders(),
+        });
+      } catch (err) {
+        res = err.response;
+      }
+      expect(res.statusCode).to.equal(303);
+    });
+
+    it('ignores fields specified after the file field', async function() {
+      const form = new FormData();
+      form.append('key', 'text');
+      form.append('file', 'Hello!');
+      form.append('Content-Type', 'text/plain');
+      form.append('success_action_status', '200');
+      const res = await request.post('bucket-a', {
+        baseUrl: s3Client.config.endpoint,
+        body: form,
+        headers: form.getHeaders(),
+      });
+      const objectRes = await request(res.headers.location, {
+        encoding: null,
+      });
+      expect(res.statusCode).to.equal(204);
+      expect(objectRes.headers).to.not.have.property(
+        'content-type',
+        'text/plain',
+      );
+    });
+
+    it('rejects requests with no key field', async function() {
+      const form = new FormData();
+      form.append('file', 'Hello!');
+      let res;
+      try {
+        res = await request.post('bucket-a', {
+          baseUrl: s3Client.config.endpoint,
+          body: form,
+          headers: form.getHeaders(),
+        });
+      } catch (err) {
+        res = err.response;
+      }
+      expect(res.statusCode).to.equal(400);
+      expect(res.body).to.contain(
+        '<ArgumentName>key</ArgumentName><ArgumentValue></ArgumentValue>',
+      );
+    });
+
+    it('rejects requests with zero-length key', async function() {
+      const form = new FormData();
+      form.append('key', '');
+      form.append('file', 'Hello!');
+      let res;
+      try {
+        res = await request.post('bucket-a', {
+          baseUrl: s3Client.config.endpoint,
+          body: form,
+          headers: form.getHeaders(),
+        });
+      } catch (err) {
+        res = err.response;
+      }
+      expect(res.statusCode).to.equal(400);
+      expect(res.body).to.contain(
+        '<Message>User key must have a length greater than 0.</Message>',
+      );
+    });
+
+    it('rejects requests with no file field', async function() {
+      const form = new FormData();
+      form.append('key', 'text');
+      let res;
+      try {
+        res = await request.post('bucket-a', {
+          baseUrl: s3Client.config.endpoint,
+          body: form,
+          headers: form.getHeaders(),
+        });
+      } catch (err) {
+        res = err.response;
+      }
+      expect(res.statusCode).to.equal(400);
+      expect(res.body).to.contain(
+        '<ArgumentName>file</ArgumentName><ArgumentValue>0</ArgumentValue>',
+      );
     });
   });
 
