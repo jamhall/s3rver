@@ -50,6 +50,7 @@ exports.createServerAndClient = async function createServerAndClient(options) {
     endpoint: `http://localhost:${port}`,
     sslEnabled: false,
     s3ForcePathStyle: true,
+    signatureVersion: 'v2',
   });
 
   return { s3rver, s3Client };
