@@ -73,14 +73,14 @@
     "eslint-plugin-promise": "4.2.1",
     "eslint-plugin-standard": "4.0.1",
     "express": "4.17.1",
-    "form-data": "^3.0.0",
+    "form-data": "3.0.0",
     "md5": "2.2.1",
     "mocha": "7.2.0",
     "moment": "2.26.0",
-    "p-map": "^3.0.0",
+    "p-map": "3.0.0",
     "prettier": "1.19.1",
     "prettier-check": "2.0.0",
-    "request": "^2.88.2",
-    "request-promise-native": "^1.0.8"
+    "request": "2.88.2",
+    "request-promise-native": "1.0.8"
   }
 }
