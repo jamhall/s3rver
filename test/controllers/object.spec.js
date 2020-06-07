@@ -1,6 +1,5 @@
 'use strict';
 
-const AWS = require('aws-sdk');
 const { expect } = require('chai');
 const express = require('express');
 const FormData = require('form-data');
@@ -13,8 +12,6 @@ const request = require('request-promise-native').defaults({
   resolveWithFullResponse: true,
 });
 const { URL, URLSearchParams } = require('url');
-
-const S3rver = require('../..');
 
 const { createServerAndClient, generateTestObjects } = require('../helpers');
 
@@ -849,35 +846,19 @@ describe('Operations on Objects', () => {
 
     it('stores an object in a bucket after all objects are deleted', async function() {
       const bucket = 'foobars';
-
-      const server = new S3rver();
-      const { port } = await server.run();
-      const s3Client = new AWS.S3({
-        accessKeyId: 'S3RVER',
-        secretAccessKey: 'S3RVER',
-        endpoint: `http://localhost:${port}`,
-        sslEnabled: false,
-        s3ForcePathStyle: true,
-      });
-      try {
-        await s3Client.createBucket({ Bucket: bucket }).promise();
-        await s3Client
-          .putObject({ Bucket: bucket, Key: 'foo.txt', Body: 'Hello!' })
-          .promise();
-        await s3Client
-          .deleteObject({ Bucket: bucket, Key: 'foo.txt' })
-          .promise();
-        await s3Client
-          .putObject({ Bucket: bucket, Key: 'foo2.txt', Body: 'Hello2!' })
-          .promise();
-      } finally {
-        await server.close();
-      }
+      await s3Client.createBucket({ Bucket: bucket }).promise();
+      await s3Client
+        .putObject({ Bucket: bucket, Key: 'foo.txt', Body: 'Hello!' })
+        .promise();
+      await s3Client.deleteObject({ Bucket: bucket, Key: 'foo.txt' }).promise();
+      await s3Client
+        .putObject({ Bucket: bucket, Key: 'foo2.txt', Body: 'Hello2!' })
+        .promise();
     });
   });
 
   describe('PUT Object - Copy', () => {
-    it('copys an image object into another bucket', async function() {
+    it('copies an image object into another bucket', async function() {
       const srcKey = 'image';
       const destKey = 'image/jamie';
 
@@ -895,7 +876,7 @@ describe('Operations on Objects', () => {
         .copyObject({
           Bucket: 'bucket-b',
           Key: destKey,
-          CopySource: '/' + 'bucket-a' + '/' + srcKey,
+          CopySource: '/bucket-a/' + srcKey,
         })
         .promise();
       expect(copyResult.ETag).to.equal(data.ETag);
@@ -909,7 +890,7 @@ describe('Operations on Objects', () => {
       expect(object.ETag).to.equal(data.ETag);
     });
 
-    it('copys an image object into another bucket including its metadata', async function() {
+    it('copies an image object into another bucket including its metadata', async function() {
       const srcKey = 'image';
       const destKey = 'image/jamie';
 
@@ -931,7 +912,7 @@ describe('Operations on Objects', () => {
           Bucket: 'bucket-b',
           Key: destKey,
           // MetadataDirective is implied to be COPY
-          CopySource: '/' + 'bucket-a' + '/' + srcKey,
+          CopySource: '/bucket-a/' + srcKey,
         })
         .promise();
       const object = await s3Client
@@ -942,7 +923,7 @@ describe('Operations on Objects', () => {
       expect(object.ETag).to.equal(data.ETag);
     });
 
-    it('copys an object using spaces/unicode chars in keys', async function() {
+    it('copies an object using spaces/unicode chars in keys', async function() {
       const srcKey = 'awesome 驚くばかり.jpg';
       const destKey = 'new 新しい.jpg';
 
@@ -960,14 +941,14 @@ describe('Operations on Objects', () => {
         .copyObject({
           Bucket: 'bucket-a',
           Key: destKey,
-          CopySource: '/' + 'bucket-a' + '/' + encodeURI(srcKey),
+          CopySource: '/bucket-a/' + encodeURI(srcKey),
         })
         .promise();
       expect(copyResult.ETag).to.equal(data.ETag);
       expect(moment(copyResult.LastModified).isValid()).to.be.true;
     });
 
-    it('copys an image object into another bucket and update its metadata', async function() {
+    it('copies an image object into another bucket and update its metadata', async function() {
       const srcKey = 'image';
       const destKey = 'image/jamie';
 
@@ -984,7 +965,7 @@ describe('Operations on Objects', () => {
         .copyObject({
           Bucket: 'bucket-b',
           Key: destKey,
-          CopySource: '/' + 'bucket-a' + '/' + srcKey,
+          CopySource: '/bucket-a/' + srcKey,
           MetadataDirective: 'REPLACE',
           Metadata: {
             someKey: 'value',
@@ -1016,7 +997,7 @@ describe('Operations on Objects', () => {
         .copyObject({
           Bucket: 'bucket-b',
           Key: destKey,
-          CopySource: '/' + 'bucket-a' + '/' + srcKey,
+          CopySource: '/bucket-a/' + srcKey,
           MetadataDirective: 'REPLACE',
           Metadata: {
             someKey: 'value',
@@ -1049,7 +1030,7 @@ describe('Operations on Objects', () => {
           .copyObject({
             Bucket: 'bucket-a',
             Key: key,
-            CopySource: '/' + 'bucket-a' + '/' + key,
+            CopySource: '/bucket-a/' + key,
             Metadata: {
               someKey: 'value',
             },
@@ -1069,7 +1050,7 @@ describe('Operations on Objects', () => {
           .copyObject({
             Bucket: 'bucket-b',
             Key: 'image/jamie',
-            CopySource: '/' + 'bucket-a' + '/doesnotexist',
+            CopySource: '/bucket-a/doesnotexist',
           })
           .promise();
       } catch (err) {
