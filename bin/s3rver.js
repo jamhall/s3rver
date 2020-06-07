@@ -62,13 +62,14 @@ program
   )
   .option(
     '--service-endpoint <address>',
-    'Overrides the AWS S3 service endpoint',
+    'Overrides the AWS service root for subdomain-style access',
     S3rver.defaultOptions.serviceEndpoint,
   )
   .option(
     '--allow-mismatched-signatures',
     'Prevent SignatureDoesNotMatch errors for all well-formed signatures',
   )
+  .option('--no-vhost-buckets', 'Disables vhost-style access for all buckets')
   // NOTE: commander doesn't actually support options with multiple parts,
   // we must manually parse this option
   .option(
