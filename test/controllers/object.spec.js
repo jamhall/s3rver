@@ -1151,6 +1151,35 @@ describe('Operations on Objects', () => {
       expect(data.ETag).to.match(/"[a-fA-F0-9]{32}"/);
     });
 
+    it('completes a multipart upload with unquoted ETags', async function() {
+      const data = await s3Client
+        .createMultipartUpload({
+          Bucket: 'bucket-a',
+          Key: 'multi/directory/path/multipart',
+        })
+        .promise();
+      const partRes = await s3Client
+        .uploadPart({
+          Body: 'Hello!',
+          PartNumber: 1,
+          ...data,
+        })
+        .promise();
+      await s3Client
+        .completeMultipartUpload({
+          MultipartUpload: {
+            Parts: [
+              {
+                PartNumber: 1,
+                ETag: JSON.parse(partRes.ETag),
+              },
+            ],
+          },
+          ...data,
+        })
+        .promise();
+    });
+
     it('completes a multipart upload with metadata', async function() {
       const data = await s3Client
         .upload({
