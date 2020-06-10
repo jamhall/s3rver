@@ -112,10 +112,11 @@ Creates a S3rver instance
 | key                            | `string` \| `Buffer` |                 | Private key for running with TLS
 | cert                           | `string` \| `Buffer` |                 | Certificate for running with TLS
 | silent                         | `boolean`            | `false`         | Suppress log messages
-| serviceEndpoint                | `string`             | `amazonaws.com` | For self-hosted setups where S3rver should override the AWS S3 endpoint
+| serviceEndpoint                | `string`             | `amazonaws.com` | Override the AWS service root for subdomain-style access
 | directory                      | `string`             |                 | Data directory
 | resetOnClose                   | `boolean`            | `false`         | Remove all bucket data on server close
 | allowMismatchedSignatures      | `boolean`            | `false`         | Prevent `SignatureDoesNotMatch` errors for all well-formed signatures
+| vhostBuckets                   | `boolean`            | `true`          | Disable vhost-style access for all buckets
 | configureBuckets\[].name       | `string`             |                 | The name of a prefabricated bucket to create when the server starts
 | configureBuckets\[].configs\[] | `string` \| `Buffer` |                 | Raw XML string or Buffer of Bucket config
 <!-- prettier-ignore-end -->
@@ -195,8 +196,8 @@ const { fromEvent } = require('rxjs');
 const { filter } = require('rxjs/operators');
 
 const instance = new S3rver({
-  port: 4568,
-  hostname: 'localhost',
+  port: 4569,
+  address: '0.0.0.0',
   silent: false,
   directory: '/tmp/s3rver_test_directory',
 }).run((err, { address, port } = {}) => {
