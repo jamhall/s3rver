@@ -19,7 +19,7 @@ exports.resetTmpDir = function resetTmpDir() {
   } catch (err) {
     /* directory didn't exist */
   }
-  fs.mkdirSync(tmpDir);
+  fs.mkdirSync(tmpDir, {recursive: true});
 };
 
 exports.generateTestObjects = function generateTestObjects(
