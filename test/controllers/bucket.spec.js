@@ -1,7 +1,7 @@
 'use strict';
 
 const { expect } = require('chai');
-const fs = require('fs-extra');
+const fs = require('fs');
 const { find } = require('lodash');
 
 const { createServerAndClient, generateTestObjects } = require('../helpers');
@@ -17,7 +17,9 @@ describe('Operations on Buckets', () => {
     // AWS default CORS settings when enabling it in the UI
     {
       name: 'cors-test0',
-      configs: [fs.readFileSync(require.resolve('../fixtures/cors-test0.xml'))],
+      configs: [
+        fs.readFileSync(require.resolve('../fixtures/cors-test0.xml'))
+      ],
     },
 
     // A standard static hosting configuration with no custom error page

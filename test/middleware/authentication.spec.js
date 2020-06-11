@@ -2,7 +2,7 @@
 
 const { expect } = require('chai');
 const express = require('express');
-const fs = require('fs-extra');
+const fs = require('fs');
 const request = require('request-promise-native').defaults({
   resolveWithFullResponse: true,
 });
@@ -279,7 +279,7 @@ describe('REST Authentication', () => {
       .putObject({
         Bucket: 'bucket-a',
         Key: 'image',
-        Body: await fs.readFile(require.resolve('../fixtures/image0.jpg')),
+        Body: await fs.promises.readFile(require.resolve('../fixtures/image0.jpg')),
       })
       .promise();
     const url = s3Client.getSignedUrl('getObject', {
@@ -298,7 +298,7 @@ describe('REST Authentication', () => {
       .putObject({
         Bucket: 'bucket-a',
         Key: 'image',
-        Body: await fs.readFile(require.resolve('../fixtures/image0.jpg')),
+        Body: await fs.promises.readFile(require.resolve('../fixtures/image0.jpg')),
       })
       .promise();
     let res;

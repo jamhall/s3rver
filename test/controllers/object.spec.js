@@ -3,7 +3,7 @@
 const { expect } = require('chai');
 const express = require('express');
 const FormData = require('form-data');
-const fs = require('fs-extra');
+const fs = require('fs');
 const { find, times } = require('lodash');
 const md5 = require('md5');
 const moment = require('moment');
@@ -122,7 +122,7 @@ describe('Operations on Objects', () => {
 
     it('gets an image from a bucket', async function() {
       const file = require.resolve('../fixtures/image0.jpg');
-      const data = await fs.readFile(file);
+      const data = await fs.promises.readFile(file);
       await s3Client
         .putObject({
           Bucket: 'bucket-a',
@@ -159,7 +159,7 @@ describe('Operations on Objects', () => {
         .putObject({
           Bucket: 'bucket-a',
           Key: 'image',
-          Body: await fs.readFile(file),
+          Body: await fs.promises.readFile(file),
           ContentType: 'image/jpeg',
         })
         .promise();
@@ -178,12 +178,12 @@ describe('Operations on Objects', () => {
 
     it('returns 416 error for out of bounds range requests', async function() {
       const file = require.resolve('../fixtures/image0.jpg');
-      const filesize = fs.statSync(file).size;
+      const {size: filesize} = fs.statSync(file);
       await s3Client
         .putObject({
           Bucket: 'bucket-a',
           Key: 'image',
-          Body: await fs.readFile(file),
+          Body: await fs.promises.readFile(file),
           ContentType: 'image/jpeg',
         })
         .promise();
@@ -206,12 +206,12 @@ describe('Operations on Objects', () => {
 
     it('returns actual length of data for partial out of bounds range requests', async function() {
       const file = require.resolve('../fixtures/image0.jpg');
-      const filesize = fs.statSync(file).size;
+      const {size: filesize} = fs.statSync(file);
       await s3Client
         .putObject({
           Bucket: 'bucket-a',
           Key: 'image',
-          Body: await fs.readFile(file),
+          Body: await fs.promises.readFile(file),
           ContentType: 'image/jpeg',
         })
         .promise();
@@ -252,7 +252,7 @@ describe('Operations on Objects', () => {
 
     it('returns image metadata from a bucket in HEAD request', async function() {
       const file = require.resolve('../fixtures/image0.jpg');
-      const fileContent = await fs.readFile(file);
+      const fileContent = await fs.promises.readFile(file);
       await s3Client
         .putObject({
           Bucket: 'bucket-a',
@@ -690,7 +690,7 @@ describe('Operations on Objects', () => {
         .putObject({
           Bucket: 'bucket-a',
           Key: 'image',
-          Body: await fs.readFile(files[0]),
+          Body: await fs.promises.readFile(files[0]),
           ContentType: 'image/jpeg',
         })
         .promise();
@@ -703,7 +703,7 @@ describe('Operations on Objects', () => {
         .putObject({
           Bucket: 'bucket-a',
           Key: 'image',
-          Body: await fs.readFile(files[1]),
+          Body: await fs.promises.readFile(files[1]),
           ContentType: 'image/jpeg',
         })
         .promise();
@@ -794,7 +794,7 @@ describe('Operations on Objects', () => {
         .putObject({
           Bucket: 'bucket-a',
           Key: 'image',
-          Body: await fs.readFile(file),
+          Body: await fs.promises.readFile(file),
           ContentType: 'image/jpeg',
         })
         .promise();
@@ -807,7 +807,7 @@ describe('Operations on Objects', () => {
       const params = {
         Bucket: 'bucket-a',
         Key: 'jquery',
-        Body: await fs.readFile(file),
+        Body: await fs.promises.readFile(file),
         ContentType: 'application/javascript',
         ContentEncoding: 'gzip',
       };
@@ -867,7 +867,7 @@ describe('Operations on Objects', () => {
         .putObject({
           Bucket: 'bucket-a',
           Key: srcKey,
-          Body: await fs.readFile(file),
+          Body: await fs.promises.readFile(file),
           ContentType: 'image/jpeg',
         })
         .promise();
@@ -899,7 +899,7 @@ describe('Operations on Objects', () => {
         .putObject({
           Bucket: 'bucket-a',
           Key: srcKey,
-          Body: await fs.readFile(file),
+          Body: await fs.promises.readFile(file),
           ContentType: 'image/jpeg',
           Metadata: {
             someKey: 'value',
@@ -932,7 +932,7 @@ describe('Operations on Objects', () => {
         .putObject({
           Bucket: 'bucket-a',
           Key: srcKey,
-          Body: await fs.readFile(file),
+          Body: await fs.promises.readFile(file),
           ContentType: 'image/jpeg',
         })
         .promise();
@@ -957,7 +957,7 @@ describe('Operations on Objects', () => {
         .putObject({
           Bucket: 'bucket-a',
           Key: srcKey,
-          Body: await fs.readFile(file),
+          Body: await fs.promises.readFile(file),
           ContentType: 'image/jpeg',
         })
         .promise();
@@ -988,7 +988,7 @@ describe('Operations on Objects', () => {
         .putObject({
           Bucket: 'bucket-a',
           Key: srcKey,
-          Body: await fs.readFile(file),
+          Body: await fs.promises.readFile(file),
           ContentType: 'image/jpeg',
         })
         .promise();
@@ -1019,7 +1019,7 @@ describe('Operations on Objects', () => {
         .putObject({
           Bucket: 'bucket-a',
           Key: key,
-          Body: await fs.readFile(file),
+          Body: await fs.promises.readFile(file),
           ContentType: 'image/jpeg',
         })
         .promise();

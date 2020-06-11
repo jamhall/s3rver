@@ -3,13 +3,13 @@
 
 /* eslint-disable no-console */
 
-const fs = require('fs-extra');
+const fs = require('fs');
 const program = require('commander');
 const pkg = require('../package.json');
 const S3rver = require('..');
 
 function ensureDirectory(directory) {
-  fs.ensureDirSync(directory);
+  fs.mkdir(directory, {recursive: true});
   return directory;
 }
 

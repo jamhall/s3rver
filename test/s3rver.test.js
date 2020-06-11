@@ -4,7 +4,7 @@ const AWS = require('aws-sdk');
 const { expect } = require('chai');
 const express = require('express');
 const FormData = require('form-data');
-const fs = require('fs-extra');
+const fs = require('fs');
 const md5 = require('md5');
 const request = require('request-promise-native').defaults({
   resolveWithFullResponse: true,

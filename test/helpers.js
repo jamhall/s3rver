@@ -1,7 +1,7 @@
 'use strict';
 
 const AWS = require('aws-sdk');
-const fs = require('fs-extra');
+const fs = require('fs');
 const { times } = require('lodash');
 const os = require('os');
 const path = require('path');
@@ -15,11 +15,11 @@ const instances = new Set();
 
 exports.resetTmpDir = function resetTmpDir() {
   try {
-    fs.removeSync(tmpDir);
+    fs.rmdirSync(tmpDir, {recursive: true});
   } catch (err) {
     /* directory didn't exist */
   }
-  fs.ensureDirSync(tmpDir);
+  fs.mkdirSync(tmpDir);
 };
 
 exports.generateTestObjects = function generateTestObjects(
