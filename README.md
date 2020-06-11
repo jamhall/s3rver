@@ -56,7 +56,7 @@ Build image
 $ make build_docker
 ```
 
-You will now have a image ```jamhall/s3rver:latest``` available.
+You will now have a image `jamhall/s3rver:latest` available.
 
 Executing this command to start server:
 
