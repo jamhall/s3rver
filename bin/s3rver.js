@@ -95,15 +95,15 @@ program.action(async command => {
   const server = new S3rver(opts);
   const { address, port } = await server.run();
 
-  process.on('SIGINT', async function onSigint () {
+  process.on('SIGINT', async function onSigint() {
     console.info('Got SIGINT. Graceful shutdown ', new Date().toISOString());
     await server.stop();
   });
 
-  process.on('SIGTERM', async function onSigterm () {
+  process.on('SIGTERM', async function onSigterm() {
     console.info('Got SIGTERM. Graceful shutdown ', new Date().toISOString());
     await server.stop();
-  })
+  });
 
   console.log();
   console.log('S3rver listening on %s:%d', address, port);
