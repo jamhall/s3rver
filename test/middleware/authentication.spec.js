@@ -279,7 +279,9 @@ describe('REST Authentication', () => {
       .putObject({
         Bucket: 'bucket-a',
         Key: 'image',
-        Body: await fs.promises.readFile(require.resolve('../fixtures/image0.jpg')),
+        Body: await fs.promises.readFile(
+          require.resolve('../fixtures/image0.jpg'),
+        ),
       })
       .promise();
     const url = s3Client.getSignedUrl('getObject', {
@@ -298,7 +300,9 @@ describe('REST Authentication', () => {
       .putObject({
         Bucket: 'bucket-a',
         Key: 'image',
-        Body: await fs.promises.readFile(require.resolve('../fixtures/image0.jpg')),
+        Body: await fs.promises.readFile(
+          require.resolve('../fixtures/image0.jpg'),
+        ),
       })
       .promise();
     let res;

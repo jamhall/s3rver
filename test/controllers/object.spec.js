@@ -178,7 +178,7 @@ describe('Operations on Objects', () => {
 
     it('returns 416 error for out of bounds range requests', async function() {
       const file = require.resolve('../fixtures/image0.jpg');
-      const {size: filesize} = fs.statSync(file);
+      const { size: filesize } = fs.statSync(file);
       await s3Client
         .putObject({
           Bucket: 'bucket-a',
@@ -206,7 +206,7 @@ describe('Operations on Objects', () => {
 
     it('returns actual length of data for partial out of bounds range requests', async function() {
       const file = require.resolve('../fixtures/image0.jpg');
-      const {size: filesize} = fs.statSync(file);
+      const { size: filesize } = fs.statSync(file);
       await s3Client
         .putObject({
           Bucket: 'bucket-a',

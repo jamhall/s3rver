@@ -15,11 +15,18 @@ const instances = new Set();
 
 exports.resetTmpDir = function resetTmpDir() {
   try {
-    fs.rmdirSync(tmpDir, {recursive: true});
+    fs.rmdirSync(tmpDir, { recursive: true });
   } catch (err) {
     /* directory didn't exist */
   }
-  fs.mkdirSync(tmpDir, {recursive: true});
+  try {
+    fs.mkdirSync(tmpDir, { recursive: true });
+  } catch (err) {
+    /* parallel recreated */
+    if (err.code !== 'EEXIST') {
+      throw err;
+    }
+  }
 };
 
 exports.generateTestObjects = function generateTestObjects(

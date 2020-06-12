@@ -9,7 +9,7 @@ const pkg = require('../package.json');
 const S3rver = require('..');
 
 function ensureDirectory(directory) {
-  fs.mkdir(directory, {recursive: true});
+  fs.mkdir(directory, { recursive: true });
   return directory;
 }
 

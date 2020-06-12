@@ -14,9 +14,7 @@ describe('CORS Policy Tests', function() {
     // provides rules for origins http://a-test.example.com and http://*.bar.com
     {
       name: 'bucket0',
-      configs: [
-        fs.readFileSync(require.resolve('../fixtures/cors-test0.xml'))
-      ],
+      configs: [fs.readFileSync(require.resolve('../fixtures/cors-test0.xml'))],
     },
   ];
 
@@ -117,9 +115,7 @@ describe('CORS Policy Tests', function() {
     const origin = 'http://a-test.example.com';
     const bucket = {
       name: 'foobars',
-      configs: [
-        fs.readFileSync('./example/cors.xml')
-      ],
+      configs: [fs.readFileSync('./example/cors.xml')],
     };
 
     const server = new S3rver({
@@ -138,7 +134,9 @@ describe('CORS Policy Tests', function() {
         .putObject({
           Bucket: bucket.name,
           Key: 'image',
-          Body: await fs.promises.readFile(require.resolve('../fixtures/image0.jpg')),
+          Body: await fs.promises.readFile(
+            require.resolve('../fixtures/image0.jpg'),
+          ),
           ContentType: 'image/jpeg',
         })
         .promise();
@@ -174,7 +172,9 @@ describe('CORS Policy Tests', function() {
         .putObject({
           Bucket: buckets[0].name,
           Key: 'image',
-          Body: await fs.promises.readFile(require.resolve('../fixtures/image0.jpg')),
+          Body: await fs.promises.readFile(
+            require.resolve('../fixtures/image0.jpg'),
+          ),
           ContentType: 'image/jpeg',
         })
         .promise();
@@ -213,7 +213,9 @@ describe('CORS Policy Tests', function() {
         .putObject({
           Bucket: buckets[0].name,
           Key: 'image',
-          Body: await fs.promises.readFile(require.resolve('../fixtures/image0.jpg')),
+          Body: await fs.promises.readFile(
+            require.resolve('../fixtures/image0.jpg'),
+          ),
           ContentType: 'image/jpeg',
         })
         .promise();
@@ -252,7 +254,9 @@ describe('CORS Policy Tests', function() {
         .putObject({
           Bucket: buckets[0].name,
           Key: 'image',
-          Body: await fs.promises.readFile(require.resolve('../fixtures/image0.jpg')),
+          Body: await fs.promises.readFile(
+            require.resolve('../fixtures/image0.jpg'),
+          ),
           ContentType: 'image/jpeg',
         })
         .promise();
@@ -288,7 +292,9 @@ describe('CORS Policy Tests', function() {
         .putObject({
           Bucket: buckets[0].name,
           Key: 'image',
-          Body: await fs.promises.readFile(require.resolve('../fixtures/image0.jpg')),
+          Body: await fs.promises.readFile(
+            require.resolve('../fixtures/image0.jpg'),
+          ),
           ContentType: 'image/jpeg',
         })
         .promise();
