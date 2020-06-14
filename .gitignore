@@ -10,14 +10,8 @@ pids
 # Coverage directory used by tools like istanbul
 coverage/
 
-# Grunt intermediate storage (http://gruntjs.com/creating-plugins#storing-task-files)
-.grunt
-
-# Dependency directory
-# Commenting this out is preferred by some people, see
-# https://www.npmjs.org/doc/misc/npm-faq.html#should-i-check-my-node_modules-folder-into-git-
+# Dependencies
 node_modules/
 
-# Users Environment Variables
-.lock-wscript
+# IDEs
 .idea
