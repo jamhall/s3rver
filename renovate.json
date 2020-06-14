@@ -1,7 +1,5 @@
 {
-  "extends": [
-    "config:base"
-  ],
+  "extends": ["config:base"],
   "depTypes": [
     {
       "depType": "dependencies",
@@ -16,14 +14,7 @@
   ],
   "rebaseStalePrs": true,
   "automerge": "minor",
-  "labels": [
-    "tooling",
-    "dependencies"
-  ],
-  "assignees": [
-    "@leontastic"
-  ],
-  "reviewers": [
-    "@leontastic"
-  ]
+  "labels": ["tooling", "dependencies"],
+  "assignees": ["@leontastic"],
+  "reviewers": ["@leontastic"]
 }
