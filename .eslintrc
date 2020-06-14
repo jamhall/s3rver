@@ -6,19 +6,21 @@
   "parserOptions": {
     "ecmaVersion": 2018
   },
+  "plugins": ["prettier"],
   "extends": [
-    "semistandard",
+    "standard",
     "prettier"
   ],
   "rules": {
-    "dot-notation": "off",
     "new-cap": ["error", {
       "newIsCapExceptions": ["j2xParser"]
-    }]
+    }],
+
+    "prettier/prettier": "error"
   },
   "overrides": [
     {
-      "files": "test/**/*.js",
+      "files": "test/**/*.spec.*",
       "env": {
         "mocha": true
       },
