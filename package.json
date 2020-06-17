@@ -75,7 +75,7 @@
     "express": "4.17.1",
     "form-data": "3.0.0",
     "husky": "4.2.5",
-    "lint-staged": "10.2.10",
+    "lint-staged": "10.2.11",
     "md5": "2.2.1",
     "mocha": "7.2.0",
     "moment": "2.26.0",
