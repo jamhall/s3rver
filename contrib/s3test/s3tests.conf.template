@@ -1,0 +1,70 @@
+[DEFAULT]
+## this section is just used for host, port and bucket_prefix
+
+# host set for rgw in vstart.sh
+host = ${S3TEST_HOST}
+
+# port set for rgw in vstart.sh
+port = 8080
+
+## say "False" to disable TLS
+is_secure = False
+
+[fixtures]
+## all the buckets created will start with this prefix;
+## {random} will be filled with random characters to pad
+## the prefix to 30 characters long, and avoid collisions
+bucket prefix = yournamehere-{random}-
+
+[s3 main]
+# main display_name set in vstart.sh
+display_name = M. Tester
+
+# main user_idname set in vstart.sh
+user_id = ${S3TEST_MAIN_USERID}
+
+# main email set in vstart.sh
+email = tester@ceph.com
+
+# zonegroup api_name for bucket location
+api_name = default
+
+## main AWS access key
+access_key = ${S3TEST_MAIN_ACCESS_KEY}
+
+## main AWS secret key
+secret_key = ${S3TEST_MAIN_SECRET_KEY}
+
+## replace with key id obtained when secret is created, or delete if KMS not tested
+#kms_keyid = 01234567-89ab-cdef-0123-456789abcdef
+
+[s3 alt]
+# alt display_name set in vstart.sh
+display_name = john.doe
+## alt email set in vstart.sh
+email = john.doe@example.com
+
+# alt user_id set in vstart.sh
+user_id = ${S3TEST_ALT_USERID}
+
+# alt AWS access key set in vstart.sh
+access_key = ${S3TEST_ALT_ACCESS_KEY}
+
+# alt AWS secret key set in vstart.sh
+secret_key = ${S3TEST_ALT_SECRET_KEY}
+
+[s3 tenant]
+# tenant display_name set in vstart.sh
+display_name = testx$tenanteduser
+
+# tenant user_id set in vstart.sh
+user_id = ${S3TEST_TENANT_USERID}
+
+# tenant AWS secret key set in vstart.sh
+access_key = ${S3TEST_TENANT_ACCESS_KEY}
+
+# tenant AWS secret key set in vstart.sh
+secret_key = ${S3TEST_TENANT_SECRET_KEY}
+
+# tenant email set in vstart.sh
+email = tenanteduser@example.com
