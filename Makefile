@@ -1,6 +1,9 @@
-S3TEST_IMAGE=s3rver-s3test
+S3TEST_IMAGE=s3rver-s3tests
 
-.PHONY: s3test
-s3test:
-	docker build -t ${S3TEST_IMAGE} ./contrib/s3test
+.PHONY: build_s3tests
+build_s3tests:
+	docker build -t ${S3TEST_IMAGE} ./contrib/s3tests
+
+.PHONY: start_s3tests
+start_s3tests:
 	docker run --rm --network host ${S3TEST_IMAGE}
