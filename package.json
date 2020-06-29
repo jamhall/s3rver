@@ -61,7 +61,7 @@
     "winston": "^3.0.0"
   },
   "devDependencies": {
-    "aws-sdk": "2.701.0",
+    "aws-sdk": "2.706.0",
     "chai": "4.2.0",
     "chai-as-promised": "7.1.1",
     "eslint": "6.8.0",
