@@ -50,7 +50,7 @@
   "dependencies": {
     "@koa/router": "^9.0.0",
     "busboy": "^0.3.1",
-    "commander": "^5.0.0",
+    "commander": "^6.0.0",
     "fast-xml-parser": "^3.12.19",
     "fs-extra": "^8.0.0",
     "he": "^1.2.0",
