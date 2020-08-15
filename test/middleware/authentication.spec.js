@@ -386,4 +386,44 @@ describe('REST Authentication', () => {
     });
     expect(res.body).to.equal('Hello!');
   });
+
+  it('rejects a request with an incorrect signature in header [v4]', async function() {
+    let res;
+    try {
+      res = await request('bucket-a/mykey', {
+        baseUrl: s3Client.config.endpoint,
+        headers: {
+          Authorization:
+            'AWS4-HMAC-SHA256 Credential=S3RVER/20060301/us-east-1/s3/aws4_request, SignedHeaders=host, Signature=badsig',
+          'X-Amz-Content-SHA256': 'UNSIGNED-PAYLOAD',
+          'X-Amz-Date': toISO8601String(Date.now()),
+        },
+      });
+    } catch (err) {
+      res = err.response;
+    }
+    expect(res.statusCode).to.equal(403);
+    expect(res.body).to.contain('<Code>SignatureDoesNotMatch</Code>');
+  });
+
+  it('rejects a request with an incorrect signature in query params [v4]', async function() {
+    let res;
+    try {
+      res = await request('bucket-a/mykey', {
+        baseUrl: s3Client.config.endpoint,
+        qs: {
+          'X-Amz-Algorithm': 'AWS4-HMAC-SHA256',
+          'X-Amz-Credential': 'S3RVER/20200815/eu-west-2/s3/aws4_request',
+          'X-Amz-Date': toISO8601String(Date.now()),
+          'X-Amz-Expires': 30,
+          'X-Amz-SignedHeaders': 'host',
+          'X-Amz-Signature': 'badsig',
+        },
+      });
+    } catch (err) {
+      res = err.response;
+    }
+    expect(res.statusCode).to.equal(403);
+    expect(res.body).to.contain('<Code>SignatureDoesNotMatch</Code>');
+  });
 });
