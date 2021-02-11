@@ -5,7 +5,7 @@ const express = require('express');
 const FormData = require('form-data');
 const fs = require('fs-extra');
 const { find, times } = require('lodash');
-const md5 = require('md5');
+const crypto = require('crypto');
 const moment = require('moment');
 const pMap = require('p-map');
 const request = require('request-promise-native').defaults({
@@ -14,6 +14,8 @@ const request = require('request-promise-native').defaults({
 const { URL, URLSearchParams } = require('url');
 
 const { createServerAndClient, generateTestObjects } = require('../helpers');
+
+const md5 = (data) => crypto.createHash('md5').update(data).digest("hex");
 
 describe('Operations on Objects', () => {
   let s3rver;
