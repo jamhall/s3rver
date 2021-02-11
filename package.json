@@ -48,7 +48,7 @@
     "node": ">=8.3.0"
   },
   "dependencies": {
-    "@koa/router": "^9.0.0",
+    "@koa/router": "^10.0.0",
     "busboy": "^0.3.1",
     "commander": "^5.0.0",
     "fast-xml-parser": "^3.12.19",
