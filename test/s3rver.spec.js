@@ -5,7 +5,7 @@ const { expect } = require('chai');
 const express = require('express');
 const FormData = require('form-data');
 const fs = require('fs-extra');
-const md5 = require('md5');
+const crypto = require('crypto');
 const request = require('request-promise-native').defaults({
   resolveWithFullResponse: true,
 });
@@ -186,7 +186,7 @@ describe('S3rver', () => {
       expect(event.Records[0].s3.object).to.contain({
         key: 'testPostKey',
         size: body.length,
-        eTag: md5(body),
+        eTag: crypto.createHash('md5').update(body).digest("hex"),
       });
     });
 
@@ -202,7 +202,7 @@ describe('S3rver', () => {
       expect(event.Records[0].s3.object).to.contain({
         key: 'testPutKey',
         size: body.length,
-        eTag: md5(body),
+        eTag: crypto.createHash('md5').update(body).digest("hex"),
       });
     });
 
