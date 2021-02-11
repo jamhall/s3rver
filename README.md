@@ -53,7 +53,7 @@ $ s3rver --help
 Build image
 
 ```bash
-$ make build_docker
+$ npm run docker:build
 ```
 
 You will now have a image `jamhall/s3rver:latest` available.
@@ -61,7 +61,7 @@ You will now have a image `jamhall/s3rver:latest` available.
 Executing this command to start server:
 
 ```bash
-$ make start_docker
+$ npm run docker:start
 ```
 
 Server will listen on port `8080`.

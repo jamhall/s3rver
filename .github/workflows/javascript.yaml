@@ -9,14 +9,18 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        node: [ '8.x', '10.x', '12.x', '14.x' ]
+        node: [ '10.x', '12.x', '14.x' ]
     steps:
     - uses: actions/checkout@v1
     - name: Set up Node
       uses: actions/setup-node@v1
       with:
         node-version: '${{ matrix.node }}'
-    - name: Build
-      run: make build
+    - name: Install
+      run: npm install
+    - name: Lint via prettier
+      run: npm run prettier
+    - name: Lint via eslint
+      run: npm run eslint
     - name: Test
-      run: make test
+      run: npm run test

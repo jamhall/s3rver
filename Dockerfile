@@ -7,4 +7,3 @@ EXPOSE 8080
 VOLUME /data
 COPY . .
 CMD ["node","bin/s3rver.js", "-p", "8080", "-d", "/data"]
-
