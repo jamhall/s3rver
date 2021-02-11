@@ -79,7 +79,7 @@
     "md5": "2.3.0",
     "mocha": "7.2.0",
     "moment": "2.27.0",
-    "p-map": "3.0.0",
+    "p-map": "4.0.0",
     "prettier": "2.2.1",
     "request": "2.88.2",
     "request-promise-native": "1.0.8"
