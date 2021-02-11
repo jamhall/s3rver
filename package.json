@@ -82,7 +82,7 @@
     "p-map": "4.0.0",
     "prettier": "2.2.1",
     "request": "2.88.2",
-    "request-promise-native": "1.0.8"
+    "request-promise-native": "1.0.9"
   },
   "lint-staged": {
     "*.js": "eslint --cache --fix",
