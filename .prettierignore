@@ -1,18 +1,14 @@
-# Logs
-logs
-*.log
-
-# Runtime data
-pids
-*.pid
-*.seed
-
 # Coverage directory used by tools like istanbul
 .nyc_output/
 coverage/
 
 # Dependencies
 node_modules/
+package-lock.json
+
+# JSON configuration files
+.eslintrc
 
 # IDEs
-.idea
+.idea/
+.vscode/

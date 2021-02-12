@@ -8,6 +8,7 @@
     "server",
     "mock",
     "false",
+    "aws",
     "amazon"
   ],
   "author": {
@@ -25,20 +26,16 @@
   },
   "homepage": "https://github.com/jamhall/s3rver",
   "scripts": {
+    "coverage": "nyc npm test",
     "test": "mocha",
-    "eslint": "eslint --ignore-path .gitignore .",
-    "prettier": "prettier --ignore-path .gitignore \"**/*.{js,json,md}\"",
-    "format": "npm run eslint -- --fix && npm run prettier -- --write"
+    "fmt": "eslint . --fix && prettier . --write"
   },
   "main": "lib/s3rver.js",
   "files": [
-    "bin/**/*",
-    "lib/**/*",
+    "lib/",
     "example/*.xml"
   ],
-  "bin": {
-    "s3rver": "bin/s3rver.js"
-  },
+  "bin": "bin/s3rver.js",
   "directories": {
     "lib": "./lib",
     "example": "./example",
@@ -56,7 +53,7 @@
     "he": "^1.2.0",
     "koa": "^2.7.0",
     "koa-logger": "^3.2.0",
-    "lodash": "^4.17.5",
+    "lodash": "^4.17.20",
     "statuses": "^2.0.0",
     "winston": "^3.0.0"
   },
@@ -78,6 +75,7 @@
     "lint-staged": "10.5.4",
     "mocha": "8.3.0",
     "moment": "2.29.1",
+    "nyc": "15.1.0",
     "p-map": "4.0.0",
     "prettier": "2.2.1",
     "request": "2.88.2",
@@ -85,7 +83,7 @@
   },
   "lint-staged": {
     "*.js": "eslint --cache --fix",
-    "*.{js,json,md}": "prettier --write"
+    "*": "prettier --write --ignore-unknown"
   },
   "husky": {
     "hooks": {
