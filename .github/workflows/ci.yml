@@ -1,4 +1,4 @@
-name: s3rver
+name: CI
 
 on:
   push:
