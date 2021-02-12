@@ -6,9 +6,6 @@ on:
       - master
       - next
   pull_request:
-    branches:
-      - master
-      - next
 
 jobs:
   lint:
