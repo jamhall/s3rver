@@ -28,7 +28,10 @@
     "test": "mocha",
     "eslint": "eslint --ignore-path .gitignore .",
     "prettier": "prettier --ignore-path .gitignore \"**/*.{js,json,md}\"",
-    "format": "npm run eslint -- --fix && npm run prettier -- --write"
+    "format": "npm run eslint -- --fix && npm run prettier -- --write",
+    "docker:build": "docker build -t jamhall/s3rver:latest .",
+    "docker:push":"docker build -t jamhall/s3rver:latest .",
+    "docker:start": "docker run -v $(pwd)/data:/data -p 8080:8080 jamhall/s3rver:latest"
   },
   "main": "lib/s3rver.js",
   "files": [
@@ -58,6 +61,7 @@
     "koa-logger": "^3.2.0",
     "lodash": "^4.17.5",
     "statuses": "^2.0.0",
+    "stoppable": "^1.1.0",
     "winston": "^3.0.0"
   },
   "devDependencies": {

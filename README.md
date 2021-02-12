@@ -3,12 +3,13 @@
 [![NPM](https://nodei.co/npm/s3rver.png)](https://nodei.co/npm/s3rver/)
 
 [![Build Status](https://api.travis-ci.org/jamhall/s3rver.png)](https://travis-ci.org/jamhall/s3rver)
+![JavaScript files](https://github.com/jamhall/s3rver/workflows/JavaScript%20files/badge.svg)
 [![Dependency Status](https://david-dm.org/jamhall/s3rver/status.svg)](https://david-dm.org/jamhall/s3rver)
 [![Devdependency Status](https://david-dm.org/jamhall/s3rver/dev-status.svg)](https://david-dm.org/jamhall/s3rver?type=dev)
 
 S3rver is a lightweight server that responds to **some** of the same calls [Amazon S3](http://docs.aws.amazon.com/AWSJavaScriptSDK/latest/AWS/S3.html) responds to. It is extremely useful for testing S3 in a sandbox environment without actually making calls to Amazon.
 
-The goal of S3rver is to minimise runtime dependencies and be more of a development tool to test S3 calls in your code rather than a production server looking to duplicate S3 functionality.
+The goal of S3rver is to minimize runtime dependencies and be more of a development tool to test S3 calls in your code rather than a production server looking to duplicate S3 functionality.
 
 ## Supported methods
 
@@ -31,6 +32,8 @@ The goal of S3rver is to minimise runtime dependencies and be more of a developm
 
 ## Quick Start
 
+### NodeJS
+
 Install s3rver:
 
 ```bash
@@ -44,6 +47,24 @@ Executing this command for the various options:
 ```bash
 $ s3rver --help
 ```
+
+### Docker
+
+Build image
+
+```bash
+$ npm run docker:build
+```
+
+You will now have a image `jamhall/s3rver:latest` available.
+
+Executing this command to start server:
+
+```bash
+$ npm run docker:start
+```
+
+Server will listen on port `8080`.
 
 ## Supported clients
 
