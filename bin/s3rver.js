@@ -30,13 +30,12 @@ function parseConfigureBucket(bucketName, memo = []) {
   }
   memo.push({
     name: bucketName,
-    configs: bucketConfigs.map(config => fs.readFileSync(config)),
+    configs: bucketConfigs.map((config) => fs.readFileSync(config)),
   });
   return memo;
 }
 
 program
-  .storeOptionsAsProperties(true)
   .usage('-d <path> [options]')
   .requiredOption('-d, --directory <path>', 'Data directory', ensureDirectory)
   .option(
@@ -70,14 +69,18 @@ program
     'Prevent SignatureDoesNotMatch errors for all well-formed signatures',
   )
   .option('--no-vhost-buckets', 'Disables vhost-style access for all buckets')
-  // NOTE: commander doesn't actually support options with multiple parts,
-  // we must manually parse this option
   .option(
     '--configure-bucket <name> [configs...]',
     'Bucket name and configuration files for creating and configuring a bucket at startup',
     parseConfigureBucket,
   )
   .version(pkg.version, '-v, --version');
+
+// NOTE: commander doesn't support repeated variadic options,
+// we must manually parse this option
+program.options.find((option) =>
+  option.is('--configure-bucket'),
+).variadic = false;
 
 program.on('--help', () => {
   console.log('');
@@ -88,15 +91,14 @@ program.on('--help', () => {
   );
 });
 
-program.action(async command => {
-  const { configureBucket, ...opts } = command.opts();
+program.action(async ({ configureBucket, ...opts }) => {
   opts.configureBuckets = configureBucket;
   const { address, port } = await new S3rver(opts).run();
   console.log();
   console.log('S3rver listening on %s:%d', address, port);
 });
 
-program.parseAsync(process.argv).catch(err => {
+program.parseAsync(process.argv).catch((err) => {
   console.error(err);
   process.exit(1);
 });
