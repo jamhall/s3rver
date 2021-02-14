@@ -116,7 +116,7 @@ Creates a S3rver instance
 | directory                      | `string`             |                 | Data directory
 | resetOnClose                   | `boolean`            | `false`         | Remove all bucket data on server close
 | allowMismatchedSignatures      | `boolean`            | `false`         | Prevent `SignatureDoesNotMatch` errors for all well-formed signatures
-| vhostBuckets                   | `boolean`            | `true`          | Disable vhost-style access for all buckets
+| vhostBuckets                   | `boolean`            | `true`          | Allow vhost-style access for all buckets
 | configureBuckets\[].name       | `string`             |                 | The name of a prefabricated bucket to create when the server starts
 | configureBuckets\[].configs\[] | `string` \| `Buffer` |                 | Raw XML string or Buffer of Bucket config
 <!-- prettier-ignore-end -->
