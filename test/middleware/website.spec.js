@@ -348,6 +348,22 @@ describe('Static Website Tests', function() {
       );
     });
 
+    it('does not evaluate routing rules for an index page', async function() {
+      const expectedBody = '<html><body>Hello</body></html>';
+      await s3Client
+        .putObject({
+          Bucket: 'website2',
+          Key: 'recursive/foo/index.html',
+          Body: expectedBody,
+        })
+        .promise();
+      const res = await request('website2/recursive/foo', {
+        baseUrl: s3Client.config.endpoint,
+        headers: { accept: 'text/html' },
+      });
+      expect(res.body).to.equal(expectedBody);
+    });
+
     it('evaluates a multi-rule config', async function() {
       let res;
       try {
