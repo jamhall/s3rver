@@ -360,6 +360,7 @@ describe('Operations on Objects', () => {
         '<Condition>Bucket POST must be of the enclosure-type multipart/form-data</Condition>',
       );
     });
+
     it('stores a text object without filename part metadata', async function() {
       const form = new FormData();
       form.append('key', 'text');
