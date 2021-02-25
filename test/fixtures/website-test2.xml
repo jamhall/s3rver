@@ -11,5 +11,14 @@
                 <ReplaceKeyPrefixWith>replacement/</ReplaceKeyPrefixWith>
             </Redirect>
         </RoutingRule>
+        <RoutingRule>
+            <Condition>
+                <HttpErrorCodeReturnedEquals>404</HttpErrorCodeReturnedEquals>
+            </Condition>
+            <Redirect>
+                <!-- this will redirect loop when no recursive/index.html is stored -->
+                <ReplaceKeyPrefixWith>recursive/</ReplaceKeyPrefixWith>
+            </Redirect>
+        </RoutingRule>
     </RoutingRules>
 </WebsiteConfiguration>
