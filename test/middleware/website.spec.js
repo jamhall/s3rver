@@ -216,6 +216,26 @@ describe('Static Website Tests', function() {
       'content-type',
       'text/html; charset=utf-8',
     );
+    expect(res.body).to.contain.string('Key: page/not-exists');
+  });
+
+  it('returns a HTML 404 error page for a missing index key', async function () {
+    let res;
+    try {
+      res = await request('website0/page/not-exists/', {
+        baseUrl: s3Client.config.endpoint,
+        headers: { accept: 'text/html' },
+      });
+    } catch (err) {
+      res = err.response;
+    }
+    expect(res.statusCode).to.equal(404);
+    expect(res.headers).to.have.property(
+      'content-type',
+      'text/html; charset=utf-8',
+    );
+    console.log(res.body);
+    expect(res.body).to.contain.string('Key: page/not-exists/index.html');
   });
 
   it('serves a custom error page if it exists', async function() {
@@ -333,7 +353,7 @@ describe('Static Website Tests', function() {
     it('evaluates a single simple routing rule', async function() {
       let res;
       try {
-        res = await request(`website2/test/key`, {
+        res = await request(`website2/test/key/`, {
           baseUrl: s3Client.config.endpoint,
           headers: { accept: 'text/html' },
           followRedirect: false,
@@ -344,11 +364,50 @@ describe('Static Website Tests', function() {
       expect(res.statusCode).to.equal(301);
       expect(res.headers).to.have.property(
         'location',
-        s3Client.config.endpoint + '/website2/replacement/key',
+        s3Client.config.endpoint + '/website2/replacement/key/',
       );
     });
 
-    it('evaluates a multi-rule config', async function() {
+    it('does not evaluate routing rules for an index page', async function() {
+      const expectedBody = '<html><body>Hello</body></html>';
+      await s3Client
+        .putObject({
+          Bucket: 'website2',
+          Key: 'recursive/foo/index.html',
+          Body: expectedBody,
+        })
+        .promise();
+      const res = await request('website2/recursive/foo/', {
+        baseUrl: s3Client.config.endpoint,
+        headers: { accept: 'text/html' },
+      });
+      expect(res.body).to.equal(expectedBody);
+    });
+
+    it('does not evaluate routing rules for an index page redirect', async function() {
+      const expectedBody = '<html><body>Hello</body></html>';
+      await s3Client
+        .putObject({
+          Bucket: 'website2',
+          Key: 'recursive/foo/index.html',
+          Body: expectedBody,
+        })
+        .promise();
+      let res;
+      try {
+        res = await request('website2/recursive/foo', {
+          baseUrl: s3Client.config.endpoint,
+          headers: { accept: 'text/html' },
+          followRedirect: false,
+        });
+      } catch (err) {
+        res = err.response;
+      }
+      expect(res.statusCode).to.equal(302);
+      expect(res.headers).to.have.property('location', '/website2/recursive/foo/');
+    });
+
+    it('evaluates a multi-rule config', async function () {
       let res;
       try {
         res = await request(`website3/simple/key`, {
