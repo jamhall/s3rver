@@ -234,7 +234,6 @@ describe('Static Website Tests', function() {
       'content-type',
       'text/html; charset=utf-8',
     );
-    console.log(res.body);
     expect(res.body).to.contain.string('Key: page/not-exists/index.html');
   });
 
