@@ -28,13 +28,13 @@ exports.generateTestObjects = function generateTestObjects(
   amount,
 ) {
   const padding = amount.toString().length;
-  const objects = times(amount, i => ({
+  const objects = times(amount, (i) => ({
     Bucket: bucket,
     Key: 'key' + i.toString().padStart(padding, '0'),
     Body: 'Hello!',
   }));
 
-  return pMap(objects, object => s3Client.putObject(object).promise(), {
+  return pMap(objects, (object) => s3Client.putObject(object).promise(), {
     concurrency: 100,
   });
 };

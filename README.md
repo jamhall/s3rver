@@ -154,7 +154,7 @@ Example in mocha:
 const S3rver = require('s3rver');
 let instance;
 
-before(function(done) {
+before(function (done) {
   instance = new S3rver({
     port: 4569,
     hostname: 'localhost',
@@ -163,7 +163,7 @@ before(function(done) {
   }).run(done);
 });
 
-after(function(done) {
+after(function (done) {
   instance.close(done);
 });
 ```
@@ -209,10 +209,10 @@ const instance = new S3rver({
 });
 
 const s3Events = fromEvent(instance, 'event');
-s3Events.subscribe(event => console.log(event));
+s3Events.subscribe((event) => console.log(event));
 s3Events
-  .pipe(filter(event => event.Records[0].eventName == 'ObjectCreated:Copy'))
-  .subscribe(event => console.log(event));
+  .pipe(filter((event) => event.Records[0].eventName == 'ObjectCreated:Copy'))
+  .subscribe((event) => console.log(event));
 ```
 
 ## Using [s3fs-fuse](https://github.com/s3fs-fuse/s3fs-fuse) with S3rver

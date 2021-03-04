@@ -17,7 +17,7 @@ const { once } = require('../lib/utils');
 
 describe('S3rver', () => {
   describe('#run', () => {
-    it('supports running on port 0', async function() {
+    it('supports running on port 0', async function () {
       const server = new S3rver({
         port: 0,
       });
@@ -26,7 +26,7 @@ describe('S3rver', () => {
       expect(port).to.be.above(0);
     });
 
-    it('creates preconfigured buckets on startup', async function() {
+    it('creates preconfigured buckets on startup', async function () {
       const buckets = [{ name: 'bucket1' }, { name: 'bucket2' }];
       const server = new S3rver({
         configureBuckets: buckets,
@@ -47,7 +47,7 @@ describe('S3rver', () => {
       }
     });
 
-    it('creates a preconfigured bucket with configs on startup', async function() {
+    it('creates a preconfigured bucket with configs on startup', async function () {
       const bucket = {
         name: 'bucket1',
         configs: [
@@ -76,7 +76,7 @@ describe('S3rver', () => {
   });
 
   describe('#close', () => {
-    it('cleans up after close if the resetOnClose setting is true', async function() {
+    it('cleans up after close if the resetOnClose setting is true', async function () {
       const bucket = { name: 'foobars' };
 
       const server = new S3rver({
@@ -99,7 +99,7 @@ describe('S3rver', () => {
       await expect(server.store.listBuckets()).to.eventually.have.lengthOf(0);
     });
 
-    it('does not clean up after close if the resetOnClose setting is false', async function() {
+    it('does not clean up after close if the resetOnClose setting is false', async function () {
       const bucket = { name: 'foobars' };
 
       const server = new S3rver({
@@ -122,7 +122,7 @@ describe('S3rver', () => {
       await expect(server.store.listBuckets()).to.eventually.have.lengthOf(1);
     });
 
-    it('does not clean up after close if the resetOnClose setting is not set', async function() {
+    it('does not clean up after close if the resetOnClose setting is not set', async function () {
       const bucket = { name: 'foobars' };
 
       const server = new S3rver({
@@ -155,7 +155,7 @@ describe('S3rver', () => {
       }));
     });
 
-    it('triggers an event with a valid message structure', async function() {
+    it('triggers an event with a valid message structure', async function () {
       const eventPromise = once(s3rver, 'event');
       const body = 'Hello!';
       await s3Client
@@ -167,7 +167,7 @@ describe('S3rver', () => {
       expect(new Date(event.Records[0].eventTime)).to.not.satisfy(isNaN);
     });
 
-    it('triggers a Post event', async function() {
+    it('triggers a Post event', async function () {
       const eventPromise = once(s3rver, 'event');
       const body = 'Hello!';
 
@@ -186,11 +186,11 @@ describe('S3rver', () => {
       expect(event.Records[0].s3.object).to.contain({
         key: 'testPostKey',
         size: body.length,
-        eTag: crypto.createHash('md5').update(body).digest("hex"),
+        eTag: crypto.createHash('md5').update(body).digest('hex'),
       });
     });
 
-    it('triggers a Put event', async function() {
+    it('triggers a Put event', async function () {
       const eventPromise = once(s3rver, 'event');
       const body = 'Hello!';
       await s3Client
@@ -202,11 +202,11 @@ describe('S3rver', () => {
       expect(event.Records[0].s3.object).to.contain({
         key: 'testPutKey',
         size: body.length,
-        eTag: crypto.createHash('md5').update(body).digest("hex"),
+        eTag: crypto.createHash('md5').update(body).digest('hex'),
       });
     });
 
-    it('triggers a Copy event', async function() {
+    it('triggers a Copy event', async function () {
       const body = 'Hello!';
       await s3Client
         .putObject({ Bucket: 'bucket-a', Key: 'testPut', Body: body })
@@ -228,7 +228,7 @@ describe('S3rver', () => {
       });
     });
 
-    it('triggers a Delete event', async function() {
+    it('triggers a Delete event', async function () {
       const body = 'Hello!';
       await s3Client
         .putObject({
@@ -250,7 +250,7 @@ describe('S3rver', () => {
     });
   });
 
-  it('can be mounted on a subpath in an Express app', async function() {
+  it('can be mounted on a subpath in an Express app', async function () {
     const s3rver = new S3rver({
       configureBuckets: [{ name: 'bucket-a' }, { name: 'bucket-b' }],
     });

@@ -29,22 +29,22 @@ describe('Operations on Buckets', () => {
     },
   ];
 
-  beforeEach(async function() {
+  beforeEach(async function () {
     ({ s3Client } = await createServerAndClient({
       configureBuckets: buckets,
     }));
   });
 
   describe('DELETE Bucket', () => {
-    it('deletes a bucket', async function() {
+    it('deletes a bucket', async function () {
       await s3Client.deleteBucket({ Bucket: 'bucket-a' }).promise();
     });
 
-    it('deletes a bucket configured with CORS', async function() {
+    it('deletes a bucket configured with CORS', async function () {
       await s3Client.deleteBucket({ Bucket: 'cors-test0' }).promise();
     });
 
-    it('deletes an empty bucket after a key nested in a directory has been deleted', async function() {
+    it('deletes an empty bucket after a key nested in a directory has been deleted', async function () {
       await s3Client
         .putObject({
           Bucket: 'bucket-a',
@@ -58,7 +58,7 @@ describe('Operations on Buckets', () => {
       await s3Client.deleteBucket({ Bucket: 'bucket-a' }).promise();
     });
 
-    it('fails to delete a bucket because it is not empty', async function() {
+    it('fails to delete a bucket because it is not empty', async function () {
       let error;
       await generateTestObjects(s3Client, 'bucket-a', 20);
       try {
@@ -71,7 +71,7 @@ describe('Operations on Buckets', () => {
       expect(error.statusCode).to.equal(409);
     });
 
-    it('fails to fetch a deleted bucket', async function() {
+    it('fails to fetch a deleted bucket', async function () {
       let error;
       await s3Client.deleteBucket({ Bucket: 'bucket-a' }).promise();
       try {
@@ -86,7 +86,7 @@ describe('Operations on Buckets', () => {
   });
 
   describe('DELETE Bucket cors', () => {
-    it('deletes a CORS configuration in a configured bucket', async function() {
+    it('deletes a CORS configuration in a configured bucket', async function () {
       let error;
       try {
         await s3Client.deleteBucketCors({ Bucket: 'cors-test0' }).promise();
@@ -100,7 +100,7 @@ describe('Operations on Buckets', () => {
   });
 
   describe('DELETE Bucket website', () => {
-    it('deletes a website configuration in a configured bucket', async function() {
+    it('deletes a website configuration in a configured bucket', async function () {
       await s3Client.deleteBucketWebsite({ Bucket: 'website-test0' }).promise();
       let error;
       try {
@@ -126,7 +126,7 @@ describe('Operations on Buckets', () => {
 
     const createTestObjects = () =>
       Promise.all(
-        testObjects.map(key =>
+        testObjects.map((key) =>
           s3Client
             .putObject({
               Bucket: 'bucket-a',
@@ -137,7 +137,7 @@ describe('Operations on Buckets', () => {
         ),
       );
 
-    it('lists objects in a bucket', async function() {
+    it('lists objects in a bucket', async function () {
       await createTestObjects();
       const data = await s3Client.listObjects({ Bucket: 'bucket-a' }).promise();
       expect(data.Name).to.equal('bucket-a');
@@ -146,7 +146,7 @@ describe('Operations on Buckets', () => {
       expect(data.MaxKeys).to.equal(1000);
     });
 
-    it('lists objects in a bucket filtered by a prefix', async function() {
+    it('lists objects in a bucket filtered by a prefix', async function () {
       await createTestObjects();
       const data = await s3Client
         .listObjects({ Bucket: 'bucket-a', Prefix: 'key' })
@@ -157,7 +157,7 @@ describe('Operations on Buckets', () => {
       expect(find(data.Contents, { Key: 'akey3' })).to.not.exist;
     });
 
-    it('lists objects in a bucket starting after a marker', async function() {
+    it('lists objects in a bucket starting after a marker', async function () {
       await createTestObjects();
       const data = await s3Client
         .listObjects({
@@ -168,7 +168,7 @@ describe('Operations on Buckets', () => {
       expect(data.Contents).to.have.lengthOf(4);
     });
 
-    it('lists objects in a bucket filtered by a prefix starting after a marker', async function() {
+    it('lists objects in a bucket filtered by a prefix starting after a marker', async function () {
       await createTestObjects();
       const data = await s3Client
         .listObjects({
@@ -181,7 +181,7 @@ describe('Operations on Buckets', () => {
       expect(data.Contents[0]).to.have.property('Key', 'akey3');
     });
 
-    it('lists 100 objects without returning the next marker', async function() {
+    it('lists 100 objects without returning the next marker', async function () {
       this.timeout(30000);
       await generateTestObjects(s3Client, 'bucket-a', 200);
       const data = await s3Client
@@ -192,7 +192,7 @@ describe('Operations on Buckets', () => {
       expect(data.NextMarker).to.not.exist;
     });
 
-    it('lists 100 delimited objects and return the next marker', async function() {
+    it('lists 100 delimited objects and return the next marker', async function () {
       this.timeout(30000);
       await generateTestObjects(s3Client, 'bucket-a', 200);
       const data = await s3Client
@@ -207,7 +207,7 @@ describe('Operations on Buckets', () => {
       expect(data.NextMarker).to.equal('key099');
     });
 
-    it('lists no objects for a bucket', async function() {
+    it('lists no objects for a bucket', async function () {
       await s3Client.listObjects({ Bucket: 'bucket-a' }).promise();
       const objects = await s3Client
         .listObjects({ Bucket: 'bucket-a' })
@@ -217,7 +217,7 @@ describe('Operations on Buckets', () => {
   });
 
   describe('GET Bucket (List Objects) Version 2', () => {
-    it('lists objects in a bucket filtered by a prefix', async function() {
+    it('lists objects in a bucket filtered by a prefix', async function () {
       const testObjects = [
         'akey1',
         'akey2',
@@ -228,7 +228,7 @@ describe('Operations on Buckets', () => {
         'key3',
       ];
       await Promise.all(
-        testObjects.map(key =>
+        testObjects.map((key) =>
           s3Client
             .putObject({ Bucket: 'bucket-a', Key: key, Body: 'Hello!' })
             .promise(),
@@ -243,7 +243,7 @@ describe('Operations on Buckets', () => {
       expect(find(data.Contents, { Key: 'akey3' })).to.not.exist;
     });
 
-    it('lists objects in a bucket starting after a key', async function() {
+    it('lists objects in a bucket starting after a key', async function () {
       const testObjects = [
         'akey1',
         'akey2',
@@ -254,7 +254,7 @@ describe('Operations on Buckets', () => {
         'key3',
       ];
       await Promise.all(
-        testObjects.map(key =>
+        testObjects.map((key) =>
           s3Client
             .putObject({ Bucket: 'bucket-a', Key: key, Body: 'Hello!' })
             .promise(),
@@ -269,7 +269,7 @@ describe('Operations on Buckets', () => {
       expect(data.Contents).to.have.lengthOf(4);
     });
 
-    it('lists objects in a bucket starting after a nonexistent key', async function() {
+    it('lists objects in a bucket starting after a nonexistent key', async function () {
       const testObjects = [
         'akey1',
         'akey2',
@@ -280,7 +280,7 @@ describe('Operations on Buckets', () => {
         'key3',
       ];
       await Promise.all(
-        testObjects.map(key =>
+        testObjects.map((key) =>
           s3Client
             .putObject({ Bucket: 'bucket-a', Key: key, Body: 'Hello!' })
             .promise(),
@@ -295,10 +295,10 @@ describe('Operations on Buckets', () => {
       expect(data.Contents).to.have.lengthOf(4);
     });
 
-    it('lists prefix/foo after prefix.foo in a bucket', async function() {
+    it('lists prefix/foo after prefix.foo in a bucket', async function () {
       const testObjects = ['prefix.foo', 'prefix/foo'];
       await Promise.all(
-        testObjects.map(key =>
+        testObjects.map((key) =>
           s3Client
             .putObject({ Bucket: 'bucket-a', Key: key, Body: 'Hello!' })
             .promise(),
@@ -316,7 +316,7 @@ describe('Operations on Buckets', () => {
       expect(data.CommonPrefixes[0]).to.have.property('Prefix', 'prefix/');
     });
 
-    it('lists objects in a bucket filtered prefix starting after a key', async function() {
+    it('lists objects in a bucket filtered prefix starting after a key', async function () {
       const testObjects = [
         'akey1',
         'akey2',
@@ -327,7 +327,7 @@ describe('Operations on Buckets', () => {
         'key3',
       ];
       await Promise.all(
-        testObjects.map(key =>
+        testObjects.map((key) =>
           s3Client
             .putObject({ Bucket: 'bucket-a', Key: key, Body: 'Hello!' })
             .promise(),
@@ -344,7 +344,7 @@ describe('Operations on Buckets', () => {
       expect(data.Contents[0]).to.have.property('Key', 'akey3');
     });
 
-    it('lists objects in a bucket filtered by a delimiter', async function() {
+    it('lists objects in a bucket filtered by a delimiter', async function () {
       const testObjects = [
         'akey1',
         'akey2',
@@ -355,7 +355,7 @@ describe('Operations on Buckets', () => {
         'key3',
       ];
       await Promise.all(
-        testObjects.map(key =>
+        testObjects.map((key) =>
           s3Client
             .putObject({ Bucket: 'bucket-a', Key: key, Body: 'Hello!' })
             .promise(),
@@ -369,7 +369,7 @@ describe('Operations on Buckets', () => {
       expect(data.CommonPrefixes[0]).to.have.property('Prefix', 'key/');
     });
 
-    it('lists folders in a bucket filtered by a prefix and a delimiter', async function() {
+    it('lists folders in a bucket filtered by a prefix and a delimiter', async function () {
       const testObjects = [
         'folder1/file1.txt',
         'folder1/file2.txt',
@@ -384,7 +384,7 @@ describe('Operations on Buckets', () => {
       ];
 
       await Promise.all(
-        testObjects.map(key =>
+        testObjects.map((key) =>
           s3Client
             .putObject({ Bucket: 'bucket-a', Key: key, Body: 'Hello!' })
             .promise(),
@@ -413,7 +413,7 @@ describe('Operations on Buckets', () => {
       );
     });
 
-    it('truncates a listing to 500 objects', async function() {
+    it('truncates a listing to 500 objects', async function () {
       this.timeout(30000);
       await generateTestObjects(s3Client, 'bucket-a', 1000);
       const data = await s3Client
@@ -424,7 +424,7 @@ describe('Operations on Buckets', () => {
       expect(data.Contents).to.have.lengthOf(500);
     });
 
-    it('reports no truncation when setting max keys to 0', async function() {
+    it('reports no truncation when setting max keys to 0', async function () {
       await generateTestObjects(s3Client, 'bucket-a', 100);
       const data = await s3Client
         .listObjectsV2({ Bucket: 'bucket-a', MaxKeys: 0 })
@@ -434,7 +434,7 @@ describe('Operations on Buckets', () => {
       expect(data.Contents).to.have.lengthOf(0);
     });
 
-    it('lists at most 1000 objects', async function() {
+    it('lists at most 1000 objects', async function () {
       this.timeout(30000);
       await generateTestObjects(s3Client, 'bucket-a', 1100);
       const data = await s3Client
@@ -446,7 +446,7 @@ describe('Operations on Buckets', () => {
       expect(data.KeyCount).to.equal(1000);
     });
 
-    it('lists 100 objects and return a continuation token', async function() {
+    it('lists 100 objects and return a continuation token', async function () {
       this.timeout(30000);
       await generateTestObjects(s3Client, 'bucket-a', 200);
       const data = await s3Client
@@ -458,7 +458,7 @@ describe('Operations on Buckets', () => {
       expect(data.NextContinuationToken).to.exist;
     });
 
-    it('lists additional objects using a continuation token', async function() {
+    it('lists additional objects using a continuation token', async function () {
       this.timeout(30000);
       await generateTestObjects(s3Client, 'bucket-a', 500);
       const data = await s3Client
@@ -482,7 +482,7 @@ describe('Operations on Buckets', () => {
   describe('GET Bucket cors', () => {});
 
   describe('GET Bucket location', () => {
-    it('returns default bucket location', async function() {
+    it('returns default bucket location', async function () {
       const location = await s3Client
         .getBucketLocation({
           Bucket: 'bucket-a',
@@ -495,11 +495,11 @@ describe('Operations on Buckets', () => {
   describe('GET Bucket website', () => {});
 
   describe('PUT Bucket', () => {
-    it('creates a bucket with valid domain-style name', async function() {
+    it('creates a bucket with valid domain-style name', async function () {
       await s3Client.createBucket({ Bucket: 'a-test.example.com' }).promise();
     });
 
-    it('fails to create a bucket because of invalid name', async function() {
+    it('fails to create a bucket because of invalid name', async function () {
       let error;
       try {
         await s3Client.createBucket({ Bucket: '-$%!nvalid' }).promise();
@@ -511,7 +511,7 @@ describe('Operations on Buckets', () => {
       expect(error).to.exist;
     });
 
-    it('fails to create a bucket because of invalid domain-style name', async function() {
+    it('fails to create a bucket because of invalid domain-style name', async function () {
       let error;
       try {
         await s3Client.createBucket({ Bucket: '.example.com' }).promise();
@@ -523,7 +523,7 @@ describe('Operations on Buckets', () => {
       expect(error).to.exist;
     });
 
-    it('fails to create a bucket because name is too long', async function() {
+    it('fails to create a bucket because name is too long', async function () {
       let error;
       try {
         await s3Client.createBucket({ Bucket: 'abcd'.repeat(16) }).promise();
@@ -535,7 +535,7 @@ describe('Operations on Buckets', () => {
       expect(error).to.exist;
     });
 
-    it('fails to create a bucket because name is too short', async function() {
+    it('fails to create a bucket because name is too short', async function () {
       let error;
       try {
         await s3Client.createBucket({ Bucket: 'ab' }).promise();
@@ -549,7 +549,7 @@ describe('Operations on Buckets', () => {
   });
 
   describe('PUT Bucket cors', () => {
-    it('puts a CORS configuration in an unconfigured bucket', async function() {
+    it('puts a CORS configuration in an unconfigured bucket', async function () {
       await s3Client
         .putBucketCors({
           Bucket: 'bucket-a',
@@ -568,7 +568,7 @@ describe('Operations on Buckets', () => {
   });
 
   describe('PUT Bucket website', () => {
-    it('puts a website configuration in an unconfigured bucket', async function() {
+    it('puts a website configuration in an unconfigured bucket', async function () {
       await s3Client
         .putBucketWebsite({
           Bucket: 'bucket-a',
