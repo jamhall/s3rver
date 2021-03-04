@@ -17,7 +17,7 @@ describe('Operations on the Service', () => {
       { name: 'bucket6' },
     ];
 
-    it('returns a list of buckets', async function() {
+    it('returns a list of buckets', async function () {
       const { s3Client } = await createServerAndClient({
         configureBuckets: buckets,
       });

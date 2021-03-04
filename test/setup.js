@@ -20,9 +20,9 @@ S3rver.defaultOptions.directory = tmpDir;
 
 beforeEach(resetTmpDir);
 
-afterEach(async function() {
+afterEach(async function () {
   await Promise.all(
-    [...instances].map(async instance => {
+    [...instances].map(async (instance) => {
       try {
         await instance.close();
       } catch (err) {
