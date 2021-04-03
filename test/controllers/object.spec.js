@@ -1212,7 +1212,7 @@ describe('Operations on Objects', () => {
         })
         .promise();
       await s3Client
-        .upload({
+        .putObject({
           Bucket: 'bucket-a',
           Key: 'part',
           Body: Buffer.alloc(20 * Math.pow(1024, 2)), // 20MB
@@ -1253,7 +1253,7 @@ describe('Operations on Objects', () => {
         })
         .promise();
       await s3Client
-        .upload({
+        .putObject({
           Bucket: 'bucket-b',
           Key: 'part',
           Body: Buffer.alloc(20 * Math.pow(1024, 2)), // 20MB
@@ -1269,6 +1269,123 @@ describe('Operations on Objects', () => {
         })
         .promise();
       expect(JSON.parse(data.CopyPartResult.ETag)).to.be.ok;
+    });
+
+    it('should copy a part range from bucket to bucket', async function () {
+      const upload = await s3Client
+        .createMultipartUpload({
+          Bucket: 'bucket-a',
+          Key: 'merged',
+        })
+        .promise();
+      await s3Client
+        .putObject({
+          Bucket: 'bucket-b',
+          Key: 'part',
+          Body: Buffer.alloc(20 * Math.pow(1024, 2)), // 20MB
+        })
+        .promise();
+      const data = await s3Client
+        .uploadPartCopy({
+          CopySource: `bucket-b/part`,
+          CopySourceRange: 'bytes=0-10',
+          Bucket: 'bucket-a',
+          Key: 'destination',
+          PartNumber: 1,
+          UploadId: upload.UploadId,
+        })
+        .promise();
+      expect(JSON.parse(data.CopyPartResult.ETag)).to.be.ok;
+    });
+
+    it('fails to copy a part range for an out of bounds requests', async function () {
+      const upload = await s3Client
+        .createMultipartUpload({
+          Bucket: 'bucket-a',
+          Key: 'merged',
+        })
+        .promise();
+      const body = Buffer.alloc(20 * Math.pow(1024, 2)); // 20MB
+      await s3Client
+        .putObject({
+          Bucket: 'bucket-b',
+          Key: 'part',
+          Body: body,
+        })
+        .promise();
+
+      let error;
+      try {
+        await s3Client
+          .uploadPartCopy({
+            CopySource: `bucket-b/part`,
+            CopySourceRange: `bytes=${body.length - 10}-${body.length}`,
+            Bucket: 'bucket-a',
+            Key: 'destination',
+            PartNumber: 1,
+            UploadId: upload.UploadId,
+          })
+          .promise();
+      } catch (err) {
+        error = err;
+      }
+      expect(error).to.exist;
+      expect(error.code).to.equal('InvalidArgument');
+      expect(error.message).to.equal(
+        `Range specified is not valid for source object of size: ${body.length}`,
+      );
+    });
+
+    it('fails to copy a part from a nonexistent bucket', async function () {
+      const upload = await s3Client
+        .createMultipartUpload({
+          Bucket: 'bucket-a',
+          Key: 'merged',
+        })
+        .promise();
+
+      let error;
+      try {
+        await s3Client
+          .uploadPartCopy({
+            CopySource: `not-exist/part`,
+            Bucket: 'bucket-a',
+            Key: 'destination',
+            PartNumber: 1,
+            UploadId: upload.UploadId,
+          })
+          .promise();
+      } catch (err) {
+        error = err;
+      }
+      expect(error).to.exist;
+      expect(error.code).to.equal('NoSuchBucket');
+    });
+
+    it('fails to copy a part from a nonexistent key', async function () {
+      const upload = await s3Client
+        .createMultipartUpload({
+          Bucket: 'bucket-a',
+          Key: 'merged',
+        })
+        .promise();
+
+      let error;
+      try {
+        await s3Client
+          .uploadPartCopy({
+            CopySource: `bucket-b/not-exist`,
+            Bucket: 'bucket-a',
+            Key: 'destination',
+            PartNumber: 1,
+            UploadId: upload.UploadId,
+          })
+          .promise();
+      } catch (err) {
+        error = err;
+      }
+      expect(error).to.exist;
+      expect(error.code).to.equal('NoSuchKey');
     });
   });
 });
