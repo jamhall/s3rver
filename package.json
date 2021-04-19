@@ -55,7 +55,7 @@
     "koa-logger": "^3.2.0",
     "lodash": "^4.17.20",
     "statuses": "^2.0.0",
-    "winston": "^3.0.0"
+    "winston": "^3.2.1"
   },
   "devDependencies": {
     "aws-sdk": "2.888.0",
