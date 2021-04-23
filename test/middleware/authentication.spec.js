@@ -31,6 +31,7 @@ describe('REST Authentication', () => {
     await s3Client
       .putObject({ Bucket: 'bucket-a', Key: 'text', Body: 'Hello!' })
       .promise();
+    const endpointHref = s3Client.endpoint.href;
     s3Client.setEndpoint(`https://s3.amazonaws.com`);
     Object.assign(s3Client.config, {
       s3ForcePathStyle: false,
@@ -40,7 +41,7 @@ describe('REST Authentication', () => {
       Key: 'text',
     });
     const { host, pathname, searchParams } = new URL(url);
-    const res = await request(new URL(pathname, s3Client.config.endpoint), {
+    const res = await request(new URL(pathname, endpointHref), {
       qs: searchParams,
       headers: { host },
     });
@@ -51,6 +52,7 @@ describe('REST Authentication', () => {
     await s3Client
       .putObject({ Bucket: 'bucket-a', Key: 'text', Body: 'Hello!' })
       .promise();
+    const endpointHref = s3Client.endpoint.href;
     s3Client.setEndpoint(
       `${s3Client.endpoint.protocol}//bucket-a:${s3Client.endpoint.port}${s3Client.endpoint.path}`,
     );
@@ -63,7 +65,7 @@ describe('REST Authentication', () => {
       Key: 'text',
     });
     const { host, pathname, searchParams } = new URL(url);
-    const res = await request(new URL(pathname, s3Client.config.endpoint), {
+    const res = await request(new URL(pathname, endpointHref), {
       qs: searchParams,
       headers: { host },
     });
@@ -74,7 +76,7 @@ describe('REST Authentication', () => {
     let res;
     try {
       res = await request('bucket-a/mykey', {
-        baseUrl: s3Client.config.endpoint,
+        baseUrl: s3Client.endpoint.href,
         qs: {
           'X-Amz-Algorithm': 'AWS4-HMAC-SHA256',
           Signature: 'dummysig',
@@ -94,7 +96,7 @@ describe('REST Authentication', () => {
     let res;
     try {
       res = await request('bucket-a/mykey', {
-        baseUrl: s3Client.config.endpoint,
+        baseUrl: s3Client.endpoint.href,
         headers: {
           Authorization: 'AWS S3RVER dummysig',
         },
@@ -110,7 +112,7 @@ describe('REST Authentication', () => {
     let res;
     try {
       res = await request('bucket-a/mykey', {
-        baseUrl: s3Client.config.endpoint,
+        baseUrl: s3Client.endpoint.href,
         headers: {
           // omitting Signature and SignedHeaders components
           Authorization:
@@ -129,7 +131,7 @@ describe('REST Authentication', () => {
     let res;
     try {
       res = await request('bucket-a/mykey', {
-        baseUrl: s3Client.config.endpoint,
+        baseUrl: s3Client.endpoint.href,
         qs: {
           AWSAccessKeyId: 'S3RVER',
           Signature: 'dummysig',
@@ -147,7 +149,7 @@ describe('REST Authentication', () => {
     let res;
     try {
       res = await request('bucket-a/mykey', {
-        baseUrl: s3Client.config.endpoint,
+        baseUrl: s3Client.endpoint.href,
         qs: {
           'X-Amz-Algorithm': 'AWS4-HMAC-SHA256',
           'X-Amz-Signature': 'dummysig',
@@ -167,7 +169,7 @@ describe('REST Authentication', () => {
     let res;
     try {
       res = await request('bucket-a/mykey', {
-        baseUrl: s3Client.config.endpoint,
+        baseUrl: s3Client.endpoint.href,
         headers: {
           Authorization: 'AWS S3RVER:badsig',
           'X-Amz-Date': new Date().toUTCString(),
@@ -184,7 +186,7 @@ describe('REST Authentication', () => {
     let res;
     try {
       res = await request('bucket-a/mykey', {
-        baseUrl: s3Client.config.endpoint,
+        baseUrl: s3Client.endpoint.href,
         qs: {
           AWSAccessKeyId: 'S3RVER',
           Signature: 'badsig',
@@ -202,7 +204,7 @@ describe('REST Authentication', () => {
     let res;
     try {
       res = await request('bucket-a/mykey', {
-        baseUrl: s3Client.config.endpoint,
+        baseUrl: s3Client.endpoint.href,
         headers: {
           Authorization: 'AWS S3RVER:dummysig',
           // 20 minutes in the future
@@ -256,7 +258,7 @@ describe('REST Authentication', () => {
     let res;
     try {
       res = await request('bucket-a/mykey', {
-        baseUrl: s3Client.config.endpoint,
+        baseUrl: s3Client.endpoint.href,
         qs: {
           'X-Amz-Algorithm': 'AWS4-HMAC-SHA256',
           'X-Amz-Credential': 'S3RVER/20060301/us-east-1/s3/aws4_request',
@@ -304,7 +306,7 @@ describe('REST Authentication', () => {
     let res;
     try {
       res = await request('bucket-a/image', {
-        baseUrl: s3Client.config.endpoint,
+        baseUrl: s3Client.endpoint.href,
         qs: {
           'response-content-type': 'image/jpeg',
         },
@@ -368,6 +370,7 @@ describe('REST Authentication', () => {
     httpServer.removeAllListeners('request');
     httpServer.on('request', app);
 
+    const endpointHref = s3Client.endpoint.href;
     s3Client.setEndpoint(
       `${s3Client.endpoint.protocol}//bucket-a:${s3Client.endpoint.port}/basepath`,
     );
@@ -380,7 +383,7 @@ describe('REST Authentication', () => {
       Key: 'text',
     });
     const { host, pathname, searchParams } = new URL(url);
-    const res = await request(new URL(pathname, s3Client.config.endpoint), {
+    const res = await request(new URL(pathname, endpointHref), {
       qs: searchParams,
       headers: { host },
     });
@@ -391,7 +394,7 @@ describe('REST Authentication', () => {
     let res;
     try {
       res = await request('bucket-a/mykey', {
-        baseUrl: s3Client.config.endpoint,
+        baseUrl: s3Client.endpoint.href,
         headers: {
           Authorization:
             'AWS4-HMAC-SHA256 Credential=S3RVER/20060301/us-east-1/s3/aws4_request, SignedHeaders=host, Signature=badsig',
@@ -410,7 +413,7 @@ describe('REST Authentication', () => {
     let res;
     try {
       res = await request('bucket-a/mykey', {
-        baseUrl: s3Client.config.endpoint,
+        baseUrl: s3Client.endpoint.href,
         qs: {
           'X-Amz-Algorithm': 'AWS4-HMAC-SHA256',
           'X-Amz-Credential': 'S3RVER/20200815/eu-west-2/s3/aws4_request',

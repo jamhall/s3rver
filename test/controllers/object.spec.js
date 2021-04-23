@@ -5,7 +5,6 @@ const express = require('express');
 const FormData = require('form-data');
 const fs = require('fs-extra');
 const { find, times } = require('lodash');
-const crypto = require('crypto');
 const moment = require('moment');
 const pMap = require('p-map');
 const request = require('request-promise-native').defaults({
@@ -13,9 +12,11 @@ const request = require('request-promise-native').defaults({
 });
 const { URL, URLSearchParams } = require('url');
 
-const { createServerAndClient, generateTestObjects } = require('../helpers');
-
-const md5 = (data) => crypto.createHash('md5').update(data).digest('hex');
+const {
+  createServerAndClient,
+  generateTestObjects,
+  md5,
+} = require('../helpers');
 
 describe('Operations on Objects', () => {
   let s3rver;
@@ -330,7 +331,7 @@ describe('Operations on Objects', () => {
       form.append('key', 'text');
       form.append('file', 'Hello!', 'post_file.txt');
       const res = await request.post('bucket-a', {
-        baseUrl: s3Client.config.endpoint,
+        baseUrl: s3Client.endpoint.href,
         body: form,
         headers: form.getHeaders(),
       });
@@ -346,7 +347,7 @@ describe('Operations on Objects', () => {
       let res;
       try {
         res = await request.post('bucket-a', {
-          baseUrl: s3Client.config.endpoint,
+          baseUrl: s3Client.endpoint.href,
           body: new URLSearchParams({
             key: 'text',
             file: 'Hello!',
@@ -366,7 +367,7 @@ describe('Operations on Objects', () => {
       form.append('key', 'text');
       form.append('file', 'Hello!');
       const res = await request.post('bucket-a', {
-        baseUrl: s3Client.config.endpoint,
+        baseUrl: s3Client.endpoint.href,
         body: form,
         headers: form.getHeaders(),
       });
@@ -384,7 +385,7 @@ describe('Operations on Objects', () => {
       form.append('Content-Type', 'text/plain');
       form.append('file', 'Hello!', 'post_file.txt');
       const res = await request.post('bucket-a', {
-        baseUrl: s3Client.config.endpoint,
+        baseUrl: s3Client.endpoint.href,
         body: form,
         headers: form.getHeaders(),
       });
@@ -402,14 +403,14 @@ describe('Operations on Objects', () => {
       form.append('key', 'image');
       form.append('file', fs.createReadStream(file));
       const res = await request.post('bucket-a', {
-        baseUrl: s3Client.config.endpoint,
+        baseUrl: s3Client.endpoint.href,
         body: form,
         headers: form.getHeaders(),
       });
       expect(res.statusCode).to.equal(204);
       expect(res.headers).to.have.property(
         'location',
-        new URL('/bucket-a/image', s3Client.config.endpoint).href,
+        new URL('/bucket-a/image', s3Client.endpoint.href).href,
       );
       const objectRes = await request(res.headers.location, {
         encoding: null,
@@ -423,7 +424,7 @@ describe('Operations on Objects', () => {
       form.append('key', 'image');
       form.append('file', fs.createReadStream(file));
       const res = await request.post('', {
-        baseUrl: s3Client.config.endpoint,
+        baseUrl: s3Client.endpoint.href,
         body: form,
         headers: {
           host: 'bucket-a',
@@ -443,7 +444,7 @@ describe('Operations on Objects', () => {
       form.append('key', 'image');
       form.append('file', fs.createReadStream(file));
       const res = await request.post('', {
-        baseUrl: s3Client.config.endpoint,
+        baseUrl: s3Client.endpoint.href,
         body: form,
         headers: {
           host: 'bucket-a.s3.amazonaws.com',
@@ -463,7 +464,7 @@ describe('Operations on Objects', () => {
       form.append('success_action_status', '200');
       form.append('file', 'Hello!');
       const res = await request.post('bucket-a', {
-        baseUrl: s3Client.config.endpoint,
+        baseUrl: s3Client.endpoint.href,
         body: form,
         headers: form.getHeaders(),
       });
@@ -478,7 +479,7 @@ describe('Operations on Objects', () => {
       form.append('success_action_status', '201');
       form.append('file', 'Hello!');
       const res = await request.post('bucket-a', {
-        baseUrl: s3Client.config.endpoint,
+        baseUrl: s3Client.endpoint.href,
         body: form,
         headers: form.getHeaders(),
       });
@@ -494,7 +495,7 @@ describe('Operations on Objects', () => {
       form.append('success_action_status', '301');
       form.append('file', 'Hello!');
       const res = await request.post('bucket-a', {
-        baseUrl: s3Client.config.endpoint,
+        baseUrl: s3Client.endpoint.href,
         body: form,
         headers: form.getHeaders(),
       });
@@ -510,7 +511,7 @@ describe('Operations on Objects', () => {
       let res;
       try {
         res = await request.post('bucket-a', {
-          baseUrl: s3Client.config.endpoint,
+          baseUrl: s3Client.endpoint.href,
           body: form,
           headers: form.getHeaders(),
         });
@@ -538,7 +539,7 @@ describe('Operations on Objects', () => {
       let res;
       try {
         res = await request.post('bucket-a', {
-          baseUrl: s3Client.config.endpoint,
+          baseUrl: s3Client.endpoint.href,
           body: form,
           headers: form.getHeaders(),
         });
@@ -561,7 +562,7 @@ describe('Operations on Objects', () => {
       let res;
       try {
         res = await request.post('bucket-a', {
-          baseUrl: s3Client.config.endpoint,
+          baseUrl: s3Client.endpoint.href,
           body: form,
           headers: form.getHeaders(),
         });
@@ -584,7 +585,7 @@ describe('Operations on Objects', () => {
       let res;
       try {
         res = await request.post('bucket-a', {
-          baseUrl: s3Client.config.endpoint,
+          baseUrl: s3Client.endpoint.href,
           body: form,
           headers: form.getHeaders(),
         });
@@ -601,7 +602,7 @@ describe('Operations on Objects', () => {
       form.append('Content-Type', 'text/plain');
       form.append('success_action_status', '200');
       const res = await request.post('bucket-a', {
-        baseUrl: s3Client.config.endpoint,
+        baseUrl: s3Client.endpoint.href,
         body: form,
         headers: form.getHeaders(),
       });
@@ -621,7 +622,7 @@ describe('Operations on Objects', () => {
       let res;
       try {
         res = await request.post('bucket-a', {
-          baseUrl: s3Client.config.endpoint,
+          baseUrl: s3Client.endpoint.href,
           body: form,
           headers: form.getHeaders(),
         });
@@ -641,7 +642,7 @@ describe('Operations on Objects', () => {
       let res;
       try {
         res = await request.post('bucket-a', {
-          baseUrl: s3Client.config.endpoint,
+          baseUrl: s3Client.endpoint.href,
           body: form,
           headers: form.getHeaders(),
         });
@@ -660,7 +661,7 @@ describe('Operations on Objects', () => {
       let res;
       try {
         res = await request.post('bucket-a', {
-          baseUrl: s3Client.config.endpoint,
+          baseUrl: s3Client.endpoint.href,
           body: form,
           headers: form.getHeaders(),
         });
@@ -763,7 +764,7 @@ describe('Operations on Objects', () => {
 
     it('stores a text object with no content type and retrieves it', async function () {
       const res = await request.put('bucket-a/text', {
-        baseUrl: s3Client.config.endpoint,
+        baseUrl: s3Client.endpoint.href,
         body: 'Hello!',
       });
       expect(res.statusCode).to.equal(200);
