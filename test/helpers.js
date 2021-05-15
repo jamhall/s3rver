@@ -4,7 +4,7 @@ const AWS = require('aws-sdk');
 const { RequestSigner } = require('aws4');
 const crypto = require('crypto');
 const xmlParser = require('fast-xml-parser');
-const fs = require('fs-extra');
+const fs = require('fs');
 const he = require('he');
 const { times } = require('lodash');
 const os = require('os');
@@ -19,11 +19,11 @@ const instances = new Set();
 
 exports.resetTmpDir = function resetTmpDir() {
   try {
-    fs.removeSync(tmpDir);
+    fs.rmdirSync(tmpDir, { recursive: true });
   } catch (err) {
     /* directory didn't exist */
   }
-  fs.ensureDirSync(tmpDir);
+  fs.mkdirSync(tmpDir, { recursive: true });
 };
 
 exports.generateTestObjects = function generateTestObjects(

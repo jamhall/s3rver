@@ -1,7 +1,7 @@
 'use strict';
 
 const { expect } = require('chai');
-const fs = require('fs-extra');
+const fs = require('fs');
 const { find } = require('lodash');
 
 const { createServerAndClient, generateTestObjects } = require('../helpers');
