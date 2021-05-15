@@ -66,7 +66,7 @@ describe('Static Website Tests', function () {
     let res;
     try {
       res = await request('page/', {
-        baseUrl: s3Client.config.endpoint,
+        baseUrl: s3Client.endpoint.href,
         headers: { host: `bucket-a.s3-website-us-east-1.amazonaws.com` },
       });
     } catch (err) {
@@ -90,7 +90,7 @@ describe('Static Website Tests', function () {
       })
       .promise();
     const res = await request('website0/', {
-      baseUrl: s3Client.config.endpoint,
+      baseUrl: s3Client.endpoint.href,
       headers: { accept: 'text/html' },
     });
     expect(res.body).to.equal(expectedBody);
@@ -100,7 +100,7 @@ describe('Static Website Tests', function () {
     let res;
     try {
       res = await request('website3/complex/image.png', {
-        baseUrl: s3Client.config.endpoint,
+        baseUrl: s3Client.endpoint.href,
         headers: { accept: 'image/png' },
         followRedirect: false,
       });
@@ -124,7 +124,7 @@ describe('Static Website Tests', function () {
       })
       .promise();
     const res = await request('website0/page/', {
-      baseUrl: s3Client.config.endpoint,
+      baseUrl: s3Client.endpoint.href,
       headers: { accept: 'text/html' },
     });
     expect(res.body).to.equal(expectedBody);
@@ -149,7 +149,7 @@ describe('Static Website Tests', function () {
       .promise();
 
     const res = await request('website0/page/', {
-      baseUrl: s3Client.config.endpoint,
+      baseUrl: s3Client.endpoint.href,
       headers: { accept: 'text/html' },
     });
     expect(res.body).to.equal(expectedBody);
@@ -167,7 +167,7 @@ describe('Static Website Tests', function () {
     let res;
     try {
       res = await request('website0/page', {
-        baseUrl: s3Client.config.endpoint,
+        baseUrl: s3Client.endpoint.href,
         headers: { accept: 'text/html' },
         followRedirect: false,
       });
@@ -190,7 +190,7 @@ describe('Static Website Tests', function () {
     let res;
     try {
       res = await request('page', {
-        baseUrl: s3Client.config.endpoint,
+        baseUrl: s3Client.endpoint.href,
         headers: { host: 'website0.s3-website-us-east-1.amazonaws.com' },
         followRedirect: false,
       });
@@ -205,7 +205,7 @@ describe('Static Website Tests', function () {
     let res;
     try {
       res = await request('website0/page/not-exists', {
-        baseUrl: s3Client.config.endpoint,
+        baseUrl: s3Client.endpoint.href,
         headers: { accept: 'text/html' },
       });
     } catch (err) {
@@ -223,7 +223,7 @@ describe('Static Website Tests', function () {
     let res;
     try {
       res = await request('website0/page/not-exists/', {
-        baseUrl: s3Client.config.endpoint,
+        baseUrl: s3Client.endpoint.href,
         headers: { accept: 'text/html' },
       });
     } catch (err) {
@@ -250,7 +250,7 @@ describe('Static Website Tests', function () {
     let res;
     try {
       res = await request('website1/page/not-exists', {
-        baseUrl: s3Client.config.endpoint,
+        baseUrl: s3Client.endpoint.href,
         headers: { accept: 'text/html' },
       });
     } catch (err) {
@@ -312,7 +312,7 @@ describe('Static Website Tests', function () {
     let res;
     try {
       res = await request(`website0/`, {
-        baseUrl: s3Client.config.endpoint,
+        baseUrl: s3Client.endpoint.href,
         headers: { accept: 'text/html' },
         followRedirect: false,
       });
@@ -337,7 +337,7 @@ describe('Static Website Tests', function () {
     let res;
     try {
       res = await request(`website1/page/`, {
-        baseUrl: s3Client.config.endpoint,
+        baseUrl: s3Client.endpoint.href,
         headers: { accept: 'text/html' },
         followRedirect: false,
       });
@@ -353,7 +353,7 @@ describe('Static Website Tests', function () {
       let res;
       try {
         res = await request(`website2/test/key/`, {
-          baseUrl: s3Client.config.endpoint,
+          baseUrl: s3Client.endpoint.href,
           headers: { accept: 'text/html' },
           followRedirect: false,
         });
@@ -363,7 +363,7 @@ describe('Static Website Tests', function () {
       expect(res.statusCode).to.equal(301);
       expect(res.headers).to.have.property(
         'location',
-        s3Client.config.endpoint + '/website2/replacement/key/',
+        s3Client.endpoint.href + 'website2/replacement/key/',
       );
     });
 
@@ -377,7 +377,7 @@ describe('Static Website Tests', function () {
         })
         .promise();
       const res = await request('website2/recursive/foo/', {
-        baseUrl: s3Client.config.endpoint,
+        baseUrl: s3Client.endpoint.href,
         headers: { accept: 'text/html' },
       });
       expect(res.body).to.equal(expectedBody);
@@ -395,7 +395,7 @@ describe('Static Website Tests', function () {
       let res;
       try {
         res = await request('website2/recursive/foo', {
-          baseUrl: s3Client.config.endpoint,
+          baseUrl: s3Client.endpoint.href,
           headers: { accept: 'text/html' },
           followRedirect: false,
         });
@@ -413,7 +413,7 @@ describe('Static Website Tests', function () {
       let res;
       try {
         res = await request(`website3/simple/key`, {
-          baseUrl: s3Client.config.endpoint,
+          baseUrl: s3Client.endpoint.href,
           headers: { accept: 'text/html' },
           followRedirect: false,
         });
@@ -423,7 +423,7 @@ describe('Static Website Tests', function () {
       expect(res.statusCode).to.equal(301);
       expect(res.headers).to.have.property(
         'location',
-        s3Client.config.endpoint + '/website3/replacement/key',
+        s3Client.endpoint.href + 'website3/replacement/key',
       );
     });
 
@@ -431,7 +431,7 @@ describe('Static Website Tests', function () {
       let res;
       try {
         res = await request(`website3/complex/key`, {
-          baseUrl: s3Client.config.endpoint,
+          baseUrl: s3Client.endpoint.href,
           headers: { accept: 'text/html' },
           followRedirect: false,
         });

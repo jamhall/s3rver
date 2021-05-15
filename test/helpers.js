@@ -1,7 +1,11 @@
 'use strict';
 
 const AWS = require('aws-sdk');
+const { RequestSigner } = require('aws4');
+const crypto = require('crypto');
+const xmlParser = require('fast-xml-parser');
 const fs = require('fs-extra');
+const he = require('he');
 const { times } = require('lodash');
 const os = require('os');
 const path = require('path');
@@ -39,6 +43,13 @@ exports.generateTestObjects = function generateTestObjects(
   });
 };
 
+exports.md5 = (data) => crypto.createHash('md5').update(data).digest('hex');
+
+exports.parseXml = (data) =>
+  xmlParser.parse(data, {
+    tagValueProcessor: (a) => he.decode(a),
+  });
+
 exports.createServerAndClient = async function createServerAndClient(options) {
   const s3rver = new S3rver(options);
   const { port } = await s3rver.run();
@@ -47,7 +58,7 @@ exports.createServerAndClient = async function createServerAndClient(options) {
   const s3Client = new AWS.S3({
     accessKeyId: 'S3RVER',
     secretAccessKey: 'S3RVER',
-    endpoint: `http://localhost:${port}`,
+    endpoint: `localhost:${port}`,
     sslEnabled: false,
     s3ForcePathStyle: true,
     signatureVersion: 'v4',
@@ -57,3 +68,39 @@ exports.createServerAndClient = async function createServerAndClient(options) {
 };
 
 exports.instances = instances;
+
+exports.StreamingRequestSigner = class extends RequestSigner {
+  prepareRequest() {
+    this.request.headers['X-Amz-Content-Sha256'] =
+      'STREAMING-AWS4-HMAC-SHA256-PAYLOAD';
+    return super.prepareRequest();
+  }
+
+  signature() {
+    this.previousSignature = super.signature();
+    this.chunkData = undefined;
+    return this.previousSignature;
+  }
+
+  signChunk(chunkData) {
+    this.chunkData = chunkData;
+    const chunkLengthHex = chunkData.length.toString(16);
+    return `${chunkLengthHex};chunk-signature=${this.signature()}`;
+  }
+
+  stringToSign() {
+    const hash = (string, encoding) =>
+      crypto.createHash('sha256').update(string, 'utf8').digest(encoding);
+
+    return this.chunkData === undefined
+      ? super.stringToSign()
+      : [
+          'AWS4-HMAC-SHA256-PAYLOAD',
+          this.getDateTime(),
+          this.credentialString(),
+          this.previousSignature,
+          hash('', 'hex'),
+          hash(this.chunkData, 'hex'),
+        ].join('\n');
+  }
+};

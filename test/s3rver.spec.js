@@ -175,7 +175,7 @@ describe('S3rver', () => {
       form.append('key', 'testPostKey');
       form.append('file', body);
       await request.post('bucket-a', {
-        baseUrl: s3Client.config.endpoint,
+        baseUrl: s3Client.endpoint.href,
         body: form,
         headers: form.getHeaders(),
       });
