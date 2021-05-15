@@ -5,7 +5,7 @@ const { expect } = require('chai');
 const { once } = require('events');
 const express = require('express');
 const FormData = require('form-data');
-const fs = require('fs-extra');
+const fs = require('fs');
 const crypto = require('crypto');
 const request = require('request-promise-native').defaults({
   resolveWithFullResponse: true,

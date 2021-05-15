@@ -2,7 +2,7 @@
 
 const AWS = require('aws-sdk');
 const { expect } = require('chai');
-const fs = require('fs-extra');
+const fs = require('fs');
 const request = require('request-promise-native').defaults({
   resolveWithFullResponse: true,
 });
@@ -134,7 +134,9 @@ describe('CORS Policy Tests', function () {
         .putObject({
           Bucket: bucket.name,
           Key: 'image',
-          Body: await fs.readFile(require.resolve('../fixtures/image0.jpg')),
+          Body: await fs.promises.readFile(
+            require.resolve('../fixtures/image0.jpg'),
+          ),
           ContentType: 'image/jpeg',
         })
         .promise();
@@ -170,7 +172,9 @@ describe('CORS Policy Tests', function () {
         .putObject({
           Bucket: buckets[0].name,
           Key: 'image',
-          Body: await fs.readFile(require.resolve('../fixtures/image0.jpg')),
+          Body: await fs.promises.readFile(
+            require.resolve('../fixtures/image0.jpg'),
+          ),
           ContentType: 'image/jpeg',
         })
         .promise();
@@ -209,7 +213,9 @@ describe('CORS Policy Tests', function () {
         .putObject({
           Bucket: buckets[0].name,
           Key: 'image',
-          Body: await fs.readFile(require.resolve('../fixtures/image0.jpg')),
+          Body: await fs.promises.readFile(
+            require.resolve('../fixtures/image0.jpg'),
+          ),
           ContentType: 'image/jpeg',
         })
         .promise();
@@ -248,7 +254,9 @@ describe('CORS Policy Tests', function () {
         .putObject({
           Bucket: buckets[0].name,
           Key: 'image',
-          Body: await fs.readFile(require.resolve('../fixtures/image0.jpg')),
+          Body: await fs.promises.readFile(
+            require.resolve('../fixtures/image0.jpg'),
+          ),
           ContentType: 'image/jpeg',
         })
         .promise();
@@ -284,7 +292,9 @@ describe('CORS Policy Tests', function () {
         .putObject({
           Bucket: buckets[0].name,
           Key: 'image',
-          Body: await fs.readFile(require.resolve('../fixtures/image0.jpg')),
+          Body: await fs.promises.readFile(
+            require.resolve('../fixtures/image0.jpg'),
+          ),
           ContentType: 'image/jpeg',
         })
         .promise();

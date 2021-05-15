@@ -1,7 +1,7 @@
 'use strict';
 
 const { expect } = require('chai');
-const fs = require('fs-extra');
+const fs = require('fs');
 const request = require('request-promise-native').defaults({
   resolveWithFullResponse: true,
 });
