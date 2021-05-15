@@ -2,6 +2,7 @@
 
 const AWS = require('aws-sdk');
 const { expect } = require('chai');
+const { once } = require('events');
 const express = require('express');
 const FormData = require('form-data');
 const fs = require('fs-extra');
@@ -13,7 +14,6 @@ const request = require('request-promise-native').defaults({
 const { createServerAndClient, generateTestObjects } = require('./helpers');
 
 const S3rver = require('../lib/s3rver');
-const { once } = require('../lib/utils');
 
 describe('S3rver', () => {
   describe('#run', () => {

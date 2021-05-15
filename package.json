@@ -1,6 +1,6 @@
 {
   "name": "s3rver",
-  "version": "3.6.1",
+  "version": "4.0.0",
   "description": "Fake S3 server for node",
   "keywords": [
     "fake",
@@ -42,7 +42,7 @@
     "test": "./test"
   },
   "engines": {
-    "node": ">=8.3.0"
+    "node": ">=12.13.0"
   },
   "dependencies": {
     "@koa/router": "^10.0.0",
