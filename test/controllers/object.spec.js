@@ -856,6 +856,43 @@ describe('Operations on Objects', () => {
         .putObject({ Bucket: bucket, Key: 'foo2.txt', Body: 'Hello2!' })
         .promise();
     });
+
+    it('stores an object with a storage class', async function () {
+      await s3Client
+        .putObject({
+          Bucket: 'bucket-a',
+          Key: 'somekey',
+          Body: 'Hello!',
+          StorageClass: 'STANDARD_IA',
+        })
+        .promise();
+      const object = await s3Client
+        .getObject({
+          Bucket: 'bucket-a',
+          Key: 'somekey',
+        })
+        .promise();
+      expect(object.ETag).to.equal(JSON.stringify(md5('Hello!')));
+      expect(object.StorageClass).to.equal('STANDARD_IA');
+    });
+
+    it('fails to store an object with an invalid storage class', async function () {
+      let error;
+      try {
+        await s3Client
+          .putObject({
+            Bucket: 'bucket-a',
+            Key: 'somekey',
+            Body: 'Hello!',
+            StorageClass: 'BAD_STORAGE',
+          })
+          .promise();
+      } catch (err) {
+        error = err;
+      }
+      expect(error).to.exist;
+      expect(error.code).to.equal('InvalidStorageClass');
+    });
   });
 
   describe('PUT Object - Copy', () => {
