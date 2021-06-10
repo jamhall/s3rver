@@ -222,3 +222,11 @@ You can connect to s3rver and mount a bucket to your local file system by using 
 ```bash
 $ s3fs bucket1 /tmp/3 -o url="http://localhost:4568" -o use_path_request_style -d -f -o f2 -o curldbg
 ```
+
+## Use as local server
+
+You can run the server by running the command in the terminal:
+
+```bash
+node ./bin/s3rver.js  -p 5000 -a 0.0.0.0 -d ./tmp --no-vhost-buckets
+```
