@@ -183,6 +183,52 @@ describe('Operations on Objects', () => {
       expect(res.headers).to.have.property('content-length', '100');
     });
 
+    it('gets a response without range headers when no range is specified in the request', async function () {
+      const file = require.resolve('../fixtures/image0.jpg');
+      await s3Client
+        .putObject({
+          Bucket: 'bucket-a',
+          Key: 'image',
+          Body: await fs.promises.readFile(file),
+          ContentType: 'image/jpeg',
+        })
+        .promise();
+      const url = s3Client.getSignedUrl('getObject', {
+        Bucket: 'bucket-a',
+        Key: 'image',
+      });
+      const res = await request(url, {
+        headers: {},
+      });
+      expect(res.statusCode).to.equal(200);
+      expect(res.headers).to.not.have.property('content-range');
+      expect(res.headers).to.have.property('accept-ranges');
+      expect(res.headers).to.have.property('content-length', '52359');
+    });
+
+    it('gets a response with range headers when the requested range starts on byte 0 and no end', async function () {
+      const file = require.resolve('../fixtures/image0.jpg');
+      await s3Client
+        .putObject({
+          Bucket: 'bucket-a',
+          Key: 'image',
+          Body: await fs.promises.readFile(file),
+          ContentType: 'image/jpeg',
+        })
+        .promise();
+      const url = s3Client.getSignedUrl('getObject', {
+        Bucket: 'bucket-a',
+        Key: 'image',
+      });
+      const res = await request(url, {
+        headers: { range: 'bytes=0-' },
+      });
+      expect(res.statusCode).to.equal(206);
+      expect(res.headers).to.have.property('content-range');
+      expect(res.headers).to.have.property('accept-ranges');
+      expect(res.headers).to.have.property('content-length', '52359');
+    });
+
     it('returns 416 error for out of bounds range requests', async function () {
       const file = require.resolve('../fixtures/image0.jpg');
       const { size: filesize } = fs.statSync(file);
