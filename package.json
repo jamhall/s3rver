@@ -70,7 +70,7 @@
     "eslint-plugin-standard": "4.1.0",
     "express": "4.17.1",
     "form-data": "4.0.0",
-    "husky": "4.3.8",
+    "husky": "6.0.0",
     "lint-staged": "10.5.4",
     "mocha": "8.4.0",
     "moment": "2.29.1",
