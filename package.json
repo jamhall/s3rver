@@ -28,7 +28,8 @@
   "scripts": {
     "coverage": "nyc npm test",
     "test": "mocha",
-    "fmt": "eslint . --fix && prettier . --write"
+    "fmt": "eslint . --fix && prettier . --write",
+    "prepare": "husky install"
   },
   "main": "lib/s3rver.js",
   "files": [
@@ -70,7 +71,7 @@
     "eslint-plugin-standard": "4.1.0",
     "express": "4.17.1",
     "form-data": "4.0.0",
-    "husky": "7.0.2",
+    "husky": "^7.0.0",
     "lint-staged": "10.5.4",
     "mocha": "8.4.0",
     "moment": "2.29.1",
@@ -83,10 +84,5 @@
   "lint-staged": {
     "*.js": "eslint --cache --fix",
     "*": "prettier --write --ignore-unknown"
-  },
-  "husky": {
-    "hooks": {
-      "pre-commit": "lint-staged"
-    }
   }
 }
