@@ -1377,7 +1377,7 @@ describe('Operations on Objects', () => {
     });
   });
 
-  describe('Initiate/Upload/Complete Multipart upload', () => {
+  describe('Initiate/Upload/Complete/Abort Multipart upload', () => {
     it('uploads a text file to a multi directory path', async function () {
       const data = await s3Client
         .putObject({
@@ -1553,6 +1553,22 @@ describe('Operations on Objects', () => {
         })
         .promise();
       expect(JSON.parse(data.CopyPartResult.ETag)).to.be.ok;
+    });
+
+    it('aborts a multipart upload', async function () {
+      const upload = await s3Client
+        .createMultipartUpload({
+          Bucket: 'bucket-a',
+          Key: 'destination',
+        })
+        .promise();
+      await s3Client
+        .abortMultipartUpload({
+          Bucket: 'bucket-a',
+          Key: 'desintation',
+          UploadId: upload.UploadId,
+        })
+        .promise();
     });
 
     it('fails to copy a part range for an out of bounds requests', async function () {
