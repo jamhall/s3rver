@@ -2,7 +2,7 @@
 
 const { expect } = require('chai');
 const { zip } = require('lodash');
-const moment = require('moment');
+const dayjs = require('dayjs');
 const os = require('os');
 const request = require('request-promise-native').defaults({
   resolveWithFullResponse: true,
@@ -48,7 +48,7 @@ describe('Virtual Host resolution', () => {
     expect(parsedBuckets).to.have.lengthOf(buckets.length);
     for (const [bucket, config] of zip(parsedBuckets, buckets)) {
       expect(bucket.Name).to.equal(config.name);
-      expect(moment(bucket.CreationDate).isValid()).to.be.true;
+      expect(dayjs(bucket.CreationDate).isValid()).to.be.true;
     }
   });
 
@@ -67,7 +67,7 @@ describe('Virtual Host resolution', () => {
     expect(parsedBuckets).to.have.lengthOf(buckets.length);
     for (const [bucket, config] of zip(parsedBuckets, buckets)) {
       expect(bucket.Name).to.equal(config.name);
-      expect(moment(bucket.CreationDate).isValid()).to.be.true;
+      expect(dayjs(bucket.CreationDate).isValid()).to.be.true;
     }
   });
 
@@ -85,7 +85,7 @@ describe('Virtual Host resolution', () => {
     expect(parsedBuckets).to.have.lengthOf(buckets.length);
     for (const [bucket, config] of zip(parsedBuckets, buckets)) {
       expect(bucket.Name).to.equal(config.name);
-      expect(moment(bucket.CreationDate).isValid()).to.be.true;
+      expect(dayjs(bucket.CreationDate).isValid()).to.be.true;
     }
   });
 

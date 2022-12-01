@@ -7,7 +7,7 @@ const FormData = require('form-data');
 const fs = require('fs');
 const http = require('http');
 const { find, times } = require('lodash');
-const moment = require('moment');
+const dayjs = require('dayjs');
 const pMap = require('p-map');
 const request = require('request-promise-native').defaults({
   resolveWithFullResponse: true,
@@ -1140,7 +1140,7 @@ describe('Operations on Objects', () => {
         })
         .promise();
       expect(copyResult.ETag).to.equal(data.ETag);
-      expect(moment(copyResult.LastModified).isValid()).to.be.true;
+      expect(dayjs(copyResult.LastModified).isValid()).to.be.true;
       const object = await s3Client
         .getObject({
           Bucket: 'bucket-b',
@@ -1205,7 +1205,7 @@ describe('Operations on Objects', () => {
         })
         .promise();
       expect(copyResult.ETag).to.equal(data.ETag);
-      expect(moment(copyResult.LastModified).isValid()).to.be.true;
+      expect(dayjs(copyResult.LastModified).isValid()).to.be.true;
     });
 
     it('copies an image object into another bucket and update its metadata', async function () {
