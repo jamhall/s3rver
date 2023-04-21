@@ -1377,7 +1377,7 @@ describe('Operations on Objects', () => {
     });
   });
 
-  describe('Initiate/Upload/Complete Multipart upload', () => {
+  describe('Initiate/Upload/Complete/Abort Multipart upload', () => {
     it('uploads a text file to a multi directory path', async function () {
       const data = await s3Client
         .putObject({
@@ -1459,6 +1459,22 @@ describe('Operations on Objects', () => {
         })
         .promise();
       expect(object.Metadata.somekey).to.equal('value');
+    });
+
+    it('aborts a multipart upload', async function () {
+      const upload = await s3Client
+        .createMultipartUpload({
+          Bucket: 'bucket-a',
+          Key: 'destination',
+        })
+        .promise();
+      await s3Client
+        .abortMultipartUpload({
+          Bucket: 'bucket-a',
+          Key: 'destination',
+          UploadId: upload.UploadId,
+        })
+        .promise();
     });
 
     it('should upload a part by copying it', async function () {
