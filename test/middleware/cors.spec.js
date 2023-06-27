@@ -1,6 +1,6 @@
 'use strict';
 
-const AWS = require('aws-sdk');
+const AWS = require('../sdk-v2');
 const { expect } = require('chai');
 const fs = require('fs');
 const request = require('request-promise-native').defaults({

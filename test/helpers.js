@@ -1,11 +1,10 @@
 'use strict';
 
-const AWS = require('aws-sdk');
+const AWS = require('./sdk-v2');
 const { RequestSigner } = require('aws4');
 const crypto = require('crypto');
-const xmlParser = require('fast-xml-parser');
+const { XMLParser } = require('fast-xml-parser');
 const fs = require('fs');
-const he = require('he');
 const { times } = require('lodash');
 const os = require('os');
 const path = require('path');
@@ -19,7 +18,7 @@ const instances = new Set();
 
 exports.resetTmpDir = function resetTmpDir() {
   try {
-    fs.rmdirSync(tmpDir, { recursive: true });
+    fs.rmSync(tmpDir, { recursive: true });
   } catch (err) {
     /* directory didn't exist */
   }
@@ -51,10 +50,11 @@ exports.generateTestObjects = function generateTestObjects(
 
 exports.md5 = (data) => crypto.createHash('md5').update(data).digest('hex');
 
-exports.parseXml = (data) =>
-  xmlParser.parse(data, {
-    tagValueProcessor: (a) => he.decode(a),
-  });
+exports.parseXml = (data) => {
+  const xmlParser = new XMLParser();
+
+  return xmlParser.parse(data);
+};
 
 exports.createServerAndClient = async function createServerAndClient(options) {
   const s3rver = new S3rver(options);
