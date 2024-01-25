@@ -378,7 +378,7 @@ describe('Operations on Objects', () => {
   describe('POST Object', () => {
     it('stores a text object for a multipart/form-data request', async function () {
       const form = new FormData();
-      form.append('key', 'text');
+      form.append('key', 'my_files/${filename}');
       form.append('file', 'Hello!', 'post_file.txt');
       const res = await request.post('bucket-a', {
         baseUrl: s3Client.endpoint.href,
@@ -387,7 +387,7 @@ describe('Operations on Objects', () => {
       });
       expect(res.statusCode).to.equal(204);
       const object = await s3Client
-        .getObject({ Bucket: 'bucket-a', Key: 'text' })
+        .getObject({ Bucket: 'bucket-a', Key: 'my_files/post_file.txt' })
         .promise();
       expect(object.ContentType).to.equal('binary/octet-stream');
       expect(object.Body).to.deep.equal(Buffer.from('Hello!'));
